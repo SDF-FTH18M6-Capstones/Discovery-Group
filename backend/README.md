@@ -2,7 +2,7 @@
 
 ## You need
 
-- Python 3.12 or newer
+- Python
 - PostgreSQL 16 running on your computer
 
 ## Set up (first time)
