@@ -1,7 +1,7 @@
 # StockPilot
 
 Inventory, sales, procurement and asset management for a small business.
-SDF-FTH18 capstone · Flask API + React app in one repository.
+Flask API + React app.
 
 | Folder | What it is | How to run it |
 |---|---|---|
@@ -20,8 +20,7 @@ SDF-FTH18 capstone · Flask API + React app in one repository.
 ## How we work (Gitflow)
 
 - `main` = what we release at each milestone gate. Never push to it directly.
-- `develop` = where finished work is merged.
+- `development` = where finished work is merged.
 - One branch per GitHub issue, made from `develop`: `feature/<issue-number>-short-name`
-- Commit messages: `feat: add product form`, `fix: reject negative prices`, `test: ...`, `docs: ...`
-- Open a pull request into `develop`. CI must pass. The Scrum Master reviews and merges.
-- No work starts unless it has an issue on the STOCKPILOT project board.
+- Open a pull request into `development`. The Scrum Master reviews and merges.
+
