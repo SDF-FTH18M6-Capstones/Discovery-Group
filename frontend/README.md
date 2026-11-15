@@ -2,7 +2,7 @@
 
 ## You need
 
-- Node.js 20 or newer
+- Node.js 
 - The backend running (see `../backend/README.md`)
 
 ## Set up and run
