@@ -1,20 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import App from "../App";
-import { makeStore } from "../store";
-
-function renderAt(path) {
-  return render(
-    <Provider store={makeStore()}>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
-    </Provider>,
-  );
-}
+import { mockApi, renderAt } from "./helpers";
 
 describe("app shell", () => {
   it("shows the API as up when /api/health answers", async () => {
@@ -41,8 +28,9 @@ describe("app shell", () => {
     expect(screen.getByRole("heading", { name: "Page not found" })).toBeInTheDocument();
   });
 
-  it("has links to every section", () => {
-    renderAt("/nowhere");
+  it("has links to every section for an administrator", () => {
+    mockApi({}, "admin");
+    renderAt("/nowhere", { as: "admin" });
 
     for (const name of ["Products", "Suppliers", "System status"]) {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
