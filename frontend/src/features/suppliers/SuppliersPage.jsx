@@ -77,8 +77,8 @@ export default function SuppliersPage() {
                   <button
                     type="button"
                     onClick={async () => {
-                      await dispatch(suppliers.deleteItem(supplier.id));
-                      reload();
+                      const result = await dispatch(suppliers.deleteItem(supplier.id));
+                      if (suppliers.deleteItem.fulfilled.match(result)) reload();
                     }}
                     className="text-danger"
                   >
