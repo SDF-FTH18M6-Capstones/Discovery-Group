@@ -5,7 +5,7 @@ ROLES = ("admin", "procurement", "inventory", "sales", "employee")
 
 
 def hash_secret(raw: str) -> str:
-    """Bcrypt hash for passwords and sign-in codes."""
+    """Bcrypt hash of a password."""
     return bcrypt.generate_password_hash(raw).decode("utf-8")
 
 
@@ -28,10 +28,6 @@ class User(TimestampMixin, db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, index=True)
-    is_verified = db.Column(db.Boolean, nullable=False, server_default=db.false())
-    otp_hash = db.Column(db.String(255))  # 2-step sign-in code, stored hashed, never plain
-    otp_expires_at = db.Column(db.DateTime(timezone=True))
-    otp_attempts = db.Column(db.Integer, nullable=False, server_default="0")
 
     __mapper_args__ = {"polymorphic_on": role, "polymorphic_identity": "user"}
 

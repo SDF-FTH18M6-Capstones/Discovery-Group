@@ -1,3 +1,5 @@
+"""Helpers shared by every resource: pagination, find-or-404, safe save and delete."""
+
 import math
 
 from flask_smorest import abort

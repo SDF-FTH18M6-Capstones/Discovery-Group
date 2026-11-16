@@ -4,7 +4,6 @@ from sqlalchemy import text
 
 from app import create_app
 from app.config import TestConfig
-from app.email import outbox
 from app.extensions import db as _db
 
 PASSWORD = "Secret123!"
@@ -25,7 +24,6 @@ def _schema():
 def app(_schema):
     app = create_app(TestConfig)
     with app.app_context():
-        outbox.clear()
         yield app
         _db.session.remove()
         tables = ", ".join(t.name for t in _db.metadata.sorted_tables)
@@ -44,12 +42,11 @@ def make_user(app):
 
     counter = {"n": 0}
 
-    def make(role="employee", email=None, verified=True, password=PASSWORD, full_name=None):
+    def make(role="employee", email=None, password=PASSWORD, full_name=None):
         counter["n"] += 1
         user = ROLE_CLASSES[role](
             full_name=full_name or f"{role.title()} User {counter['n']}",
             email=email or f"{role}{counter['n']}@test.com",
-            is_verified=verified,
         )
         user.set_password(password)
         _db.session.add(user)

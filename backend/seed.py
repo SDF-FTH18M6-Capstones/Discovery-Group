@@ -1,3 +1,7 @@
+"""Fills the database with demo data. Run from the backend folder:  python seed.py
+Safe to run more than once: existing rows are left alone.
+"""
+
 from decimal import Decimal
 
 from app import create_app
@@ -57,7 +61,7 @@ def seed():
     for role, name, email in USERS:
         user = db.session.scalar(db.select(User).filter_by(email=email))
         if user is None:
-            user = ROLE_CLASSES[role](full_name=name, email=email, is_verified=True)
+            user = ROLE_CLASSES[role](full_name=name, email=email)
             user.set_password(DEMO_PASSWORD)
             db.session.add(user)
             db.session.flush()
