@@ -1,6 +1,3 @@
-"""Requests belong to whoever made them; only a Procurement Manager decides; assets are private
-to their holder unless you manage stock."""
-
 import pytest
 
 REQUEST = {"item": "Printer paper", "quantity": 5, "urgency": "high", "reason": "Monthly reports"}
