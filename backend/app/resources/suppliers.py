@@ -3,6 +3,7 @@
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields, validate
 
+from app.auth import roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Supplier
@@ -28,6 +29,7 @@ class SupplierQuery(PageQuery):
 @blp.route("/")
 @blp.arguments(SupplierQuery, location="query")
 @blp.response(200, page_schema(SupplierSchema))
+@roles_required("admin", "procurement")
 def list_suppliers(args):
     query = db.select(Supplier).order_by(Supplier.name)
     if args["search"]:
@@ -38,12 +40,14 @@ def list_suppliers(args):
 @blp.route("/", methods=["POST"])
 @blp.arguments(SupplierSchema)
 @blp.response(201, SupplierSchema)
+@roles_required("admin", "procurement")
 def create_supplier(data):
     return save(Supplier(**data), "Could not save this supplier")
 
 
 @blp.route("/<int:supplier_id>")
 @blp.response(200, SupplierSchema)
+@roles_required("admin", "procurement")
 def get_supplier(supplier_id):
     return get_or_404(Supplier, supplier_id)
 
@@ -51,6 +55,7 @@ def get_supplier(supplier_id):
 @blp.route("/<int:supplier_id>", methods=["PUT"])
 @blp.arguments(SupplierSchema)
 @blp.response(200, SupplierSchema)
+@roles_required("admin", "procurement")
 def update_supplier(data, supplier_id):
     supplier = get_or_404(Supplier, supplier_id)
     for key, value in data.items():
@@ -60,6 +65,7 @@ def update_supplier(data, supplier_id):
 
 @blp.route("/<int:supplier_id>", methods=["DELETE"])
 @blp.response(204)
+@roles_required("admin", "procurement")
 def delete_supplier(supplier_id):
     supplier = get_or_404(Supplier, supplier_id)
     delete(supplier, "This supplier has purchase orders and cannot be deleted.")

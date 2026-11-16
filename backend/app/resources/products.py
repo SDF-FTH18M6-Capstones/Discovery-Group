@@ -3,6 +3,7 @@
 from flask_smorest import Blueprint, abort
 from marshmallow import Schema, fields, validate
 
+from app.auth import roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Category, Product
@@ -40,6 +41,7 @@ def check_category(category_id):
 @blp.route("/")
 @blp.arguments(ProductQuery, location="query")
 @blp.response(200, page_schema(ProductSchema))
+@roles_required()
 def list_products(args):
     query = db.select(Product).order_by(Product.name)
     if args["search"]:
@@ -55,6 +57,7 @@ def list_products(args):
 @blp.route("/", methods=["POST"])
 @blp.arguments(ProductSchema)
 @blp.response(201, ProductSchema)
+@roles_required("admin", "inventory")
 def create_product(data):
     check_category(data["category_id"])
     return save(Product(**data), f"SKU '{data['sku']}' is already used")
@@ -62,6 +65,7 @@ def create_product(data):
 
 @blp.route("/<int:product_id>")
 @blp.response(200, ProductSchema)
+@roles_required()
 def get_product(product_id):
     return get_or_404(Product, product_id)
 
@@ -69,6 +73,7 @@ def get_product(product_id):
 @blp.route("/<int:product_id>", methods=["PUT"])
 @blp.arguments(ProductSchema)
 @blp.response(200, ProductSchema)
+@roles_required("admin", "inventory")
 def update_product(data, product_id):
     product = get_or_404(Product, product_id)
     check_category(data["category_id"])
@@ -79,6 +84,7 @@ def update_product(data, product_id):
 
 @blp.route("/<int:product_id>", methods=["DELETE"])
 @blp.response(204)
+@roles_required("admin", "inventory")
 def delete_product(product_id):
     product = get_or_404(Product, product_id)
     delete(product, "This product has sales or purchases and cannot be deleted.")
