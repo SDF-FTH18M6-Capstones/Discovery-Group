@@ -1,3 +1,4 @@
+
 import { Link, NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
@@ -19,14 +20,30 @@ const links = [
 
 export default function Layout() {
   const { user, signOut, hasRole } = useAuth();
-  const visible = links.filter((link) => !link.roles || hasRole(...link.roles));
+
+  const visible = links.filter(
+    (link) => !link.roles || hasRole(...link.roles)
+  );
 
   return (
     <div className="min-h-screen md:flex">
+
+      {/* Sidebar */}
       <aside className="flex flex-col gap-4 bg-evergreen p-4 md:min-h-screen md:w-56">
-        <div className="flex items-center gap-2 text-lg font-bold text-white">
-          <span className="rounded-md bg-brand px-2 py-1 text-sm">SP</span> StockPilot
-        </div>
+
+        {/* StockPilot Branding */}
+        <Link
+          to="/"
+          className="flex justify-center border-b border-white/20 pb-4 mb-2"
+        >
+          <img
+            src="/StockPilotnew.png"
+            alt="StockPilot"
+            className="h-20 w-full object-contain"
+          />
+        </Link>
+
+        {/* Navigation */}
         {user && (
           <nav aria-label="Main" className="flex flex-wrap gap-1 md:flex-col">
             {visible.map((link) => (
@@ -35,7 +52,11 @@ export default function Layout() {
                 to={link.to}
                 end={link.end}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm ${isActive ? "bg-brand text-white" : "text-white/80 hover:text-white"}`
+                  `rounded-lg px-3 py-2 text-sm transition-colors ${
+                    isActive
+                      ? "bg-brand text-white"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
+                  }`
                 }
               >
                 {link.label}
@@ -43,17 +64,22 @@ export default function Layout() {
             ))}
           </nav>
         )}
+
+        {/* User Account */}
         <div className="text-sm text-white/80 md:mt-auto">
           {user ? (
             <div className="flex flex-col gap-2">
               <span>
-                <span className="block font-semibold text-white">{user.full_name}</span>
+                <span className="block font-semibold text-white">
+                  {user.full_name}
+                </span>
                 {ROLE_NAMES[user.role] || user.role}
               </span>
+
               <button
                 type="button"
                 onClick={signOut}
-                className="self-start rounded-md border border-white/40 px-3 py-1 text-white"
+                className="self-start rounded-md border border-white/40 px-3 py-1 text-white hover:bg-white/10"
               >
                 Sign out
               </button>
@@ -65,9 +91,12 @@ export default function Layout() {
           )}
         </div>
       </aside>
+
+      {/* Main Content */}
       <main className="min-w-0 flex-1 p-4 md:p-8">
         <Outlet />
       </main>
+
     </div>
   );
 }
