@@ -1,3 +1,4 @@
+// Coloured label for a request or asset status.
 const STYLES = {
   pending: "bg-amber-100 text-amber-900",
   approved: "bg-mint text-brand-dark",

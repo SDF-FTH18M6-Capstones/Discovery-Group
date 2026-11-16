@@ -1,7 +1,7 @@
 # StockPilot
 
 Inventory, sales, procurement and asset management for a small business.
-Flask API + React app 
+Flask API + React app
 
 | Folder | What it is | How to run it |
 |---|---|---|
@@ -25,4 +25,4 @@ Flask API + React app
 - One branch per GitHub issue, made from `development`: `feature/<issue-number>-short-name`
 - Commit messages: `feat: add product form`, `fix: reject negative prices`, `test: ...`, `docs: ...`
 - Open a pull request into `development`. CI must pass. The Scrum Master reviews and merges.
-
+- No work starts unless it has an issue on the STOCKPILOT project board.

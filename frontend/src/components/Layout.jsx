@@ -1,21 +1,21 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
+import { PROCUREMENT, ROLE_NAMES, STOCK_MANAGERS } from "../auth/roles";
 
 // `roles` = who sees the link. No `roles` = every signed-in user.
 const links = [
+  { to: "/", label: "Dashboard", end: true },
   { to: "/products", label: "Products" },
-  { to: "/suppliers", label: "Suppliers", roles: ["admin", "procurement"] },
+  { to: "/categories", label: "Categories" },
+  { to: "/suppliers", label: "Suppliers", roles: PROCUREMENT },
+  { to: "/requests", label: "My requests" },
+  { to: "/approvals", label: "Approvals", roles: PROCUREMENT },
+  { to: "/assets", label: "Assets", roles: STOCK_MANAGERS },
+  { to: "/assets", label: "My assets", roles: ["procurement", "sales", "employee"] },
+  { to: "/users", label: "Users", roles: ["admin"] },
   { to: "/status", label: "System status" },
 ];
-
-const ROLE_NAMES = {
-  admin: "Administrator",
-  procurement: "Procurement Manager",
-  inventory: "Inventory Manager",
-  sales: "Sales Attendant",
-  employee: "Employee",
-};
 
 export default function Layout() {
   const { user, signOut, hasRole } = useAuth();
@@ -31,8 +31,9 @@ export default function Layout() {
           <nav aria-label="Main" className="flex flex-wrap gap-1 md:flex-col">
             {visible.map((link) => (
               <NavLink
-                key={link.to}
+                key={link.label}
                 to={link.to}
+                end={link.end}
                 className={({ isActive }) =>
                   `rounded-lg px-3 py-2 text-sm ${isActive ? "bg-brand text-white" : "text-white/80 hover:text-white"}`
                 }

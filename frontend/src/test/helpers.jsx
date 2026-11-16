@@ -25,6 +25,7 @@ export const userFor = (role) => ({
 });
 
 // Fake backend: answers each "METHOD /path" in `routes` with [status, body].
+// An answer can be a function of (options, url) to vary by body or query string.
 // Anything not listed answers 200 with an empty page.
 export function mockApi(routes = {}, role = null) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options = {}) => {
@@ -32,7 +33,7 @@ export function mockApi(routes = {}, role = null) {
     const answer = routes[key];
     const [status, body] =
       typeof answer === "function"
-        ? answer(options)
+        ? answer(options, new URL(url))
         : answer || (key === "GET /api/auth/me" && role ? [200, userFor(role)] : [200, page([])]);
     return { ok: status < 400, status, json: async () => body };
   });

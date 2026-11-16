@@ -1,3 +1,4 @@
+// Role names as people read them, and who may manage what. Mirrors the backend's @roles_required.
 export const ROLE_NAMES = {
   admin: "Administrator",
   procurement: "Procurement Manager",
