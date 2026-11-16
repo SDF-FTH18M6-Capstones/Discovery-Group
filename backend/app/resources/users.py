@@ -18,7 +18,6 @@ class UserSchema(Schema):
     full_name = fields.String(dump_only=True)
     email = fields.String(dump_only=True)
     role = fields.String(dump_only=True)
-    is_verified = fields.Boolean(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 
 
