@@ -1,5 +1,5 @@
 // Who is signed in, shared with the whole app through React Context.
-//   const { user, signIn, verifyCode, register, signOut, hasRole } = useAuth();
+//   const { user, signIn, register, signOut, hasRole } = useAuth();
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,18 +33,11 @@ export function AuthProvider({ children }) {
       .catch(() => {});
   }, []);
 
-  // Step 1: email + password. The backend emails a 6-digit code.
-  const signIn = useCallback(
-    (email, password) =>
-      api("/api/auth/login", { method: "POST", body: { email, password }, auth: false }),
-    [],
-  );
-
-  // Step 2: the code. The backend answers with the tokens.
-  const verifyCode = useCallback(async (email, code) => {
-    const session = await api("/api/auth/verify-otp", {
+  // Email + password. The backend answers with the tokens, which are kept for the next visit.
+  const signIn = useCallback(async (email, password) => {
+    const session = await api("/api/auth/login", {
       method: "POST",
-      body: { email, code },
+      body: { email, password },
       auth: false,
     });
     saveSession({
@@ -71,8 +64,8 @@ export function AuthProvider({ children }) {
   const hasRole = useCallback((...roles) => Boolean(user && roles.includes(user.role)), [user]);
 
   const value = useMemo(
-    () => ({ user, sessionExpired, signIn, verifyCode, register, signOut, hasRole }),
-    [user, sessionExpired, signIn, verifyCode, register, signOut, hasRole],
+    () => ({ user, sessionExpired, signIn, register, signOut, hasRole }),
+    [user, sessionExpired, signIn, register, signOut, hasRole],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

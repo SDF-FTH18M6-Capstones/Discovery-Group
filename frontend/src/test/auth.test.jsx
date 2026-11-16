@@ -44,10 +44,9 @@ describe("protected pages", () => {
 });
 
 describe("sign in", () => {
-  it("takes the password, then the emailed code, then opens the page asked for", async () => {
+  it("takes email and password, then opens the page asked for", async () => {
     const fetchSpy = mockApi({
-      "POST /api/auth/login": [200, { message: "We sent a 6-digit code to your email." }],
-      "POST /api/auth/verify-otp": [
+      "POST /api/auth/login": [
         200,
         { access_token: "new-access", refresh_token: "new-refresh", user: userFor("inventory") },
       ],
@@ -58,16 +57,16 @@ describe("sign in", () => {
 
     await user.type(await screen.findByLabelText("Email"), "inventory@test.com");
     await user.type(screen.getByLabelText("Password"), "Secret123!");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    expect(await screen.findByText("We sent a 6-digit code to your email.")).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("6-digit code"), "123456");
-    await user.click(screen.getByRole("button", { name: "Verify and sign in" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Products" })).toBeInTheDocument();
     expect(loadSession().accessToken).toBe("new-access");
-    const verify = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/verify-otp"));
-    expect(JSON.parse(verify[1].body)).toEqual({ email: "inventory@test.com", code: "123456" });
+    expect(loadSession().refreshToken).toBe("new-refresh");
+    const login = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/login"));
+    expect(JSON.parse(login[1].body)).toEqual({
+      email: "inventory@test.com",
+      password: "Secret123!",
+    });
   });
 
   it("shows the server's message when the password is wrong", async () => {
@@ -82,10 +81,11 @@ describe("sign in", () => {
 
     await user.type(screen.getByLabelText("Email"), "someone@test.com");
     await user.type(screen.getByLabelText("Password"), "Wrong123!");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByText("Email or password is incorrect.")).toBeInTheDocument();
-    expect(screen.queryByLabelText("6-digit code")).toBeNull();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Email or password is incorrect.");
+    expect(loadSession()).toBeNull();
+    expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("checks the fields before calling the server", async () => {
@@ -93,25 +93,11 @@ describe("sign in", () => {
     const user = userEvent.setup();
     renderAt("/login");
 
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(screen.getByText("Enter your email address.")).toBeInTheDocument();
     expect(screen.getByText("Enter your password.")).toBeInTheDocument();
     expect(fetchSpy.mock.calls.some(([url]) => url.endsWith("/api/auth/login"))).toBe(false);
-  });
-
-  it("refuses a code that is not 6 digits", async () => {
-    mockApi({ "POST /api/auth/login": [200, { message: "Code sent." }] });
-    const user = userEvent.setup();
-    renderAt("/login");
-
-    await user.type(screen.getByLabelText("Email"), "a@test.com");
-    await user.type(screen.getByLabelText("Password"), "Secret123!");
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.type(await screen.findByLabelText("6-digit code"), "12ab");
-    await user.click(screen.getByRole("button", { name: "Verify and sign in" }));
-
-    expect(screen.getByText("Enter the 6-digit code from the email.")).toBeInTheDocument();
   });
 
   it("signs out and clears the stored session", async () => {
@@ -126,7 +112,7 @@ describe("sign in", () => {
   });
 });
 
-describe("sign up and verify email", () => {
+describe("sign up", () => {
   it("checks every field before sending", async () => {
     const fetchSpy = mockApi();
     const user = userEvent.setup();
@@ -145,9 +131,9 @@ describe("sign up and verify email", () => {
     expect(fetchSpy.mock.calls.some(([url]) => url.endsWith("/api/auth/register"))).toBe(false);
   });
 
-  it("creates the account and asks the user to check their email", async () => {
+  it("creates the account and goes to sign in with the email filled in", async () => {
     const fetchSpy = mockApi({
-      "POST /api/auth/register": [201, { message: "Account created. Check your email." }],
+      "POST /api/auth/register": [201, { message: "Account created. You can now sign in." }],
     });
     const user = userEvent.setup();
     renderAt("/register");
@@ -158,7 +144,9 @@ describe("sign up and verify email", () => {
     await user.type(screen.getByLabelText("Confirm password"), "Secret123!");
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
-    expect(await screen.findByText("Account created. Check your email.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Account created. You can now sign in.");
+    expect(screen.getByLabelText("Email")).toHaveValue("alex@test.com");
     const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/register"));
     expect(JSON.parse(call[1].body)).toEqual({
       full_name: "Alex Kamau",
@@ -186,17 +174,6 @@ describe("sign up and verify email", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "An account with this email already exists.",
     );
-  });
-
-  it("verifies the email from the link", async () => {
-    const fetchSpy = mockApi({
-      "POST /api/auth/verify-email": [200, { message: "Email verified. You can now sign in." }],
-    });
-    renderAt("/verify-email?token=abc123");
-
-    expect(await screen.findByText("Email verified. You can now sign in.")).toBeInTheDocument();
-    const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/verify-email"));
-    expect(JSON.parse(call[1].body)).toEqual({ token: "abc123" });
   });
 });
 

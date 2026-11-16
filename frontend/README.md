@@ -20,7 +20,7 @@ The **System status** page shows whether the backend is reachable.
 ## Sign-in
 
 - `src/auth/AuthContext.jsx`: the Auth Context Provider. `useAuth()` gives `user`, `signIn`,
-  `verifyCode`, `register`, `signOut` and `hasRole("admin", ...)`.
+  `register`, `signOut` and `hasRole("admin", ...)`.
 - `src/auth/session.js`: keeps the tokens in `localStorage` between page loads.
 - `src/api/client.js`: the fetch interceptor. It adds the bearer token to every request, renews
   an expired access token with the refresh token, and sends the user to `/login` when both expire.
@@ -46,6 +46,6 @@ src/
 ├── components/          Layout, Field, Pagination
 ├── features/products/   products list + form
 ├── features/suppliers/  suppliers list + form
-├── pages/               Sign in, Create account, Verify email, System status
+├── pages/               Sign in, Create account, System status
 └── test/                tests
 ```
