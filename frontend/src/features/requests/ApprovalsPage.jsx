@@ -1,5 +1,3 @@
-// Every staff request. A Procurement Manager approves or rejects (never their own);
-// an Administrator can see them all but not decide.
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 

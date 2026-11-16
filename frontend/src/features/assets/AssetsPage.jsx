@@ -1,5 +1,3 @@
-// Asset register. Admin and Inventory Manager see and manage every asset;
-// everyone else sees the assets they hold ("My assets"). The API applies the same rule.
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 

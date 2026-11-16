@@ -1,4 +1,3 @@
-// Administrator only: everyone's account, and changing a person's role.
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 

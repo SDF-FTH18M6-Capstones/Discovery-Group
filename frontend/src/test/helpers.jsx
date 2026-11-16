@@ -1,4 +1,3 @@
-// Shared test helpers: render the app at a URL, optionally signed in, with a fake backend.
 import { render } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -24,9 +23,7 @@ export const userFor = (role) => ({
   role,
 });
 
-// Fake backend: answers each "METHOD /path" in `routes` with [status, body].
-// An answer can be a function of (options, url) to vary by body or query string.
-// Anything not listed answers 200 with an empty page.
+
 export function mockApi(routes = {}, role = null) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options = {}) => {
     const key = `${options.method || "GET"} ${new URL(url).pathname}`;

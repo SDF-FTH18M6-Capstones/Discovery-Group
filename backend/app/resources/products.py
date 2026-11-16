@@ -1,5 +1,3 @@
-"""/api/products — GET (list, search, filter), POST, GET one, PUT, DELETE."""
-
 from flask_smorest import Blueprint, abort
 from marshmallow import Schema, fields, validate
 

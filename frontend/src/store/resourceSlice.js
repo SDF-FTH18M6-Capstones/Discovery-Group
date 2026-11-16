@@ -1,5 +1,3 @@
-// Makes a Redux slice for one API resource (products, suppliers, ...).
-// Each slice can load a page of the list, save (create or update) and delete.
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 import { api } from "../api/client";

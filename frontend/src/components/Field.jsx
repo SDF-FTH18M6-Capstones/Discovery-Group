@@ -1,4 +1,3 @@
-// A labelled input with its error message underneath.
 export default function Field({ label, name, error, children, ...inputProps }) {
   const id = `field-${name}`;
   return (

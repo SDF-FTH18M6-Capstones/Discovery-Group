@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import { api, API_URL } from "../api/client";
 
-// Calls GET /api/health so anyone can see that frontend and backend are connected.
 export default function StatusPage() {
   const [result, setResult] = useState({ state: "checking" });
 

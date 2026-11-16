@@ -1,10 +1,3 @@
-"""/api/auth — register, sign in, refresh, who am I.
-
-1. POST /api/auth/register with full name, email and password → an Employee account
-2. POST /api/auth/login with email + password → access token (15 min) + refresh token (7 days)
-3. Send `Authorization: Bearer <access token>` with every other request
-"""
-
 import re
 
 from flask_jwt_extended import (
@@ -26,12 +19,9 @@ blp = Blueprint("auth", __name__, url_prefix="/api/auth", description="Sign-in a
 BAD_LOGIN = "Email or password is incorrect."
 
 
-# ---------- schemas ----------
-
-
 class RegisterSchema(Schema):
     class Meta:
-        unknown = EXCLUDE  # a "role" sent by the browser is ignored, never trusted
+        unknown = EXCLUDE  
 
     full_name = fields.String(required=True, validate=validate.Length(min=2, max=120))
     email = fields.Email(required=True)
@@ -88,8 +78,6 @@ def find_user(email):
     return db.session.scalar(db.select(User).filter_by(email=email.lower()))
 
 
-# ---------- routes ----------
-
 
 @blp.route("/register", methods=["POST"])
 @blp.arguments(RegisterSchema)
@@ -111,7 +99,7 @@ def register(data):
 @blp.response(200, SessionSchema)
 @blp.doc(security=[])
 def login(data):
-    """Check email and password and return the tokens."""
+  
     user = find_user(data["email"])
     if user is None:
         check_secret(dummy_hash(), data["password"])  # same delay as a real check
@@ -129,7 +117,7 @@ def login(data):
 @blp.response(200, AccessSchema)
 @jwt_required(refresh=True)
 def refresh():
-    """Swap the refresh token for a new access token."""
+  
     token = create_access_token(
         identity=current_user, additional_claims={"role": current_user.role}
     )
@@ -140,5 +128,4 @@ def refresh():
 @blp.response(200, AccountSchema)
 @roles_required()
 def me():
-    """The signed-in user."""
     return current_user

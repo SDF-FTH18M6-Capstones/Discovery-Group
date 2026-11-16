@@ -1,5 +1,3 @@
-// Who is signed in, shared with the whole app through React Context.
-//   const { user, signIn, register, signOut, hasRole } = useAuth();
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,8 +11,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => loadSession()?.user || null);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  // When a request finds the session has expired, forget the user. <RequireAuth> then
-  // sends them to /login, which shows "Your session has expired".
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setSessionExpired(true);
@@ -22,7 +18,6 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  // On page load, confirm the stored session is still valid and refresh the user's details.
   useEffect(() => {
     if (!loadSession()?.accessToken) return;
     api("/api/auth/me")
@@ -33,7 +28,6 @@ export function AuthProvider({ children }) {
       .catch(() => {});
   }, []);
 
-  // Email + password. The backend answers with the tokens, which are kept for the next visit.
   const signIn = useCallback(async (email, password) => {
     const session = await api("/api/auth/login", {
       method: "POST",

@@ -1,5 +1,3 @@
-"""Sales, sale lines and the stock history."""
-
 from app.extensions import db
 from app.models.base import Money, in_list
 

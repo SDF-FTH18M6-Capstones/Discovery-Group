@@ -57,7 +57,7 @@ def make_user(app):
 
 
 class AuthClient:
-    """A test client that sends `Authorization: Bearer <token>` with every request."""
+   
 
     def __init__(self, client, user):
         self.client = client

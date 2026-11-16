@@ -1,5 +1,3 @@
-"""All 13 tables of the approved simple schema."""
-
 from app.models.assets import Asset, Notification, Repair
 from app.models.catalogue import Category, Product, Supplier
 from app.models.procurement import Purchase, PurchaseItem, Request
