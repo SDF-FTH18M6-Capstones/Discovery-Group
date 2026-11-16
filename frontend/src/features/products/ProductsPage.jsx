@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
+import { useAuth } from "../../auth/AuthContext";
 import Pagination from "../../components/Pagination";
 import { categories, products } from "../../store";
 import ProductForm from "./ProductForm";
 
 export default function ProductsPage() {
   const dispatch = useDispatch();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole("admin", "inventory");
   const list = useSelector((state) => state.products);
   const categoryOptions = useSelector((state) => state.categories.items);
   const [search, setSearch] = useState("");
@@ -32,13 +35,15 @@ export default function ProductsPage() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Products</h1>
-        <button
-          type="button"
-          onClick={() => setEditing({})}
-          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
-        >
-          Add product
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setEditing({})}
+            className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
+          >
+            Add product
+          </button>
+        )}
       </div>
 
       {editing && (
@@ -119,21 +124,25 @@ export default function ProductsPage() {
                     )}
                   </td>
                   <td className="p-3 text-right">{product.selling_price}</td>
-                  <td className="flex gap-2 p-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditing(product)}
-                      className="text-brand-dark"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(product)}
-                      className="text-danger"
-                    >
-                      Delete
-                    </button>
+                  <td className="p-3">
+                    {canEdit && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(product)}
+                          className="text-brand-dark"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(product)}
+                          className="text-danger"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

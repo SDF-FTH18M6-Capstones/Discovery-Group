@@ -1,32 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Provider } from "react-redux";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import App from "../App";
-import { makeStore } from "../store";
-
-const page = (results) => ({ results, count: results.length, page: 1, per_page: 10, pages: 1 });
-
-// Fake backend: answers each URL the app calls.
-function mockApi(routes) {
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options = {}) => {
-    const key = `${options.method || "GET"} ${new URL(url).pathname}`;
-    const [status, body] = routes[key] || [200, page([])];
-    return { ok: status < 400, status, json: async () => body };
-  });
-}
-
-function renderAt(path) {
-  return render(
-    <Provider store={makeStore()}>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
-    </Provider>,
-  );
-}
+import { mockApi, page, renderAt } from "./helpers";
 
 const water = {
   id: 1,
@@ -43,17 +19,17 @@ const water = {
 
 describe("products page", () => {
   it("lists products from the API", async () => {
-    mockApi({ "GET /api/products/": [200, page([water])] });
-    renderAt("/products");
+    mockApi({ "GET /api/products/": [200, page([water])] }, "admin");
+    renderAt("/products", { as: "admin" });
 
     expect(await screen.findByText("Water Bottle 1L")).toBeInTheDocument();
     expect(screen.getByText("Page 1 of 1 · 1 total")).toBeInTheDocument();
   });
 
   it("shows field errors before sending an empty form", async () => {
-    const fetchSpy = mockApi({});
+    const fetchSpy = mockApi({}, "admin");
     const user = userEvent.setup();
-    renderAt("/products");
+    renderAt("/products", { as: "admin" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.click(screen.getByRole("button", { name: "Save product" }));
@@ -64,12 +40,15 @@ describe("products page", () => {
   });
 
   it("captures what was typed and sends it to the API", async () => {
-    const fetchSpy = mockApi({
-      "GET /api/categories/": [200, page([{ id: 1, name: "Beverages" }])],
-      "POST /api/products/": [201, water],
-    });
+    const fetchSpy = mockApi(
+      {
+        "GET /api/categories/": [200, page([{ id: 1, name: "Beverages" }])],
+        "POST /api/products/": [201, water],
+      },
+      "admin",
+    );
     const user = userEvent.setup();
-    renderAt("/products");
+    renderAt("/products", { as: "admin" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.type(screen.getByLabelText("SKU"), "SP-001");
@@ -94,15 +73,18 @@ describe("products page", () => {
   });
 
   it("shows the server's error next to the field", async () => {
-    mockApi({
-      "GET /api/categories/": [200, page([{ id: 1, name: "Beverages" }])],
-      "POST /api/products/": [
-        409,
-        { error: { code: 409, message: "SKU 'SP-001' is already used" } },
-      ],
-    });
+    mockApi(
+      {
+        "GET /api/categories/": [200, page([{ id: 1, name: "Beverages" }])],
+        "POST /api/products/": [
+          409,
+          { error: { code: 409, message: "SKU 'SP-001' is already used" } },
+        ],
+      },
+      "admin",
+    );
     const user = userEvent.setup();
-    renderAt("/products");
+    renderAt("/products", { as: "admin" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.type(screen.getByLabelText("SKU"), "SP-001");
@@ -118,9 +100,9 @@ describe("products page", () => {
 
 describe("suppliers page", () => {
   it("validates email and saves a supplier", async () => {
-    const fetchSpy = mockApi({ "POST /api/suppliers/": [201, { id: 1, name: "Metro" }] });
+    const fetchSpy = mockApi({ "POST /api/suppliers/": [201, { id: 1, name: "Metro" }] }, "admin");
     const user = userEvent.setup();
-    renderAt("/suppliers");
+    renderAt("/suppliers", { as: "admin" });
 
     await user.click(screen.getByRole("button", { name: "Add supplier" }));
     await user.type(screen.getByLabelText("Name"), "Metro");
