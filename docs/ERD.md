@@ -47,10 +47,6 @@ erDiagram
         varchar email UK
         varchar password_hash
         varchar role "admin, procurement, inventory, sales or employee"
-        bool is_verified
-        varchar otp_hash
-        timestamptz otp_expires_at
-        int otp_attempts
         timestamptz created_at
         timestamptz updated_at
     }
@@ -157,7 +153,7 @@ erDiagram
 | Money is exact | `decimal(12,2)`, never floating point |
 | Only allowed values in status/role columns | `CHECK (... IN (...))` on every status, role, urgency and type column |
 | History is kept | Foreign keys are `ON DELETE RESTRICT`: a product with sales, or a user with requests, cannot be deleted |
-| Passwords and sign-in codes are safe | Only Bcrypt hashes are stored |
+| Passwords are safe | Only Bcrypt hashes are stored |
 
 ## Roles (proxy models)
 
@@ -208,10 +204,6 @@ Everyone who signs in. One table for all five roles (the role column picks the P
 | `email` | varchar(255) | yes | UK |  |
 | `password_hash` | varchar(255) | yes |  | Bcrypt hash. The password itself is never stored. |
 | `role` | varchar(20) | yes |  | admin, procurement, inventory, sales or employee. New sign-ups are always employee. |
-| `is_verified` | bool | yes |  | Becomes true when the user opens the link in the verification email. Default `false`. |
-| `otp_hash` | varchar(255) | no |  | Bcrypt hash of the current 6-digit sign-in code; cleared after use. |
-| `otp_expires_at` | timestamptz | no |  | The code stops working at this time (5 minutes after login). |
-| `otp_attempts` | int | yes |  | Wrong codes entered; after 5 the code stops working. Default `0`. |
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 

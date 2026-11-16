@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5f17b818-4ffa-5640-8432-f1f9b548ddcf",
     "name": "StockPilot API",
-    "description": "Run against a local backend started with DEV_SHOW_OTP=true and seeded with `python seed.py`.",
+    "description": "Run against a local backend seeded with `python seed.py`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -221,7 +221,7 @@
           ]
         },
         {
-          "name": "Unverified account cannot sign in (403)",
+          "name": "The new account can sign in and is an employee",
           "request": {
             "method": "POST",
             "header": [
@@ -255,7 +255,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));"
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Role is employee, not admin\", () => pm.expect(pm.response.json().user.role).to.eql(\"employee\"));"
                 ]
               }
             }
@@ -304,7 +305,7 @@
           ]
         },
         {
-          "name": "Wrong code is 401",
+          "name": "Unknown email is 401 with the same message",
           "request": {
             "method": "POST",
             "header": [
@@ -314,14 +315,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/auth/verify-otp",
+              "raw": "{{baseUrl}}/api/auth/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "auth",
-                "verify-otp"
+                "login"
               ]
             },
             "auth": {
@@ -329,7 +330,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@stockpilot.test\",\n  \"code\": \"000000\"\n}"
+              "raw": "{\n  \"email\": \"nobody@stockpilot.test\",\n  \"password\": \"Wrong123!\"\n}"
             }
           },
           "event": [
@@ -338,14 +339,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));"
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Says: Email or password is incorrect.\", () => pm.expect(pm.response.json().error.message).to.eql(\"Email or password is incorrect.\"));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Sign in as Admin - step 1 (password)",
+          "name": "Sign in as Admin",
           "request": {
             "method": "POST",
             "header": [
@@ -380,50 +382,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Dev code returned (DEV_SHOW_OTP=true)\", () => pm.expect(pm.response.json().dev_code).to.match(/^\\d{6}$/));",
-                  "pm.collectionVariables.set(\"devCode\", pm.response.json().dev_code);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Sign in as Admin - step 2 (code)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/verify-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "verify-otp"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@stockpilot.test\",\n  \"code\": \"{{devCode}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Got an access token\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));",
+                  "pm.test(\"Role is Admin\", () => pm.expect(pm.response.json().user.email).to.eql(\"admin@stockpilot.test\"));",
                   "pm.collectionVariables.set(\"adminToken\", pm.response.json().access_token);"
                 ]
               }
@@ -510,7 +470,7 @@
           ]
         },
         {
-          "name": "Sign in as Employee - step 1 (password)",
+          "name": "Sign in as Employee",
           "request": {
             "method": "POST",
             "header": [
@@ -545,50 +505,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Dev code returned (DEV_SHOW_OTP=true)\", () => pm.expect(pm.response.json().dev_code).to.match(/^\\d{6}$/));",
-                  "pm.collectionVariables.set(\"devCode\", pm.response.json().dev_code);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Sign in as Employee - step 2 (code)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/verify-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "verify-otp"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"employee@stockpilot.test\",\n  \"code\": \"{{devCode}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Got an access token\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));",
+                  "pm.test(\"Role is Employee\", () => pm.expect(pm.response.json().user.email).to.eql(\"employee@stockpilot.test\"));",
                   "pm.collectionVariables.set(\"employeeToken\", pm.response.json().access_token);"
                 ]
               }
@@ -596,7 +514,7 @@
           ]
         },
         {
-          "name": "Sign in as Procurement Manager - step 1 (password)",
+          "name": "Sign in as Procurement Manager",
           "request": {
             "method": "POST",
             "header": [
@@ -631,50 +549,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Dev code returned (DEV_SHOW_OTP=true)\", () => pm.expect(pm.response.json().dev_code).to.match(/^\\d{6}$/));",
-                  "pm.collectionVariables.set(\"devCode\", pm.response.json().dev_code);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Sign in as Procurement Manager - step 2 (code)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/verify-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "verify-otp"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"procurement@stockpilot.test\",\n  \"code\": \"{{devCode}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Got an access token\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));",
+                  "pm.test(\"Role is Procurement Manager\", () => pm.expect(pm.response.json().user.email).to.eql(\"procurement@stockpilot.test\"));",
                   "pm.collectionVariables.set(\"procurementToken\", pm.response.json().access_token);"
                 ]
               }
@@ -682,7 +558,7 @@
           ]
         },
         {
-          "name": "Sign in as Inventory Manager - step 1 (password)",
+          "name": "Sign in as Inventory Manager",
           "request": {
             "method": "POST",
             "header": [
@@ -717,50 +593,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Dev code returned (DEV_SHOW_OTP=true)\", () => pm.expect(pm.response.json().dev_code).to.match(/^\\d{6}$/));",
-                  "pm.collectionVariables.set(\"devCode\", pm.response.json().dev_code);"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Sign in as Inventory Manager - step 2 (code)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/verify-otp",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "verify-otp"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"inventory@stockpilot.test\",\n  \"code\": \"{{devCode}}\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Got an access token\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));",
+                  "pm.test(\"Role is Inventory Manager\", () => pm.expect(pm.response.json().user.email).to.eql(\"inventory@stockpilot.test\"));",
                   "pm.collectionVariables.set(\"inventoryToken\", pm.response.json().access_token);"
                 ]
               }

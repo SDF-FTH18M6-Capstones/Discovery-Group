@@ -50,17 +50,15 @@ flask run
 
 ## Sign in
 
-Sign-in has two steps, and every endpoint except health and `/api/auth/*` needs a token.
+Every endpoint except health and `/api/auth/register`, `/login` and `/refresh` needs a token.
 
-1. `POST /api/auth/login` with `{"email", "password"}`. A 6-digit code is emailed.
-2. `POST /api/auth/verify-otp` with `{"email", "code"}`. You get `access_token` (15 minutes)
-   and `refresh_token` (7 days).
+1. `POST /api/auth/register` with `{"full_name", "email", "password"}`. New accounts are always
+   employees; an admin changes the role with `PUT /api/users/<id>/role`.
+2. `POST /api/auth/login` with `{"email", "password"}`. You get `access_token` (15 minutes) and
+   `refresh_token` (7 days).
 3. Send `Authorization: Bearer <access_token>` with every request. In Swagger, click
-   **Authorize** and paste the access token.
-
-Locally there is no email service: with `SENDGRID_API_KEY` empty, emails (verification links and
-codes) are printed in the `flask run` terminal. With `DEV_SHOW_OTP=true` in `.env`, the login
-response also contains the code as `dev_code`. **Never** set `DEV_SHOW_OTP` on the deployed backend.
+   **Authorize** and paste the access token. When it expires, `POST /api/auth/refresh` with the
+   refresh token as the bearer token gives a new one.
 
 Demo accounts (after `python seed.py`), password `ChangeMe123!`:
 `admin@`, `procurement@`, `inventory@`, `sales@`, `employee@stockpilot.test`.
@@ -73,8 +71,8 @@ ruff check .           # lint
 ruff format .          # format the code
 ```
 
-API tests in Postman: start the backend with `DEV_SHOW_OTP=true`, run `python seed.py`, import
-`postman/StockPilot.postman_collection.json` and run the collection (54 requests, 73 checks).
+API tests in Postman: start the backend, run `python seed.py`, import
+`postman/StockPilot.postman_collection.json` and run the collection (50 requests, 71 checks).
 
 ## Endpoints and who may use them
 
@@ -89,7 +87,7 @@ Lists take `?page=1&per_page=20` (max 100). No token → 401; wrong role → 403
 | `POST /api/requests/<id>/approve`, `/reject` | | procurement only, never on their own request; reject needs a `comment` |
 | `/api/assets/`, `/api/assets/<id>` (filters: `search`, `status`) | admin and inventory see all; others see what they hold | admin, inventory |
 | `/api/users/`, `/api/users/<id>`, `PUT /api/users/<id>/role` | admin | admin (cannot change own role) |
-| `/api/auth/register`, `verify-email`, `resend-verification`, `login`, `verify-otp`, `refresh` | public | |
+| `/api/auth/register`, `/api/auth/login`, `/api/auth/refresh` | public | |
 | `GET /api/auth/me` | everyone signed in | |
 
 Error responses always look like `{"error": {"code": 422, "message": "...", "details": {...}}}`:

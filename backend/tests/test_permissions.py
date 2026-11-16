@@ -1,14 +1,3 @@
-"""Every endpoint × every role.
-
-For each protected endpoint this checks:
-  - no token          → 401
-  - a broken token    → 401
-  - a role not listed → 403
-  - a role listed     → the normal success status (200 / 201 / 204)
-
-`test_every_endpoint_is_listed` fails if someone adds an endpoint and forgets to add it here.
-"""
-
 import re
 from decimal import Decimal
 
@@ -70,10 +59,7 @@ ENDPOINTS = [
 PUBLIC = [
     ("GET", "/api/health"),
     ("POST", "/api/auth/register"),
-    ("POST", "/api/auth/verify-email"),
-    ("POST", "/api/auth/resend-verification"),
     ("POST", "/api/auth/login"),
-    ("POST", "/api/auth/verify-otp"),
     ("POST", "/api/auth/refresh"),
 ]
 
