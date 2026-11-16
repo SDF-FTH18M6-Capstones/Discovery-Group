@@ -24,6 +24,7 @@ REQUEST = {"item": "Printer paper", "quantity": 2, "reason": "Monthly reports"}
 ENDPOINTS = [
     ("GET", "/api/auth/me", ALL, 200, None),
     ("GET", "/api/users/", ("admin",), 200, None),
+    ("GET", "/api/users/choices", ("admin", "inventory"), 200, None),
     ("GET", "/api/users/{other_user}", ("admin",), 200, None),
     ("PUT", "/api/users/{other_user}/role", ("admin",), 200, {"role": "sales"}),
     ("GET", "/api/categories/", ALL, 200, None),
