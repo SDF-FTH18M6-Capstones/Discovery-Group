@@ -11,6 +11,7 @@ blp = Blueprint("health", __name__, url_prefix="/api", description="Service heal
 
 
 @blp.route("/health")
+@blp.doc(security=[])
 def health():
     """Returns 200 when the database answers, 503 when it does not."""
     try:
