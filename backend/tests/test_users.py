@@ -1,6 +1,3 @@
-"""The Administrator manages roles. Each role is its own class (proxy model), so a role change
-turns the user into an object of the new class."""
-
 from app.extensions import db
 from app.models import ProcurementManager, User
 
