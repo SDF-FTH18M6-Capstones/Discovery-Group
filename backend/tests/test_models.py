@@ -32,3 +32,10 @@ def test_stock_can_never_go_negative(app, category):
 
     with pytest.raises(IntegrityError):
         db.session.commit()
+
+
+def test_password_saved_in_an_old_format_is_refused_not_crashed(app, employee):
+    employee.password_hash = "pbkdf2:sha256:600000$abc$def"
+    db.session.commit()
+
+    assert employee.check_password("Secret123!") is False
