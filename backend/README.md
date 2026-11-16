@@ -2,7 +2,7 @@
 
 ## You need
 
-- Python 
+- Python
 - PostgreSQL 16 running on your computer
 
 ## Set up (first time)
@@ -83,10 +83,11 @@ Lists take `?page=1&per_page=20` (max 100). No token → 401; wrong role → 403
 | `/api/categories/`, `/api/categories/<id>` | everyone signed in | admin, inventory |
 | `/api/products/`, `/api/products/<id>` (filters: `search`, `category_id`, `low_stock`) | everyone signed in | admin, inventory |
 | `/api/suppliers/`, `/api/suppliers/<id>` (filter: `search`) | admin, procurement | admin, procurement |
-| `/api/requests/`, `/api/requests/<id>` (filter: `status`) | admin and procurement see all; others see their own | anyone creates; only the requester edits or deletes, while pending |
+| `/api/requests/`, `/api/requests/<id>` (filters: `status`, `mine=true`) | admin and procurement see all; others see their own | anyone creates; only the requester edits or deletes, while pending |
 | `POST /api/requests/<id>/approve`, `/reject` | | procurement only, never on their own request; reject needs a `comment` |
 | `/api/assets/`, `/api/assets/<id>` (filters: `search`, `status`) | admin and inventory see all; others see what they hold | admin, inventory |
 | `/api/users/`, `/api/users/<id>`, `PUT /api/users/<id>/role` | admin | admin (cannot change own role) |
+| `GET /api/users/choices` (names only, for assigning assets) | admin, inventory | |
 | `/api/auth/register`, `/api/auth/login`, `/api/auth/refresh` | public | |
 | `GET /api/auth/me` | everyone signed in | |
 

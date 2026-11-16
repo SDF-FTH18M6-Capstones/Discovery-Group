@@ -1,7 +1,3 @@
-"""Fills the database with demo data. Run from the backend folder:  python seed.py
-Safe to run more than once: existing rows are left alone.
-"""
-
 from decimal import Decimal
 
 from app import create_app
