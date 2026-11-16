@@ -1,13 +1,3 @@
-"""Wrong data on every endpoint returns the right status code and a clear JSON error.
-
-  422  a field is missing, the wrong type, out of range or unknown (Marshmallow)
-  400  a field points at something that does not exist, or the body is not JSON
-  404  the record does not exist
-  409  the data clashes with what is already stored
-  405  the method is not allowed on that URL
-Every error has the same shape: {"error": {"code": ..., "message": ..., "details"?: ...}}
-"""
-
 from decimal import Decimal
 
 import pytest

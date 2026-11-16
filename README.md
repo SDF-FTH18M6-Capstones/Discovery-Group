@@ -15,7 +15,7 @@ Flask API + React app
 |---|---|
 | Scrum Master · QA/DevOps | David |
 | Backend | Carlos |
-| Database | API | Vincent |
+| Database / API | Vincent |
 | Frontend | Keith |
 
 ## How we work (Gitflow)
@@ -24,4 +24,5 @@ Flask API + React app
 - `development` = where finished work is merged.
 - One branch per GitHub issue, made from `development`: `feature/<issue-number>-short-name`
 - Commit messages: `feat: add product form`, `fix: reject negative prices`, `test: ...`, `docs: ...`
-- Open a pull request into `development`. The Scrum Master reviews and merges.
+- Open a pull request into `development`. CI must pass. The Scrum Master reviews and merges.
+
