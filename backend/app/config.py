@@ -1,5 +1,3 @@
-"""Settings come from environment variables (.env file locally)."""
-
 import os
 from datetime import timedelta
 
@@ -45,9 +43,14 @@ class Config:
     # without email set up. Never set this on the deployed backend.
     DEV_SHOW_OTP = flag("DEV_SHOW_OTP")
 
-    # Email (SendGrid). With no API key, emails are printed in the terminal instead.
+    # Email. Gmail (SMTP) is used when SMTP_HOST is set, otherwise SendGrid when its key is set,
+    # otherwise emails are printed in the terminal instead of being sent.
+    SMTP_HOST = os.getenv("SMTP_HOST", "")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").replace(" ", "")  # Gmail shows it in 4 groups
     SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY", "")
-    MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@stockpilot.test")
+    MAIL_FROM = os.getenv("MAIL_FROM") or SMTP_USERNAME or "no-reply@stockpilot.test"
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
     EMAIL_TOKEN_HOURS = 24
 
@@ -74,6 +77,7 @@ class TestConfig(Config):
         "TEST_DATABASE_URL",
         "postgresql+psycopg://stockpilot:stockpilot@localhost:5432/stockpilot_test",
     )
-    SENDGRID_API_KEY = ""  # tests read emails from the outbox, never send them
+    SMTP_HOST = ""  # tests read emails from the outbox, never send them
+    SENDGRID_API_KEY = ""
     BCRYPT_LOG_ROUNDS = 4  # fast hashing so the tests run quickly
     DEV_SHOW_OTP = False
