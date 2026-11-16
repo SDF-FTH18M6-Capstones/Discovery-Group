@@ -41,7 +41,7 @@ class RequestSchema(Schema):
 
 class RequestQuery(PageQuery):
     status = fields.String(load_default=None, validate=validate.OneOf(REQUEST_STATUSES))
-
+    mine = fields.Boolean(load_default=False) 
 
 class DecisionSchema(Schema):
     comment = fields.String(load_default=None, validate=validate.Length(max=1000))
@@ -90,7 +90,7 @@ def decide(request_id, status, comment):
 @roles_required()
 def list_requests(args):
     query = db.select(Request).order_by(Request.created_at.desc(), Request.id.desc())
-    if not is_role(*SEE_ALL):
+    if args["mine"] or not is_role(*SEE_ALL):
         query = query.where(Request.requester_id == current_user.id)
     if args["status"]:
         query = query.where(Request.status == args["status"])

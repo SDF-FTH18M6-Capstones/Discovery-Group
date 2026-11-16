@@ -21,6 +21,12 @@ class UserSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
 
 
+class ChoiceSchema(Schema):
+    id = fields.Integer()
+    full_name = fields.String()
+    role = fields.String()
+
+
 class RoleSchema(Schema):
     role = fields.String(required=True, validate=validate.OneOf(ROLES))
 
@@ -42,6 +48,14 @@ def list_users(args):
     if args["role"]:
         query = query.where(User.role == args["role"])
     return paginate(query, args["page"], args["per_page"])
+
+
+@blp.route("/choices")
+@blp.response(200, ChoiceSchema(many=True))
+@roles_required("admin", "inventory")
+def user_choices():
+    """Names to pick from when assigning an asset: no emails, so Inventory can use it too."""
+    return db.session.scalars(db.select(User).order_by(User.full_name)).all()
 
 
 @blp.route("/<int:user_id>")
