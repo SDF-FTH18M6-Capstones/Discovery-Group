@@ -1,4 +1,3 @@
-// Home page after sign-in: a few counts that matter to the signed-in role, each linking to its page.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 

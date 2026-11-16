@@ -1,5 +1,3 @@
-"""/api/users — the Administrator lists users and changes their role."""
-
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
 from marshmallow import Schema, fields, validate
@@ -11,7 +9,6 @@ from app.models import User
 from app.models.user import ROLES
 
 blp = Blueprint("users", __name__, url_prefix="/api/users", description="Users (Administrator)")
-
 
 class UserSchema(Schema):
     id = fields.Integer(dump_only=True)
@@ -54,7 +51,6 @@ def list_users(args):
 @blp.response(200, ChoiceSchema(many=True))
 @roles_required("admin", "inventory")
 def user_choices():
-    """Names to pick from when assigning an asset: no emails, so Inventory can use it too."""
     return db.session.scalars(db.select(User).order_by(User.full_name)).all()
 
 
@@ -70,7 +66,7 @@ def get_user(user_id):
 @blp.response(200, UserSchema)
 @roles_required("admin")
 def change_role(data, user_id):
-    """Each role is its own class on the users table, so changing role changes the class."""
+   
     user = get_or_404(User, user_id)
     if user_id == current_user.id:
         abort(409, message="You cannot change your own role.")

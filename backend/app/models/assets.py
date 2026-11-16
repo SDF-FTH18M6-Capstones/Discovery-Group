@@ -1,5 +1,3 @@
-"""Assets, repairs and notifications."""
-
 from app.extensions import db
 from app.models.base import TimestampMixin, in_list
 

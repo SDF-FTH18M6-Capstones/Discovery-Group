@@ -3,7 +3,6 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { PROCUREMENT, ROLE_NAMES, STOCK_MANAGERS } from "../auth/roles";
 
-// `roles` = who sees the link. No `roles` = every signed-in user.
 const links = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/products", label: "Products" },

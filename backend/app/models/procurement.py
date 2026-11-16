@@ -1,5 +1,3 @@
-"""Employee requests, purchases and purchase lines."""
-
 from app.extensions import db
 from app.models.base import Money, TimestampMixin, in_list
 
@@ -9,7 +7,6 @@ PURCHASE_STATUSES = ("ordered", "received", "cancelled")
 
 
 class Request(TimestampMixin, db.Model):
-    """An employee asks for something; a Procurement Manager approves or rejects it."""
 
     __tablename__ = "requests"
     __table_args__ = (

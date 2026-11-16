@@ -1,8 +1,3 @@
-// One place that talks to the Flask API.
-//  - Adds "Authorization: Bearer <access token>" to every request (the interceptor).
-//  - When the access token has expired (401), gets a new one with the refresh token and
-//    retries once. If that fails too, the session is cleared and the app goes to /login.
-//  - Every error becomes an ApiError carrying the backend's message and per-field details.
 import { clearSession, loadSession, saveSession } from "../auth/session";
 
 export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
@@ -35,7 +30,7 @@ async function send(path, { method, body, token }) {
   }
 }
 
-let refreshing = null; // share one refresh between requests that fail at the same moment
+let refreshing = null; 
 
 async function refreshAccessToken() {
   const session = loadSession();

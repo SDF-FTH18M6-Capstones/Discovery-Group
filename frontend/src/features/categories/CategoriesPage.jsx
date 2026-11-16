@@ -1,4 +1,3 @@
-// Product categories. Everyone signed in can read them; Admin and Inventory Manager can change them.
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -14,7 +13,7 @@ export default function CategoriesPage() {
   const canEdit = hasRole(...STOCK_MANAGERS);
   const list = useSelector((state) => state.categories);
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); // null = closed, {} = new, category = rename
+  const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
   const [fieldError, setFieldError] = useState("");
 

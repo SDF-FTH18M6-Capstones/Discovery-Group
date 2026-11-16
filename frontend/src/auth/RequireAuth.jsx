@@ -1,8 +1,6 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "./AuthContext";
-
-// Wrap routes that need a signed-in user. With `roles`, only those roles get in.
 export default function RequireAuth({ roles }) {
   const { user } = useAuth();
   const location = useLocation();

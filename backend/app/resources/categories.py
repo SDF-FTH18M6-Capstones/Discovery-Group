@@ -1,5 +1,3 @@
-"""/api/categories — GET (list), POST, GET one, PUT, DELETE."""
-
 from flask_smorest import Blueprint
 from marshmallow import Schema, fields, validate
 

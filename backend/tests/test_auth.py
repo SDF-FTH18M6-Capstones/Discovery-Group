@@ -6,15 +6,13 @@ from flask_jwt_extended import create_access_token, create_refresh_token
 from app.extensions import db
 from app.models import Employee, User
 
-PASSWORD = "Secret123!"  # the password conftest.make_user gives every user
+PASSWORD = "Secret123!" 
 BAD_LOGIN = "Email or password is incorrect."
 
 
 def sign_in(client, email, password=PASSWORD):
     return client.post("/api/auth/login", json={"email": email, "password": password})
 
-
-# ---------- register ----------
 
 
 def test_register_creates_an_employee_with_a_hashed_password(client):
@@ -31,8 +29,8 @@ def test_register_creates_an_employee_with_a_hashed_password(client):
     assert response.status_code == 201
     assert response.json == {"message": "Account created. You can now sign in."}
     user = db.session.scalar(db.select(User).filter_by(email="alex@test.com"))
-    assert isinstance(user, Employee)  # the "role": "admin" in the request was ignored
-    assert user.password_hash.startswith("$2")  # bcrypt, never the plain password
+    assert isinstance(user, Employee) 
+    assert user.password_hash.startswith("$2")  
     assert "Secret123!" not in user.password_hash
 
 
@@ -76,9 +74,6 @@ def test_register_rejects_bad_fields_with_422(client, body, field):
 
     assert response.status_code == 422
     assert field in response.json["error"]["details"]
-
-
-# ---------- login ----------
 
 
 def test_login_returns_tokens_that_work(client, make_user):
@@ -130,9 +125,6 @@ def test_the_token_carries_the_role(client, make_user, app):
     assert decode_token(token)["role"] == "procurement"
 
 
-# ---------- tokens ----------
-
-
 def test_refresh_token_gives_a_new_access_token(client, make_user):
     user = make_user("sales")
     refresh = create_refresh_token(identity=user)
@@ -182,9 +174,6 @@ def test_token_of_a_deleted_user_is_401(client, make_user):
 
 def test_refresh_without_any_token_is_401(client):
     assert client.post("/api/auth/refresh").status_code == 401
-
-
-# ---------- the whole journey ----------
 
 
 def test_full_signup_and_signin_journey(client):

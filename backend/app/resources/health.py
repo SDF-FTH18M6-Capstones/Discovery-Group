@@ -1,5 +1,3 @@
-"""GET /api/health — is the API up and can it reach the database?"""
-
 from datetime import UTC, datetime
 
 from flask_smorest import Blueprint
@@ -13,7 +11,7 @@ blp = Blueprint("health", __name__, url_prefix="/api", description="Service heal
 @blp.route("/health")
 @blp.doc(security=[])
 def health():
-    """Returns 200 when the database answers, 503 when it does not."""
+   
     try:
         db.session.execute(text("SELECT 1"))
         database = "ok"

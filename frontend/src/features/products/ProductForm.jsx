@@ -14,7 +14,6 @@ const EMPTY = {
   reorder_level: "0",
 };
 
-// Checks the form in the browser before anything is sent.
 export function validateProduct(values) {
   const errors = {};
   if (!values.sku.trim()) errors.sku = "SKU is required.";
@@ -30,7 +29,6 @@ export function validateProduct(values) {
 
 export default function ProductForm({ product, categoryOptions, onSaved, onCancel }) {
   const dispatch = useDispatch();
-  // Every input reads from and writes to this one state object.
   const [values, setValues] = useState(
     product
       ? Object.fromEntries(Object.keys(EMPTY).map((key) => [key, String(product[key] ?? "")]))

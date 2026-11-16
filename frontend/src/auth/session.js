@@ -1,5 +1,3 @@
-// Where the signed-in session is kept between page loads.
-// The access token lasts 15 minutes and the refresh token 7 days (set by the backend).
 const KEY = "stockpilot.session";
 
 export function loadSession() {

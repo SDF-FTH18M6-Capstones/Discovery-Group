@@ -5,17 +5,16 @@ ROLES = ("admin", "procurement", "inventory", "sales", "employee")
 
 
 def hash_secret(raw: str) -> str:
-    """Bcrypt hash of a password."""
     return bcrypt.generate_password_hash(raw).decode("utf-8")
 
 
 def check_secret(hashed: str | None, raw: str) -> bool:
-    # Bcrypt only reads the first 72 bytes; longer input is refused outright.
+    
     if not hashed or len(raw.encode("utf-8")) > 72:
         return False
     try:
         return bcrypt.check_password_hash(hashed, raw)
-    except ValueError:  # not a bcrypt hash (e.g. saved before the switch to bcrypt)
+    except ValueError: 
         return False
 
 
@@ -31,7 +30,6 @@ class User(TimestampMixin, db.Model):
 
     __mapper_args__ = {"polymorphic_on": role, "polymorphic_identity": "user"}
 
-    # Permissions — each role class switches on what it may do.
     can_manage_users = False
     can_approve_requests = False
     can_manage_purchases = False
@@ -54,7 +52,6 @@ class Admin(User):
     can_manage_users = True
     can_manage_stock = True
     can_manage_assets = True
-    # Not can_approve_requests: only the Procurement Manager approves.
 
 
 class ProcurementManager(User):

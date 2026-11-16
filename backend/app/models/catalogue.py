@@ -1,5 +1,3 @@
-"""Categories, products and suppliers."""
-
 from app.extensions import db
 from app.models.base import Money, TimestampMixin
 
