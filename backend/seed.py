@@ -7,10 +7,10 @@ from app.models import ROLE_CLASSES, Asset, Category, Product, Request, Supplier
 DEMO_PASSWORD = "ChangeMe123!"  # local demo data only
 
 USERS = [
-    ("admin", "Ada Wekesa", "admin@stockpilot.test"),
-    ("procurement", "Jane Otieno", "procurement@stockpilot.test"),
-    ("inventory", "Brian Mwangi", "inventory@stockpilot.test"),
-    ("sales", "Pauline Wanjiku", "sales@stockpilot.test"),
+    ("admin", "David Nyongesa", "admin@stockpilot.test"),
+    ("procurement", "Carlos Muchemi", "procurement@stockpilot.test"),
+    ("inventory", "Keith Gachuche", "inventory@stockpilot.test"),
+    ("sales", "Vincent Mutuma", "sales@stockpilot.test"),
     ("employee", "Alex Kamau", "employee@stockpilot.test"),
 ]
 
