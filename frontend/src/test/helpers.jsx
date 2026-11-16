@@ -22,7 +22,6 @@ export const userFor = (role) => ({
   full_name: `Test ${role}`,
   email: `${role}@test.com`,
   role,
-  is_verified: true,
 });
 
 // Fake backend: answers each "METHOD /path" in `routes` with [status, body].

@@ -7,7 +7,6 @@ import SuppliersPage from "./features/suppliers/SuppliersPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import StatusPage from "./pages/StatusPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 function NotFound() {
   return (
@@ -27,7 +26,6 @@ export default function App() {
         {/* Open to everyone */}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
-        <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="status" element={<StatusPage />} />
 
         {/* Signed-in users only */}

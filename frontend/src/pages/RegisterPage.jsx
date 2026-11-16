@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthContext";
 import Field from "../components/Field";
@@ -21,10 +21,10 @@ export function validateRegistration(values) {
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [values, setValues] = useState({ full_name: "", email: "", password: "", confirm: "" });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
-  const [done, setDone] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -41,7 +41,7 @@ export default function RegisterPage() {
     try {
       const { full_name, email, password } = values;
       const result = await register({ full_name, email, password });
-      setDone(result.message);
+      navigate("/login", { state: { message: result.message, email } });
     } catch (error) {
       setFormError(error.message);
       const flat = Object.fromEntries(
@@ -50,20 +50,6 @@ export default function RegisterPage() {
       setErrors(flat);
     }
   };
-
-  if (done) {
-    return (
-      <section className="mx-auto flex max-w-sm flex-col gap-4 py-10">
-        <h1 className="text-2xl font-bold">Check your email</h1>
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
-          {done}
-        </p>
-        <Link to="/login" className="text-brand-dark underline">
-          Go to sign in
-        </Link>
-      </section>
-    );
-  }
 
   return (
     <section className="mx-auto flex max-w-sm flex-col gap-4 py-10">
