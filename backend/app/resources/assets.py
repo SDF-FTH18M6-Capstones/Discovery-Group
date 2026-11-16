@@ -1,12 +1,16 @@
 """/api/assets — GET (list, search, filter), POST, GET one, PUT, DELETE."""
 
+from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
 from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
+from app.auth import is_role, roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Asset, User
 from app.models.assets import ASSET_STATUSES
+
+MANAGERS = ("admin", "inventory")
 
 blp = Blueprint("assets", __name__, url_prefix="/api/assets", description="Assets")
 
@@ -41,8 +45,12 @@ def check_holder(user_id):
 @blp.route("/")
 @blp.arguments(AssetQuery, location="query")
 @blp.response(200, page_schema(AssetSchema))
+@roles_required()
 def list_assets(args):
+    """Admin and Inventory Manager see every asset; everyone else sees the assets they hold."""
     query = db.select(Asset).order_by(Asset.asset_code)
+    if not is_role(*MANAGERS):
+        query = query.where(Asset.assigned_to == current_user.id)
     if args["search"]:
         term = f"%{args['search']}%"
         query = query.where(Asset.name.ilike(term) | Asset.asset_code.ilike(term))
@@ -54,6 +62,7 @@ def list_assets(args):
 @blp.route("/", methods=["POST"])
 @blp.arguments(AssetSchema)
 @blp.response(201, AssetSchema)
+@roles_required(*MANAGERS)
 def create_asset(data):
     check_holder(data["assigned_to"])
     return save(Asset(**data), f"Asset code '{data['asset_code']}' is already used")
@@ -61,13 +70,18 @@ def create_asset(data):
 
 @blp.route("/<int:asset_id>")
 @blp.response(200, AssetSchema)
+@roles_required()
 def get_asset(asset_id):
-    return get_or_404(Asset, asset_id)
+    asset = get_or_404(Asset, asset_id)
+    if not is_role(*MANAGERS) and asset.assigned_to != current_user.id:
+        abort(404, message=f"Asset {asset_id} not found")
+    return asset
 
 
 @blp.route("/<int:asset_id>", methods=["PUT"])
 @blp.arguments(AssetSchema)
 @blp.response(200, AssetSchema)
+@roles_required(*MANAGERS)
 def update_asset(data, asset_id):
     asset = get_or_404(Asset, asset_id)
     check_holder(data["assigned_to"])
@@ -78,6 +92,7 @@ def update_asset(data, asset_id):
 
 @blp.route("/<int:asset_id>", methods=["DELETE"])
 @blp.response(204)
+@roles_required(*MANAGERS)
 def delete_asset(asset_id):
     asset = get_or_404(Asset, asset_id)
     delete(asset, "This asset has repair records and cannot be deleted.")
