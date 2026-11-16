@@ -30,7 +30,7 @@ export default function Layout() {
         {/* StockPilot Logo */}
         <Link to="/products" className="flex items-center gap-3 py-2">
           <img
-            src="/stockpilot-logo.png"
+            src="/stockpilotlogo.png"
             alt="StockPilot Logo"
             className="h-12 w-12 rounded-lg bg-white object-contain"
           />
