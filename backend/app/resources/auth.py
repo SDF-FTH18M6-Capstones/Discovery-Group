@@ -1,5 +1,6 @@
 import re
 
+from flask import current_app
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -7,21 +8,25 @@ from flask_jwt_extended import (
     jwt_required,
 )
 from flask_smorest import Blueprint, abort
-from marshmallow import EXCLUDE, Schema, ValidationError, fields, validate, validates
+from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 
 from app.auth import roles_required
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import Employee, User
 from app.models.user import check_secret, hash_secret
+from app.schemas import Schema
 
 blp = Blueprint("auth", __name__, url_prefix="/api/auth", description="Sign-in and accounts")
 
 BAD_LOGIN = "Email or password is incorrect."
 
 
+# ---------- schemas ----------
+
+
 class RegisterSchema(Schema):
     class Meta:
-        unknown = EXCLUDE  
+        unknown = EXCLUDE  # a "role" sent by the browser is ignored, never trusted
 
     full_name = fields.String(required=True, validate=validate.Length(min=2, max=120))
     email = fields.Email(required=True)
@@ -57,6 +62,19 @@ class SessionSchema(Schema):
     user = fields.Nested(AccountSchema)
 
 
+class ProfileSchema(Schema):
+    full_name = fields.String(required=True, validate=validate.Length(min=2, max=120))
+
+
+class PasswordSchema(Schema):
+    current_password = fields.String(required=True, load_only=True)
+    new_password = fields.String(required=True, load_only=True)
+
+    @validates("new_password")
+    def strong_enough(self, value, **kwargs):
+        RegisterSchema().strong_enough(value)
+
+
 class AccessSchema(Schema):
     access_token = fields.String()
 
@@ -78,8 +96,18 @@ def find_user(email):
     return db.session.scalar(db.select(User).filter_by(email=email.lower()))
 
 
+# ---------- routes ----------
+
+
+TOO_MANY = "Too many attempts. Wait a minute and try again."
+
+
+def rate_limit():
+    return current_app.config["LOGIN_RATE_LIMIT"]
+
 
 @blp.route("/register", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(RegisterSchema)
 @blp.response(201, MessageSchema)
 @blp.doc(security=[])
@@ -95,11 +123,12 @@ def register(data):
 
 
 @blp.route("/login", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(LoginSchema)
 @blp.response(200, SessionSchema)
 @blp.doc(security=[])
 def login(data):
-  
+    """Check email and password and return the tokens."""
     user = find_user(data["email"])
     if user is None:
         check_secret(dummy_hash(), data["password"])  # same delay as a real check
@@ -117,7 +146,7 @@ def login(data):
 @blp.response(200, AccessSchema)
 @jwt_required(refresh=True)
 def refresh():
-  
+    """Swap the refresh token for a new access token."""
     token = create_access_token(
         identity=current_user, additional_claims={"role": current_user.role}
     )
@@ -128,4 +157,32 @@ def refresh():
 @blp.response(200, AccountSchema)
 @roles_required()
 def me():
+    """The signed-in user."""
     return current_user
+
+
+@blp.route("/me", methods=["PUT"])
+@blp.arguments(ProfileSchema)
+@blp.response(200, AccountSchema)
+@roles_required()
+def update_me(data):
+    """Change your own name. Email and role are changed by an administrator only."""
+    current_user.full_name = data["full_name"]
+    db.session.commit()
+    return current_user
+
+
+@blp.route("/password", methods=["POST"])
+@blp.arguments(PasswordSchema)
+@blp.response(200, MessageSchema)
+@roles_required()
+def change_password(data):
+    if not current_user.check_password(data["current_password"]):
+        abort(
+            422,
+            message="Some fields are invalid.",
+            messages={"json": {"current_password": ["Your current password is not correct."]}},
+        )
+    current_user.set_password(data["new_password"])
+    db.session.commit()
+    return {"message": "Password changed."}
