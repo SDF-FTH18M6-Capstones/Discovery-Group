@@ -20,12 +20,8 @@ export default function SuppliersPage() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Suppliers</h1>
-        <button
-          type="button"
-          onClick={() => setEditing({})}
-          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
-        >
+        <h1 className="page-title">Suppliers</h1>
+        <button type="button" onClick={() => setEditing({})} className="btn-primary">
           Add supplier
         </button>
       </div>
@@ -48,9 +44,9 @@ export default function SuppliersPage() {
         </p>
       )}
 
-      <div className="relative overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="card relative overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-canvas text-muted">
+          <thead className="table-head">
             <tr>
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>

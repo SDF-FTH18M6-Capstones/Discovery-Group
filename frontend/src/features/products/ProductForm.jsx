@@ -63,7 +63,6 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
     if (products.saveItem.fulfilled.match(result)) {
       onSaved(result.payload);
     } else {
-      // Show the backend's per-field errors next to each field.
       const flat = Object.fromEntries(
         Object.entries(result.payload.details).map(([key, list]) => [key, [].concat(list)[0]]),
       );
@@ -77,13 +76,13 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       onSubmit={handleSubmit}
       noValidate
       aria-label={product ? "Edit product" : "Add product"}
-      className="grid gap-4 rounded-xl border border-line bg-white p-5 sm:grid-cols-2"
+      className="card grid gap-4 p-5 sm:grid-cols-2"
     >
       <h2 className="text-lg font-semibold sm:col-span-2">
         {product ? `Edit ${product.name}` : "Add product"}
       </h2>
       {formError && (
-        <p role="alert" className="rounded-lg bg-orange-50 p-2 text-sm text-danger sm:col-span-2">
+        <p role="alert" className="rounded-lg bg-danger-soft p-2 text-sm text-danger sm:col-span-2">
           {formError}
         </p>
       )}
@@ -102,7 +101,7 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
             name="category_id"
             value={values.category_id}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-line bg-white px-2"
+            className="input px-2"
           >
             <option value="">Choose…</option>
             {categoryOptions.map((category) => (
@@ -146,18 +145,10 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
         error={errors.reorder_level}
       />
       <div className="flex gap-2 sm:col-span-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white disabled:opacity-60"
-        >
+        <button type="submit" disabled={saving} className="btn-primary">
           {saving ? "Saving…" : "Save product"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-line px-4 py-2"
-        >
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
       </div>

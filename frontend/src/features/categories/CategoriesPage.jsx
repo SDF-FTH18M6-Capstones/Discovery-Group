@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { STOCK_MANAGERS } from "../../auth/roles";
 import Field from "../../components/Field";
 import Pagination from "../../components/Pagination";
+import { SkeletonRows } from "../../components/Skeleton";
 import { categories } from "../../store";
 
 export default function CategoriesPage() {
@@ -13,7 +14,7 @@ export default function CategoriesPage() {
   const canEdit = hasRole(...STOCK_MANAGERS);
   const list = useSelector((state) => state.categories);
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(null); 
   const [name, setName] = useState("");
   const [fieldError, setFieldError] = useState("");
 
@@ -46,8 +47,6 @@ export default function CategoriesPage() {
     }
   };
 
-  // On failure (for example a category still used by products) the server's message
-  // stays on screen; reload only after a successful delete.
   const handleDelete = async (category) => {
     const result = await dispatch(categories.deleteItem(category.id));
     if (categories.deleteItem.fulfilled.match(result)) reload();
@@ -57,15 +56,11 @@ export default function CategoriesPage() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Categories</h1>
+          <h1 className="page-title">Categories</h1>
           <p className="text-muted">Groups of products, such as Beverages or Packaging.</p>
         </div>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => open({})}
-            className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
-          >
+          <button type="button" onClick={() => open({})} className="btn-primary">
             Add category
           </button>
         )}
@@ -76,7 +71,7 @@ export default function CategoriesPage() {
           onSubmit={handleSave}
           noValidate
           aria-label={editing.id ? "Rename category" : "Add category"}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-white p-5"
+          className="card flex flex-wrap items-end gap-3 p-5"
         >
           <div className="min-w-0 flex-1">
             <Field
@@ -90,14 +85,10 @@ export default function CategoriesPage() {
               error={fieldError}
             />
           </div>
-          <button type="submit" className="rounded-lg bg-brand px-4 py-2 font-semibold text-white">
+          <button type="submit" className="btn-primary">
             Save category
           </button>
-          <button
-            type="button"
-            onClick={() => setEditing(null)}
-            className="rounded-lg border border-line px-4 py-2"
-          >
+          <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
             Cancel
           </button>
         </form>
@@ -109,9 +100,9 @@ export default function CategoriesPage() {
         </p>
       )}
 
-      <div className="relative overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="card relative overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-canvas text-muted">
+          <thead className="table-head">
             <tr>
               <th className="p-3">Name</th>
               <th className="p-3">
@@ -120,6 +111,7 @@ export default function CategoriesPage() {
             </tr>
           </thead>
           <tbody>
+            {list.status === "loading" && <SkeletonRows cols={2} />}
             {list.status === "ready" && list.items.length === 0 && (
               <tr>
                 <td colSpan="2" className="p-3 text-muted">

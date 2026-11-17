@@ -7,6 +7,7 @@ import App from "../App";
 import { AuthProvider } from "../auth/AuthContext";
 import { saveSession } from "../auth/session";
 import { makeStore } from "../store";
+import { ThemeProvider } from "../theme/ThemeContext";
 
 export const page = (results) => ({
   results,
@@ -23,7 +24,6 @@ export const userFor = (role) => ({
   role,
 });
 
-
 export function mockApi(routes = {}, role = null) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options = {}) => {
     const key = `${options.method || "GET"} ${new URL(url).pathname}`;
@@ -36,7 +36,6 @@ export function mockApi(routes = {}, role = null) {
   });
 }
 
-// `as`: a role to be signed in as, or null for signed out.
 export function renderAt(path, { as = null } = {}) {
   if (as) {
     saveSession({ accessToken: "test-access", refreshToken: "test-refresh", user: userFor(as) });
@@ -45,7 +44,9 @@ export function renderAt(path, { as = null } = {}) {
     <Provider store={makeStore()}>
       <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </AuthProvider>
       </MemoryRouter>
     </Provider>,

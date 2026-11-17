@@ -61,7 +61,7 @@ export default function RequestForm({ request, onSaved, onCancel }) {
       onSubmit={handleSubmit}
       noValidate
       aria-label={request ? "Edit request" : "New request"}
-      className="grid gap-4 rounded-xl border border-line bg-white p-5 sm:grid-cols-4"
+      className="card grid gap-4 p-5 sm:grid-cols-4"
     >
       {formError && (
         <p role="alert" className="text-sm text-danger sm:col-span-4">
@@ -93,7 +93,7 @@ export default function RequestForm({ request, onSaved, onCancel }) {
             name="urgency"
             value={values.urgency}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-line bg-white px-2"
+            className="input px-2"
           >
             {URGENCIES.map((urgency) => (
               <option key={urgency} value={urgency}>
@@ -119,14 +119,10 @@ export default function RequestForm({ request, onSaved, onCancel }) {
         </Field>
       </div>
       <div className="flex gap-2 sm:col-span-4">
-        <button type="submit" className="rounded-lg bg-brand px-4 py-2 font-semibold text-white">
+        <button type="submit" className="btn-primary">
           {request ? "Save changes" : "Submit request"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-line px-4 py-2"
-        >
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
       </div>

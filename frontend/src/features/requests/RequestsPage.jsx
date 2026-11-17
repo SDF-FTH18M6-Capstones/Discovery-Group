@@ -1,8 +1,8 @@
-// "My requests": everyone can ask for supplies or equipment, then edit or withdraw while pending.
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import Pagination from "../../components/Pagination";
+import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
 import { requests } from "../../store";
 import RequestForm from "./RequestForm";
@@ -28,7 +28,7 @@ export function StatusTabs({ value, onChange }) {
           type="button"
           aria-pressed={value === tab.value}
           onClick={() => onChange(tab.value)}
-          className={`rounded-full px-3 py-1 text-sm ${value === tab.value ? "bg-evergreen text-white" : "border border-line bg-white"}`}
+          className="chip"
         >
           {tab.label}
         </button>
@@ -42,7 +42,7 @@ export default function RequestsPage() {
   const list = useSelector((state) => state.requests);
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); // null = closed, {} = new, request = edit
+  const [editing, setEditing] = useState(null); 
   const [notice, setNotice] = useState("");
 
   const params = { mine: true, status, page, per_page: 10 };
@@ -53,10 +53,14 @@ export default function RequestsPage() {
   }, [dispatch, status, page]);
 
   const withdraw = async (request) => {
+    const before = { items: list.items, count: list.count };
+    dispatch(requests.actions.removeItem(request.id));
     const result = await dispatch(requests.deleteItem(request.id));
     if (requests.deleteItem.fulfilled.match(result)) {
       setNotice(`Request for ${request.item} withdrawn.`);
       reload();
+    } else {
+      dispatch(requests.actions.restoreItems(before));
     }
   };
 
@@ -64,16 +68,12 @@ export default function RequestsPage() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">My requests</h1>
+          <h1 className="page-title">My requests</h1>
           <p className="text-muted">
             Ask for supplies or equipment. A Procurement Manager approves or rejects each one.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setEditing({})}
-          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
-        >
+        <button type="button" onClick={() => setEditing({})} className="btn-primary">
           New request
         </button>
       </div>
@@ -110,17 +110,17 @@ export default function RequestsPage() {
         }}
       />
 
-      <ul className="flex flex-col gap-3">
-        {list.status === "ready" && list.items.length === 0 && (
-          <li className="rounded-xl border border-line bg-white p-4 text-muted">
-            No requests here yet.
+      <ul className="flex flex-col gap-3" aria-busy={list.status === "loading"}>
+        {list.status === "loading" && list.items.length === 0 && (
+          <li>
+            <SkeletonCards count={3} />
           </li>
         )}
+        {list.status === "ready" && list.items.length === 0 && (
+          <li className="card p-4 text-muted">No requests here yet.</li>
+        )}
         {list.items.map((request) => (
-          <li
-            key={request.id}
-            className="flex flex-col gap-2 rounded-xl border border-line bg-white p-4"
-          >
+          <li key={request.id} className="card flex flex-col gap-2 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">
                 {request.item} × {request.quantity}

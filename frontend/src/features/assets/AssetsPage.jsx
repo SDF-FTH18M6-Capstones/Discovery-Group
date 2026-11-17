@@ -35,7 +35,7 @@ export default function AssetsPage() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{manager ? "Assets" : "My assets"}</h1>
+          <h1 className="page-title">{manager ? "Assets" : "My assets"}</h1>
           <p className="text-muted">
             {manager
               ? "Equipment the business owns, and who holds it."
@@ -43,11 +43,7 @@ export default function AssetsPage() {
           </p>
         </div>
         {manager && (
-          <button
-            type="button"
-            onClick={() => setEditing({})}
-            className="rounded-lg bg-brand px-4 py-2 font-semibold text-white"
-          >
+          <button type="button" onClick={() => setEditing({})} className="btn-primary">
             Add asset
           </button>
         )}
@@ -85,7 +81,7 @@ export default function AssetsPage() {
               setSearch(event.target.value);
               setPage(1);
             }}
-            className="h-10 w-full max-w-sm rounded-lg border border-line bg-white px-3"
+            className="input w-full max-w-sm"
           />
           <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
             {FILTERS.map((filter) => (
@@ -97,7 +93,7 @@ export default function AssetsPage() {
                   setStatus(filter.value);
                   setPage(1);
                 }}
-                className={`rounded-full px-3 py-1 text-sm ${status === filter.value ? "bg-evergreen text-white" : "border border-line bg-white"}`}
+                className="chip"
               >
                 {filter.label}
               </button>
@@ -106,9 +102,9 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <div className="relative overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="card relative overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-canvas text-muted">
+          <thead className="table-head">
             <tr>
               <th className="p-3">Code</th>
               <th className="p-3">Asset</th>

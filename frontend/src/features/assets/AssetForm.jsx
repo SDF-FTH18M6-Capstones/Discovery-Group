@@ -40,7 +40,6 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
     setValues((current) => ({
       ...current,
       [name]: value,
-      // An available asset has nobody holding it.
       ...(name === "status" && value === "available" ? { assigned_to: "" } : {}),
     }));
     setErrors((current) => ({ ...current, [name]: undefined }));
@@ -75,7 +74,7 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
       onSubmit={handleSubmit}
       noValidate
       aria-label={asset ? "Edit asset" : "Add asset"}
-      className="grid gap-4 rounded-xl border border-line bg-white p-5 sm:grid-cols-4"
+      className="card grid gap-4 p-5 sm:grid-cols-4"
     >
       {formError && (
         <p role="alert" className="text-sm text-danger sm:col-span-4">
@@ -104,7 +103,7 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
             name="status"
             value={values.status}
             onChange={handleChange}
-            className="h-10 rounded-lg border border-line bg-white px-2"
+            className="input px-2"
           >
             <option value="available">Available</option>
             <option value="assigned">Assigned</option>
@@ -121,7 +120,7 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
             onChange={handleChange}
             disabled={values.status === "available"}
             aria-invalid={Boolean(errors.assigned_to)}
-            className={`h-10 rounded-lg border bg-white px-2 disabled:bg-canvas ${errors.assigned_to ? "border-danger" : "border-line"}`}
+            className={`h-10 rounded-lg border bg-surface px-2 disabled:bg-canvas ${errors.assigned_to ? "border-danger" : "border-line"}`}
           >
             <option value="">Nobody</option>
             {people.map((person) => (
@@ -133,14 +132,10 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
         )}
       </Field>
       <div className="flex gap-2 sm:col-span-4">
-        <button type="submit" className="rounded-lg bg-brand px-4 py-2 font-semibold text-white">
+        <button type="submit" className="btn-primary">
           Save asset
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-line px-4 py-2"
-        >
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Cancel
         </button>
       </div>
