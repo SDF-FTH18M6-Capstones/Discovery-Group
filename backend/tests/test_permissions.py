@@ -4,11 +4,24 @@ from decimal import Decimal
 import pytest
 
 from app.extensions import db
-from app.models import Asset, Category, Product, Request, Supplier
+from app.models import (
+    Asset,
+    Category,
+    Notification,
+    Product,
+    Purchase,
+    PurchaseItem,
+    Repair,
+    Request,
+    Sale,
+    Supplier,
+)
 
 ALL = ("admin", "procurement", "inventory", "sales", "employee")
 STOCK = ("admin", "inventory")
 BUYING = ("admin", "procurement")
+SELLING = ("admin", "sales")
+PURCHASE_VIEW = ("admin", "procurement", "inventory")
 
 PRODUCT = {
     "sku": "SP-NEW",
@@ -19,6 +32,12 @@ PRODUCT = {
 }
 ASSET = {"asset_code": "AST-NEW", "name": "New laptop"}
 REQUEST = {"item": "Printer paper", "quantity": 2, "reason": "Monthly reports"}
+SALE = {"payment_method": "cash", "items": [{"product_id": "{product}", "quantity": 1}]}
+PURCHASE = {
+    "supplier_id": "{supplier}",
+    "items": [{"product_id": "{product}", "quantity": 5, "unit_cost": "1.00"}],
+}
+ADJUSTMENT = {"product_id": "{product}", "change": -1, "reason": "Damaged in store"}
 
 # method, path, roles allowed, success status, JSON body
 ENDPOINTS = [
@@ -36,12 +55,12 @@ ENDPOINTS = [
     ("POST", "/api/products/", STOCK, 201, PRODUCT),
     ("GET", "/api/products/{product}", ALL, 200, None),
     ("PUT", "/api/products/{product}", STOCK, 200, PRODUCT),
-    ("DELETE", "/api/products/{product}", STOCK, 204, None),
+    ("DELETE", "/api/products/{spare_product}", STOCK, 204, None),
     ("GET", "/api/suppliers/", BUYING, 200, None),
     ("POST", "/api/suppliers/", BUYING, 201, {"name": "Metro"}),
     ("GET", "/api/suppliers/{supplier}", BUYING, 200, None),
     ("PUT", "/api/suppliers/{supplier}", BUYING, 200, {"name": "Metro Ltd"}),
-    ("DELETE", "/api/suppliers/{supplier}", BUYING, 204, None),
+    ("DELETE", "/api/suppliers/{spare_supplier}", BUYING, 204, None),
     ("GET", "/api/requests/", ALL, 200, None),
     ("POST", "/api/requests/", ALL, 201, REQUEST),
     ("GET", "/api/requests/{my_request}", ALL, 200, None),
@@ -53,7 +72,17 @@ ENDPOINTS = [
     ("POST", "/api/assets/", STOCK, 201, ASSET),
     ("GET", "/api/assets/{my_asset}", ALL, 200, None),
     ("PUT", "/api/assets/{my_asset}", STOCK, 200, ASSET),
-    ("DELETE", "/api/assets/{my_asset}", STOCK, 204, None),
+    ("DELETE", "/api/assets/{spare_asset}", STOCK, 204, None),
+    ("GET", "/api/sales/", SELLING, 200, None),
+    ("POST", "/api/sales/", SELLING, 201, SALE),
+    ("GET", "/api/sales/{my_sale}", SELLING, 200, None),
+    ("GET", "/api/purchases/", PURCHASE_VIEW, 200, None),
+    ("POST", "/api/purchases/", BUYING, 201, PURCHASE),
+    ("GET", "/api/purchases/{purchase}", PURCHASE_VIEW, 200, None),
+    ("POST", "/api/purchases/{purchase}/receive", STOCK, 200, None),
+    ("POST", "/api/purchases/{purchase}/cancel", BUYING, 200, None),
+    ("GET", "/api/stock/movements", STOCK, 200, None),
+    ("POST", "/api/stock/adjustments", STOCK, 201, ADJUSTMENT),
 ]
 
 # Open to everyone, by design. /refresh needs a refresh token and is tested in test_auth.py.
@@ -78,12 +107,40 @@ def build_world(caller, make_user):
         category_id=category.id,
         cost_price=Decimal("1"),
         selling_price=Decimal("2"),
+        quantity=50,
     )
     supplier = Supplier(name="Nairobi Supplies")
+    spare_supplier = Supplier(name="Unused Supplier")
+    spare_product = Product(
+        sku="SP-SPARE",
+        name="Unused",
+        category_id=category.id,
+        cost_price=Decimal("1"),
+        selling_price=Decimal("2"),
+    )
     my_request = Request(requester_id=caller.id, item="Pens", quantity=1, reason="Out of pens")
     others_request = Request(requester_id=other.id, item="Chair", quantity=1, reason="Broken")
     my_asset = Asset(asset_code="AST-1", name="Laptop", status="assigned", assigned_to=caller.id)
-    db.session.add_all([product, supplier, my_request, others_request, my_asset])
+    spare_asset = Asset(asset_code="AST-2", name="Phone", status="assigned", assigned_to=caller.id)
+    db.session.add_all(
+        [
+            product,
+            supplier,
+            spare_supplier,
+            spare_product,
+            my_request,
+            others_request,
+            my_asset,
+            spare_asset,
+        ]
+    )
+    db.session.flush()
+    my_sale = Sale(attendant_id=caller.id, payment_method="cash", total=Decimal("2"))
+    purchase = Purchase(supplier_id=supplier.id, created_by=caller.id, total=Decimal("5"))
+    purchase.items.append(PurchaseItem(product_id=product.id, quantity=5, unit_cost=Decimal("1")))
+    my_repair = Repair(asset_id=my_asset.id, reported_by=caller.id, description="Broken hinge")
+    my_notification = Notification(user_id=caller.id, message="Welcome")
+    db.session.add_all([my_sale, purchase, my_repair, my_notification])
     db.session.commit()
     return {
         "other_user": other.id,
@@ -94,6 +151,13 @@ def build_world(caller, make_user):
         "my_request": my_request.id,
         "others_request": others_request.id,
         "my_asset": my_asset.id,
+        "my_sale": my_sale.id,
+        "spare_product": spare_product.id,
+        "spare_asset": spare_asset.id,
+        "my_repair": my_repair.id,
+        "my_notification": my_notification.id,
+        "spare_supplier": spare_supplier.id,
+        "purchase": purchase.id,
     }
 
 
@@ -106,6 +170,8 @@ def fill(value, ids):
         return value
     if isinstance(value, dict):
         return {k: fill(v, ids) for k, v in value.items()}
+    if isinstance(value, list):
+        return [fill(v, ids) for v in value]
     return value
 
 

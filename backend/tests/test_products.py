@@ -90,6 +90,18 @@ def test_category_with_products_cannot_be_deleted(admin, category):
     assert admin.delete(f"/api/categories/{category.id}").status_code == 409
 
 
+def test_opening_stock_and_form_edits_are_written_to_the_stock_ledger(admin, category):
+    product_id = admin.post("/api/products/", json=product_data(category.id)).json["id"]
+    admin.put(f"/api/products/{product_id}", json=product_data(category.id, quantity=7))
+
+    ledger = admin.get(f"/api/stock/movements?product_id={product_id}").json["results"]
+
+    assert [(m["change"], m["reason"]) for m in ledger] == [
+        (-3, "Changed on the product form"),
+        (10, "Opening stock"),
+    ]
+
+
 def test_a_product_with_stock_history_cannot_be_deleted(admin, category):
     product_id = admin.post("/api/products/", json=product_data(category.id)).json["id"]
 

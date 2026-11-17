@@ -12,6 +12,9 @@ LISTS = [
     "/api/requests/",
     "/api/assets/",
     "/api/users/",
+    "/api/sales/",
+    "/api/purchases/",
+    "/api/stock/movements",
 ]
 
 ONE_ITEM = [
@@ -32,6 +35,10 @@ ONE_ITEM = [
     ("DELETE", "/api/assets/999999"),
     ("GET", "/api/users/999999"),
     ("PUT", "/api/users/999999/role"),
+    ("GET", "/api/sales/999999"),
+    ("GET", "/api/purchases/999999"),
+    ("POST", "/api/purchases/999999/receive"),
+    ("POST", "/api/purchases/999999/cancel"),
 ]
 
 VALID = {
@@ -106,9 +113,9 @@ def test_every_list_is_paginated(admin, url):
 
 @pytest.mark.parametrize("method, url", ONE_ITEM, ids=lambda x: str(x))
 def test_missing_record_is_404_on_every_item_endpoint(admin, method, url):
-    body = VALID.get("/api/users/999999/role") if url.endswith("/role") else None
-    if method == "PUT" and body is None:
-        body = VALID[url.rsplit("/", 1)[0] + "/"]
+    body = None
+    if method == "PUT":
+        body = VALID.get(url) or VALID[url.rsplit("/", 1)[0] + "/"]
 
     response = admin.open(method, url, json=body)
 
