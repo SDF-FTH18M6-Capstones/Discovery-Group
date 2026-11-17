@@ -5,9 +5,11 @@ import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { STOCK_MANAGERS } from "../../auth/roles";
 import Field from "../../components/Field";
+import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import { Avatar, EmptyState } from "../../components/ui";
 import { shortDate } from "../../format";
 import { repairs } from "../../store";
 
@@ -61,7 +63,7 @@ function ReportForm({ onSaved, onCancel }) {
       onSubmit={submit}
       noValidate
       aria-label="Report a fault"
-      className="card flex flex-col gap-4 p-5"
+      className="card flex flex-col gap-5 p-6"
     >
       <h2 className="text-lg font-bold">Report a fault</h2>
       {assets?.length === 0 ? (
@@ -119,29 +121,40 @@ function ReportForm({ onSaved, onCancel }) {
 
 function RepairCard({ repair, column, onMove, busy }) {
   return (
-    <li className="card flex flex-col gap-2 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold">{repair.asset_name}</span>
-        <span className="text-xs text-muted">{repair.reference}</span>
+    <li className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-[var(--sp-shadow)]">
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex flex-col">
+          <span className="font-semibold">{repair.asset_name}</span>
+          <span className="code text-muted">{repair.asset_code}</span>
+        </span>
+        <span className="code rounded-md bg-surface-2 px-1.5 py-0.5 text-muted">
+          {repair.reference}
+        </span>
       </div>
-      <span className="text-sm">{repair.description}</span>
-      <span className="text-xs text-muted">
-        {repair.asset_code} · {repair.reporter_name} · {shortDate(repair.created_at)}
-      </span>
-      {column?.next && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onMove(repair, column.next)}
-          className="btn-secondary self-start text-sm"
-          aria-label={`${column.action}: ${repair.reference}`}
-        >
-          {column.action}
-        </button>
-      )}
+      <p className="text-sm text-ink-2">{repair.description}</p>
+      <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
+        <span className="flex min-w-0 items-center gap-2 text-xs text-muted">
+          <Avatar name={repair.reporter_name} size={22} />
+          <span className="truncate">{repair.reporter_name}</span>
+          <span>{shortDate(repair.created_at)}</span>
+        </span>
+        {column?.next && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onMove(repair, column.next)}
+            className="btn-secondary min-h-0 shrink-0 px-2.5 py-1.5 text-xs"
+            aria-label={`${column.action}: ${repair.reference}`}
+          >
+            {column.action}
+          </button>
+        )}
+      </div>
     </li>
   );
 }
+
+const COLUMN_DOTS = { submitted: "bg-saffron", in_progress: "bg-info", done: "bg-brand" };
 
 export default function RepairsPage() {
   const dispatch = useDispatch();
@@ -177,7 +190,7 @@ export default function RepairsPage() {
   };
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <PageHeader
         title="Repairs"
         subtitle={
@@ -188,6 +201,7 @@ export default function RepairsPage() {
       >
         {!reporting && (
           <button type="button" onClick={() => setReporting(true)} className="btn-primary">
+            <Icon name="wrench" size={16} />
             Report a fault
           </button>
         )}
@@ -204,12 +218,12 @@ export default function RepairsPage() {
         />
       )}
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
       {(error || list.error) && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {error || list.error}
         </p>
       )}
@@ -217,21 +231,32 @@ export default function RepairsPage() {
       {list.status === "loading" && list.items.length === 0 && <SkeletonCards count={3} />}
 
       {manager ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
           {COLUMNS.map((column) => {
             const cards = list.items.filter((repair) => repair.status === column.status);
             return (
               <section
                 key={column.status}
                 aria-label={column.title}
-                className="flex flex-col gap-3 rounded-2xl bg-surface-2 p-3"
+                className="flex min-h-48 flex-col gap-3 rounded-2xl border border-line bg-surface-2 p-3"
               >
-                <h2 className="flex items-center justify-between px-1 text-sm font-semibold">
-                  {column.title}
-                  <span className="rounded-full bg-surface px-2 text-xs text-muted">
+                <h2 className="flex items-center justify-between px-1 pt-1 text-sm font-semibold">
+                  <span className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={`size-2 rounded-full ${COLUMN_DOTS[column.status]}`}
+                    />
+                    {column.title}
+                  </span>
+                  <span className="figure rounded-full bg-surface px-2.5 py-0.5 text-xs text-muted ring-1 ring-line">
                     {cards.length}
                   </span>
                 </h2>
+                {cards.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-line-strong p-4 text-center text-xs text-muted">
+                    Nothing here
+                  </p>
+                )}
                 <ul className="flex flex-col gap-3">
                   {cards.map((repair) => (
                     <RepairCard
@@ -250,21 +275,38 @@ export default function RepairsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {list.status === "ready" && list.items.length === 0 && (
-            <li className="card p-4 text-muted">You have not reported any faults.</li>
-          )}
-          {list.items.map((repair) => (
-            <li key={repair.id} className="card flex flex-col gap-1 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">
-                  {repair.asset_name}{" "}
-                  <span className="text-sm text-muted">· {repair.reference}</span>
-                </span>
-                <StatusBadge value={repair.status} />
-              </div>
-              <span className="text-sm">{repair.description}</span>
-              <span className="text-xs text-muted">Reported {shortDate(repair.created_at)}</span>
+            <li className="panel">
+              <EmptyState icon="wrench" title="No faults reported">
+                If something you hold stops working, report it here and follow the repair.
+              </EmptyState>
             </li>
-          ))}
+          )}
+          {list.items.map((repair) => {
+            const stage = ["submitted", "in_progress", "done"].indexOf(repair.status);
+            return (
+              <li key={repair.id} className="panel flex flex-col gap-4 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="flex flex-col">
+                    <span className="font-display text-lg font-semibold">{repair.asset_name}</span>
+                    <span className="code text-muted">{repair.reference}</span>
+                  </span>
+                  <StatusBadge value={repair.status} />
+                </div>
+                <p className="text-sm text-ink-2">{repair.description}</p>
+                <ol className="grid grid-cols-3 gap-2 text-xs" aria-label="Progress">
+                  {["Submitted", "In progress", "Done"].map((step, i) => (
+                    <li key={step} className="flex flex-col gap-1.5">
+                      <span
+                        className={`h-1.5 rounded-full ${i <= stage ? "bg-brand" : "bg-surface-2 ring-1 ring-line"}`}
+                      />
+                      <span className={i <= stage ? "font-medium" : "text-muted"}>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+                <span className="text-xs text-muted">Reported {shortDate(repair.created_at)}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

@@ -4,42 +4,10 @@ import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import PageHeader from "../../components/PageHeader";
 import { SkeletonCards } from "../../components/Skeleton";
+import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../components/ui";
 import { money, shortDate } from "../../format";
 
 const RANGES = [7, 30, 90];
-
-function DailySales({ days }) {
-  const highest = Math.max(...days.map((day) => Number(day.total)), 1);
-  const label = (day) => `${shortDate(day.day)}: ${money(day.total)} from ${day.count} sales`;
-  return (
-    <figure className="card flex flex-col gap-3 p-5">
-      <figcaption className="text-lg font-bold">Sales per day</figcaption>
-      <div className="flex h-48 items-end gap-[3px]" role="list" aria-label="Sales per day">
-        {days.map((day) => (
-          <div
-            key={day.day}
-            role="listitem"
-            aria-label={label(day)}
-            title={label(day)}
-            className="group flex h-full min-w-0 flex-1 items-end"
-          >
-            <div
-              className="w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
-              style={{
-                height: `${Math.max((Number(day.total) / highest) * 100, day.count ? 2 : 0.5)}%`,
-              }}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-xs text-muted">
-        <span>{shortDate(days[0]?.day)}</span>
-        <span>Highest day: {money(highest)}</span>
-        <span>{shortDate(days.at(-1)?.day)}</span>
-      </div>
-    </figure>
-  );
-}
 
 export default function ReportsPage() {
   const [days, setDays] = useState(7);
@@ -57,32 +25,30 @@ export default function ReportsPage() {
     };
   }, [days]);
 
-  const kpis = report && [
-    ["Sales", money(report.sales_total), `${report.sales_count} sales`],
-    ["Average sale", money(report.average_sale), "per receipt"],
-    ["Estimated profit", money(report.estimated_profit), "at today's cost prices"],
-    ["Goods received", money(report.purchases_received_total), "purchase orders"],
-    ["Stock value", money(report.stock_value), "at cost, right now"],
-  ];
+  const best = report?.top_products || [];
+  const bestTotal = Math.max(...best.map((p) => Number(p.total)), 1);
+  const profitShare =
+    report && Number(report.sales_total)
+      ? Math.round((Number(report.estimated_profit) / Number(report.sales_total)) * 100)
+      : 0;
 
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-6">
       <PageHeader
         title="Reports"
         subtitle={
           report
-            ? `${shortDate(report.date_from)} to ${shortDate(report.date_to)}`
+            ? `From ${shortDate(report.date_from)} to ${shortDate(report.date_to)}.`
             : "How the shop is doing."
         }
       >
-        <div role="group" aria-label="Period" className="flex gap-2">
+        <div role="group" aria-label="Period" className="seg">
           {RANGES.map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={days === value}
               onClick={() => setDays(value)}
-              className="chip"
             >
               {value} days
             </button>
@@ -91,7 +57,7 @@ export default function ReportsPage() {
       </PageHeader>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {error}
         </p>
       )}
@@ -99,74 +65,127 @@ export default function ReportsPage() {
 
       {report && (
         <>
-          <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-            {kpis.map(([label, value, note]) => (
-              <div key={label} className="card flex flex-col gap-1 p-4">
-                <dt className="text-xs tracking-wide text-muted uppercase">{label}</dt>
-                <dd className="font-display text-xl font-bold" data-testid={`kpi-${label}`}>
-                  {value}
-                </dd>
-                <dd className="text-xs text-muted">{note}</dd>
-              </div>
-            ))}
-          </dl>
+          <StatStrip
+            items={[
+              {
+                label: "Sales",
+                value: money(report.sales_total),
+                hint: `${report.sales_count} receipts`,
+                icon: "receipt",
+                tone: "brand",
+                testId: "kpi-Sales",
+              },
+              {
+                label: "Average sale",
+                value: money(report.average_sale),
+                hint: "per receipt",
+                icon: "cash",
+                tone: "muted",
+                testId: "kpi-Average sale",
+              },
+              {
+                label: "Estimated profit",
+                value: money(report.estimated_profit),
+                hint: `${profitShare}% of sales, at today's cost prices`,
+                icon: "up",
+                tone: "brand",
+                testId: "kpi-Estimated profit",
+              },
+              {
+                label: "Goods received",
+                value: money(report.purchases_received_total),
+                hint: "from purchase orders",
+                icon: "truck",
+                tone: "info",
+                testId: "kpi-Goods received",
+              },
+              {
+                label: "Stock value",
+                value: money(report.stock_value),
+                hint: "at cost, right now",
+                icon: "box",
+                tone: "saffron",
+                testId: "kpi-Stock value",
+              },
+            ]}
+          />
 
-          <DailySales days={report.by_day} />
+          <Panel
+            title="Sales per day"
+            subtitle="Hover or tab through the bars for each day"
+            bodyClassName="p-5"
+          >
+            <BarChart
+              data={report.by_day.map((day) => ({
+                label: shortDate(day.day),
+                value: Number(day.total),
+                detail: `${day.count} sales`,
+              }))}
+              format={money}
+              label={`Sales per day, last ${days} days`}
+              height={260}
+            />
+          </Panel>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="card overflow-x-auto">
-              <h2 className="p-4 pb-2 text-lg font-bold">Best sellers</h2>
-              <table className="w-full text-left text-sm">
-                <thead className="table-head">
-                  <tr>
-                    <th className="p-3">Product</th>
-                    <th className="p-3 text-right">Sold</th>
-                    <th className="p-3 text-right">Takings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.top_products.length === 0 && (
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <Panel title="Best sellers" subtitle="By takings in this period">
+              {best.length === 0 ? (
+                <EmptyState icon="chart" title="No sales in this period" />
+              ) : (
+                <table className="data-table w-full text-left text-sm">
+                  <thead className="table-head">
                     <tr>
-                      <td colSpan="3" className="p-3 text-muted">
-                        No sales in this period.
-                      </td>
+                      <th className="px-5 py-3">Product</th>
+                      <th className="px-3 py-3 text-right">Sold</th>
+                      <th className="px-5 py-3 text-right">Takings</th>
                     </tr>
-                  )}
-                  {report.top_products.map((product) => (
-                    <tr key={product.product_id} className="border-t border-line">
-                      <td className="p-3">{product.name}</td>
-                      <td className="p-3 text-right tabular-nums">{product.quantity}</td>
-                      <td className="p-3 text-right tabular-nums">{money(product.total)}</td>
-                    </tr>
+                  </thead>
+                  <tbody>
+                    {best.map((product) => (
+                      <tr key={product.product_id} className="border-t border-line">
+                        <td className="px-5 py-3">
+                          <span className="font-medium">{product.name}</span>
+                          <span className="meter mt-2 block w-full max-w-56" aria-hidden="true">
+                            <span
+                              className="bg-brand"
+                              style={{ width: `${(Number(product.total) / bestTotal) * 100}%` }}
+                            />
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right">{product.quantity}</td>
+                        <td className="px-5 py-3 text-right font-semibold">
+                          {money(product.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Panel>
+            <Panel title="Needs reordering" subtitle="At or below the reorder level">
+              {report.low_stock.length === 0 ? (
+                <EmptyState icon="box" title="Everything is above its reorder level" />
+              ) : (
+                <ul className="divide-y divide-line">
+                  {report.low_stock.map((product) => (
+                    <li key={product.id} className="flex items-center gap-4 px-5 py-3 text-sm">
+                      <Link
+                        to={`/products/${product.id}`}
+                        className="min-w-0 flex-1 truncate font-medium hover:underline"
+                      >
+                        {product.name}
+                      </Link>
+                      <StockMeter quantity={product.quantity} reorder={product.reorder_level} />
+                      <span
+                        className={`w-28 text-right ${product.quantity === 0 ? "font-semibold text-danger" : "text-saffron-ink"}`}
+                      >
+                        {product.quantity} of {product.reorder_level}
+                      </span>
+                    </li>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="card overflow-x-auto">
-              <h2 className="p-4 pb-2 text-lg font-bold">Needs reordering</h2>
-              <ul className="flex flex-col">
-                {report.low_stock.length === 0 && (
-                  <li className="p-4 pt-0 text-sm text-muted">
-                    Everything is above its reorder level.
-                  </li>
-                )}
-                {report.low_stock.map((product) => (
-                  <li
-                    key={product.id}
-                    className="flex items-center justify-between gap-3 border-t border-line p-3 text-sm"
-                  >
-                    <Link to={`/products/${product.id}`} className="link">
-                      {product.name}
-                    </Link>
-                    <span
-                      className={product.quantity === 0 ? "font-semibold text-danger" : "text-warn"}
-                    >
-                      {product.quantity} left · reorder at {product.reorder_level}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                </ul>
+              )}
+            </Panel>
           </div>
         </>
       )}

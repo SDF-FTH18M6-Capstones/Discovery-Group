@@ -2,7 +2,7 @@ export function SkeletonRows({ rows = 5, cols = 4 }) {
   return Array.from({ length: rows }, (_, row) => (
     <tr key={row} className="border-t border-line" aria-hidden="true">
       {Array.from({ length: cols }, (_, col) => (
-        <td key={col} className="p-3">
+        <td key={col} className="px-5 py-4">
           <div className="skeleton h-4" style={{ width: `${55 + ((row + col) % 4) * 12}%` }} />
         </td>
       ))}

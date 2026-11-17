@@ -1,8 +1,8 @@
 export default function Field({ label, name, error, children, ...inputProps }) {
   const id = `field-${name}`;
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-semibold">
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-medium text-ink-2">
         {label}
       </label>
       {children ? (
@@ -16,7 +16,12 @@ export default function Field({ label, name, error, children, ...inputProps }) {
           {...inputProps}
         />
       )}
-      {error && <span className="text-sm text-danger">{error}</span>}
+      {error && (
+        <span className="flex items-center gap-1.5 text-sm text-danger">
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-danger" />
+          {error}
+        </span>
+      )}
     </div>
   );
 }

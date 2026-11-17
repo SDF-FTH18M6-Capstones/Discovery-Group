@@ -19,3 +19,18 @@ export const dateTime = (iso) =>
     : "";
 
 export const PAYMENT_LABELS = { cash: "Cash", mpesa: "M-Pesa", card: "Card" };
+
+// "just now", "5 min ago", "3 h ago", "yesterday", then the date.
+export function timeAgo(iso) {
+  if (!iso) return "";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  if (hours < 48) return "yesterday";
+  return shortDate(iso);
+}
+
+// Money without the currency, for tight columns and chart axes.
+export const amount = (value) => shillings.format(Number(value || 0));

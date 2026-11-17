@@ -1,5 +1,3 @@
-// Home page after sign-in: the counts that matter to the signed-in role, each linking to its
-// page, quick buttons for the role's everyday jobs, and (Administrator) the last 7 days of sales.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -13,7 +11,8 @@ import {
   STOCK_MANAGERS,
 } from "../../auth/roles";
 import Icon from "../../components/Icon";
-import { money } from "../../format";
+import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../components/ui";
+import { money, shortDate, timeAgo } from "../../format";
 
 const todayUtc = () => new Date().toISOString().slice(0, 10);
 
@@ -28,6 +27,7 @@ function cardsFor(hasRole) {
       path: `/api/sales/?day=${todayUtc()}&per_page=1`,
       to: "/sales",
       icon: "receipt",
+      tone: "brand",
     });
   }
   cards.push(
@@ -37,7 +37,7 @@ function cardsFor(hasRole) {
       path: "/api/products/?low_stock=true&per_page=1",
       to: "/products",
       icon: "box",
-      alert: true,
+      tone: "saffron",
     },
     seesAllRequests
       ? {
@@ -46,6 +46,7 @@ function cardsFor(hasRole) {
           path: "/api/requests/?status=pending&per_page=1",
           to: "/approvals",
           icon: "check",
+          tone: "info",
         }
       : {
           key: "pending",
@@ -53,6 +54,7 @@ function cardsFor(hasRole) {
           path: "/api/requests/?status=pending&mine=true&per_page=1",
           to: "/requests",
           icon: "inbox",
+          tone: "info",
         },
     {
       key: "assets",
@@ -60,6 +62,7 @@ function cardsFor(hasRole) {
       path: "/api/assets/?per_page=1",
       to: "/assets",
       icon: "laptop",
+      tone: "muted",
     },
   );
   if (hasRole(...PURCHASE_VIEWERS)) {
@@ -69,6 +72,7 @@ function cardsFor(hasRole) {
       path: "/api/purchases/?status=ordered&per_page=1",
       to: "/purchases",
       icon: "truck",
+      tone: "brand",
     });
   }
   if (managesAssets) {
@@ -78,7 +82,7 @@ function cardsFor(hasRole) {
       path: "/api/repairs/?status=submitted&per_page=1",
       to: "/repairs",
       icon: "wrench",
-      alert: true,
+      tone: "danger",
     });
   }
   if (seesAllRequests) {
@@ -88,44 +92,175 @@ function cardsFor(hasRole) {
       path: "/api/suppliers/?per_page=1",
       to: "/suppliers",
       icon: "building",
+      tone: "muted",
     });
   }
   return cards;
 }
 
-function WeekStrip() {
+function WeekSales() {
   const [report, setReport] = useState(null);
   useEffect(() => {
     api("/api/reports/summary?days=7")
       .then(setReport)
-      .catch(() => {});
+      .catch(() => setReport(false));
   }, []);
-  if (!report) return null;
-  const highest = Math.max(...report.by_day.map((day) => Number(day.total)), 1);
+  if (report === false) return null;
+  const days = (report?.by_day || []).map((day) => ({
+    label: shortDate(day.day),
+    short: new Date(day.day).toLocaleDateString("en-GB", { weekday: "short" }),
+    value: Number(day.total),
+    detail: `${day.count} sales`,
+  }));
   return (
-    <Link
-      to="/reports"
-      className="card relative flex flex-col gap-4 overflow-hidden p-5 hover:border-brand sm:flex-row sm:items-end"
+    <Panel
+      title="Sales, last 7 days"
+      actions={
+        <Link to="/reports" className="btn-ghost text-sm">
+          Open reports
+        </Link>
+      }
+      bodyClassName="flex flex-col gap-6 p-5"
     >
-      <div className="flex flex-1 flex-col gap-1">
-        <span className="text-sm text-muted">Sales, last 7 days</span>
-        <span className="font-display text-3xl font-bold" data-testid="week-sales">
-          {money(report.sales_total)}
-        </span>
-        <span className="text-sm text-muted">
-          {report.sales_count} sales · estimated profit {money(report.estimated_profit)}
-        </span>
-      </div>
-      <div aria-hidden="true" className="flex h-16 items-end gap-1.5 sm:w-56">
-        {report.by_day.map((day) => (
-          <span
-            key={day.day}
-            className="flex-1 rounded-t-[3px] bg-brand"
-            style={{ height: `${Math.max((Number(day.total) / highest) * 100, 4)}%` }}
-          />
+      {!report ? (
+        <div className="skeleton h-56" />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-3">
+            <div>
+              <p className="text-sm text-muted">Takings</p>
+              <p className="figure text-4xl" data-testid="week-sales">
+                {money(report.sales_total)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted">Receipts</p>
+              <p className="figure text-2xl">{report.sales_count}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted">Estimated profit</p>
+              <p className="figure text-2xl text-brand-dark">{money(report.estimated_profit)}</p>
+            </div>
+          </div>
+          <BarChart data={days} height={240} label="Sales per day, last 7 days" format={money} />
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function RunningLow() {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    api("/api/products/?low_stock=true&per_page=6")
+      .then((data) => setItems(data.results || []))
+      .catch(() => setItems([]));
+  }, []);
+  return (
+    <Panel
+      title="Running low"
+      subtitle="At or below the reorder level"
+      actions={
+        <Link to="/products" className="btn-ghost text-sm">
+          All products
+        </Link>
+      }
+    >
+      {items === null && <div className="skeleton m-5 h-40" />}
+      {items?.length === 0 && (
+        <EmptyState icon="box" title="Shelves are full">
+          Nothing is at its reorder level right now.
+        </EmptyState>
+      )}
+      {items?.length > 0 && (
+        <ul className="divide-y divide-line">
+          {items.map((product) => (
+            <li key={product.id} className="flex items-center gap-4 px-5 py-3">
+              <span className="min-w-0 flex-1">
+                <Link
+                  to={`/products/${product.id}`}
+                  className="block truncate font-medium hover:underline"
+                >
+                  {product.name}
+                </Link>
+                <span className="code text-muted">{product.sku}</span>
+              </span>
+              <StockMeter quantity={product.quantity} reorder={product.reorder_level} />
+              <span
+                className={`figure w-16 text-right ${product.quantity === 0 ? "text-danger" : "text-saffron-ink"}`}
+              >
+                {product.quantity}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function Latest() {
+  const [notes, setNotes] = useState(null);
+  useEffect(() => {
+    api("/api/notifications/?per_page=5")
+      .then((data) => setNotes(data.results || []))
+      .catch(() => setNotes([]));
+  }, []);
+  return (
+    <Panel
+      title="Latest for you"
+      actions={
+        <Link to="/notifications" className="btn-ghost text-sm">
+          See all
+        </Link>
+      }
+    >
+      {notes === null && <div className="skeleton m-5 h-32" />}
+      {notes?.length === 0 && (
+        <p className="px-5 py-8 text-center text-sm text-muted">Nothing new. You are up to date.</p>
+      )}
+      <ul className="divide-y divide-line">
+        {notes?.map((note) => (
+          <li key={note.id} className="flex gap-3 px-5 py-3">
+            <span
+              aria-hidden="true"
+              className={`mt-1.5 size-2 shrink-0 rounded-full ${note.is_read ? "bg-line-strong" : "bg-saffron"}`}
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm">{note.message}</span>
+              <span className="text-xs text-muted">{timeAgo(note.created_at)}</span>
+            </span>
+          </li>
         ))}
-      </div>
-    </Link>
+      </ul>
+    </Panel>
+  );
+}
+
+function Shortcuts({ hasRole }) {
+  const links = [
+    hasRole(...SELLERS) && { to: "/sales/new", icon: "sale", label: "Ring up a sale" },
+    hasRole(...STOCK_MANAGERS) && { to: "/stock", icon: "ledger", label: "Adjust stock" },
+    hasRole(...PROCUREMENT) && { to: "/purchases", icon: "truck", label: "Place an order" },
+    { to: "/requests", icon: "inbox", label: "Ask for something" },
+    { to: "/repairs", icon: "wrench", label: "Report a fault" },
+  ].filter(Boolean);
+  return (
+    <Panel title="Shortcuts">
+      <ul className="grid grid-cols-2">
+        {links.map((link) => (
+          <li key={link.to} className="shadow-[1px_0_0_var(--sp-line),0_1px_0_var(--sp-line)]">
+            <Link
+              to={link.to}
+              className="flex h-full flex-col gap-2 p-4 text-sm font-medium transition-colors hover:bg-surface-2"
+            >
+              <Icon name={link.icon} className="text-brand-dark" />
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
@@ -137,7 +272,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Each card loads on its own, so one failing count does not blank the others.
+    // Each figure loads on its own, so one failing count does not blank the others.
     Promise.allSettled(paths.split("|").map((path) => api(path))).then((results) => {
       if (cancelled) return;
       setCounts(
@@ -157,10 +292,11 @@ export default function DashboardPage() {
   return (
     <section className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted">{greeting}</p>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-sm text-muted">
+            {greeting}. You are signed in as {ROLE_NAMES[user.role] || user.role}.
+          </p>
           <h1 className="page-title">Welcome, {user.full_name.split(" ")[0]}</h1>
-          <p className="text-muted">Signed in as {ROLE_NAMES[user.role] || user.role}.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {hasRole(...SELLERS) && (
@@ -177,30 +313,26 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {hasRole("admin") && <WeekStrip />}
+      <StatStrip
+        items={cards.map((card, i) => ({
+          label: card.label,
+          value: counts[i],
+          to: card.to,
+          icon: card.icon,
+          tone: card.tone,
+          testId: `count-${card.key}`,
+        }))}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card, i) => {
-          const value = counts[i];
-          const flagged = card.alert && typeof value === "number" && value > 0;
-          return (
-            <Link
-              key={card.key}
-              to={card.to}
-              className="card group flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:border-brand"
-            >
-              <span
-                className={`grid size-10 place-items-center rounded-xl ${flagged ? "bg-danger-soft text-danger" : "bg-mint text-brand-dark"}`}
-              >
-                <Icon name={card.icon} />
-              </span>
-              <span className="font-display text-3xl font-bold" data-testid={`count-${card.key}`}>
-                {value ?? "…"}
-              </span>
-              <span className="text-sm text-muted">{card.label}</span>
-            </Link>
-          );
-        })}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-6 xl:col-span-2">
+          {hasRole("admin") && <WeekSales />}
+          <RunningLow />
+        </div>
+        <div className="flex min-w-0 flex-col gap-6">
+          <Latest />
+          <Shortcuts hasRole={hasRole} />
+        </div>
       </div>
     </section>
   );

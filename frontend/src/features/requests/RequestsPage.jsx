@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Pagination from "../../components/Pagination";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import { Avatar, EmptyState } from "../../components/ui";
 import { requests } from "../../store";
 import RequestForm from "./RequestForm";
 
@@ -21,14 +22,13 @@ export const shortDate = (iso) =>
 
 export function StatusTabs({ value, onChange }) {
   return (
-    <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
+    <div role="group" aria-label="Filter by status" className="seg self-start">
       {STATUS_TABS.map((tab) => (
         <button
           key={tab.value}
           type="button"
           aria-pressed={value === tab.value}
           onClick={() => onChange(tab.value)}
-          className="chip"
         >
           {tab.label}
         </button>
@@ -42,7 +42,7 @@ export default function RequestsPage() {
   const list = useSelector((state) => state.requests);
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); 
+  const [editing, setEditing] = useState(null); // null = closed, {} = new, request = edit
   const [notice, setNotice] = useState("");
 
   const params = { mine: true, status, page, per_page: 10 };
@@ -52,6 +52,8 @@ export default function RequestsPage() {
     dispatch(requests.fetchList({ mine: true, status, page, per_page: 10 }));
   }, [dispatch, status, page]);
 
+  // Optimistic: the card disappears at once; if the server refuses, it comes back
+  // and the server's message is shown.
   const withdraw = async (request) => {
     const before = { items: list.items, count: list.count };
     dispatch(requests.actions.removeItem(request.id));
@@ -65,7 +67,7 @@ export default function RequestsPage() {
   };
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="page-title">My requests</h1>
@@ -92,12 +94,12 @@ export default function RequestsPage() {
       )}
 
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
       {list.error && (
-        <p role="alert" className="text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {list.error}
         </p>
       )}
@@ -110,42 +112,57 @@ export default function RequestsPage() {
         }}
       />
 
-      <ul className="flex flex-col gap-3" aria-busy={list.status === "loading"}>
+      <ul className="grid grid-cols-1 gap-4 xl:grid-cols-2" aria-busy={list.status === "loading"}>
         {list.status === "loading" && list.items.length === 0 && (
           <li>
             <SkeletonCards count={3} />
           </li>
         )}
         {list.status === "ready" && list.items.length === 0 && (
-          <li className="card p-4 text-muted">No requests here yet.</li>
+          <li className="panel xl:col-span-2">
+            <EmptyState icon="inbox" title="No requests here yet">
+              Ask for equipment or supplies with New request; procurement decides.
+            </EmptyState>
+          </li>
         )}
         {list.items.map((request) => (
-          <li key={request.id} className="card flex flex-col gap-2 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">
+          <li key={request.id} className="panel flex flex-col gap-4 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <span className="font-display text-lg font-semibold">
                 {request.item} × {request.quantity}
               </span>
               <StatusBadge value={request.status} />
             </div>
-            <span className="text-sm text-muted">
-              REQ-{String(request.id).padStart(4, "0")} · {request.urgency} ·{" "}
-              {shortDate(request.created_at)} · “{request.reason}”
-            </span>
-            {request.status !== "pending" && (
-              <span className="text-sm">
-                {request.reviewer_name}: “{request.review_comment || "No comment"}”
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+              <span className="code rounded-md bg-surface-2 px-1.5 py-0.5">
+                REQ-{String(request.id).padStart(4, "0")}
               </span>
+              <StatusBadge value={request.urgency} />
+              <span>{shortDate(request.created_at)}</span>
+            </div>
+            <p className="border-l-2 border-saffron pl-3 text-sm text-ink-2">{request.reason}</p>
+            {request.status !== "pending" && (
+              <div className="flex items-start gap-3 rounded-xl bg-surface-2 p-3">
+                <Avatar name={request.reviewer_name || "?"} size={28} />
+                <span className="text-sm">
+                  {request.reviewer_name}: “{request.review_comment || "No comment"}”
+                </span>
+              </div>
             )}
             {request.status === "pending" && (
-              <div className="flex gap-4 text-sm">
+              <div className="flex gap-1 border-t border-line pt-3 text-sm">
                 <button
                   type="button"
                   onClick={() => setEditing(request)}
-                  className="text-brand-dark"
+                  className="btn-ghost min-h-0 px-2.5 py-1.5"
                 >
                   Edit
                 </button>
-                <button type="button" onClick={() => withdraw(request)} className="text-danger">
+                <button
+                  type="button"
+                  onClick={() => withdraw(request)}
+                  className="btn-ghost min-h-0 px-2.5 py-1.5 hover:text-danger"
+                >
                   Withdraw
                 </button>
               </div>
@@ -153,7 +170,13 @@ export default function RequestsPage() {
           </li>
         ))}
       </ul>
-      <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
+      <Pagination
+        standalone
+        page={list.page}
+        pages={list.pages}
+        count={list.count}
+        onChange={setPage}
+      />
     </section>
   );
 }

@@ -14,6 +14,7 @@ const EMPTY = {
   reorder_level: "0",
 };
 
+// Checks the form in the browser before anything is sent.
 export function validateProduct(values) {
   const errors = {};
   if (!values.sku.trim()) errors.sku = "SKU is required.";
@@ -29,6 +30,7 @@ export function validateProduct(values) {
 
 export default function ProductForm({ product, categoryOptions, onSaved, onCancel }) {
   const dispatch = useDispatch();
+  // Every input reads from and writes to this one state object.
   const [values, setValues] = useState(
     product
       ? Object.fromEntries(Object.keys(EMPTY).map((key) => [key, String(product[key] ?? "")]))
@@ -63,6 +65,7 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
     if (products.saveItem.fulfilled.match(result)) {
       onSaved(result.payload);
     } else {
+      // Show the backend's per-field errors next to each field.
       const flat = Object.fromEntries(
         Object.entries(result.payload.details).map(([key, list]) => [key, [].concat(list)[0]]),
       );
@@ -76,7 +79,7 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       onSubmit={handleSubmit}
       noValidate
       aria-label={product ? "Edit product" : "Add product"}
-      className="card grid gap-4 p-5 sm:grid-cols-2"
+      className="card grid gap-5 p-6 sm:grid-cols-2"
     >
       <h2 className="text-lg font-semibold sm:col-span-2">
         {product ? `Edit ${product.name}` : "Add product"}

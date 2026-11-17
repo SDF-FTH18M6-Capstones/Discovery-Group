@@ -1,7 +1,7 @@
 const STYLES = {
-  pending: "bg-warn-soft text-warn",
-  ordered: "bg-warn-soft text-warn",
-  submitted: "bg-warn-soft text-warn",
+  pending: "bg-saffron-soft text-saffron-ink",
+  ordered: "bg-saffron-soft text-saffron-ink",
+  submitted: "bg-saffron-soft text-saffron-ink",
   approved: "bg-mint text-brand-dark",
   received: "bg-mint text-brand-dark",
   available: "bg-mint text-brand-dark",
@@ -39,8 +39,9 @@ export const label = (value) =>
 export default function StatusBadge({ value }) {
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${STYLES[value] || "bg-surface-2 text-muted"}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${STYLES[value] || "bg-surface-2 text-muted"}`}
     >
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-current opacity-70" />
       {label(value)}
     </span>
   );

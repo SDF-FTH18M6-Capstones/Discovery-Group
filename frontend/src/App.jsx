@@ -1,5 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 
+import { useAuth } from "./auth/AuthContext";
+
 import RequireAuth from "./auth/RequireAuth";
 import { PROCUREMENT, PURCHASE_VIEWERS, SELLERS, STOCK_MANAGERS } from "./auth/roles";
 import Layout from "./components/Layout";
@@ -20,19 +22,28 @@ import SettingsPage from "./features/settings/SettingsPage";
 import StockPage from "./features/stock/StockPage";
 import SuppliersPage from "./features/suppliers/SuppliersPage";
 import UsersPage from "./features/users/UsersPage";
+import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import StatusPage from "./pages/StatusPage";
 
 function NotFound() {
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col items-start gap-3 py-10">
+      <p className="figure text-6xl text-line-strong">404</p>
       <h1 className="page-title">Page not found</h1>
-      <Link to="/" className="link">
+      <p className="text-muted">The address is wrong, or the page has moved.</p>
+      <Link to="/" className="btn-primary">
         Go to the dashboard
       </Link>
     </section>
   );
+}
+
+// "/" is the landing page for visitors and the dashboard once signed in.
+function Home() {
+  const { user } = useAuth();
+  return user ? <DashboardPage /> : <LandingPage />;
 }
 
 export default function App() {
@@ -43,10 +54,10 @@ export default function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="status" element={<StatusPage />} />
+        <Route index element={<Home />} />
 
         {/* Signed-in users only (the page itself hides what the role cannot do) */}
         <Route element={<RequireAuth />}>
-          <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="requests" element={<RequestsPage />} />

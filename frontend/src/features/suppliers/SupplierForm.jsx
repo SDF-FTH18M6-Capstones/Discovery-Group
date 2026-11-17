@@ -34,6 +34,8 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
     const found = validateSupplier(values);
     setErrors(found);
     if (Object.keys(found).length) return;
+
+    // Empty optional fields are sent as null, not "".
     const data = { name: values.name, email: values.email || null, phone: values.phone || null };
     const result = await dispatch(suppliers.saveItem({ id: supplier?.id, data }));
     if (suppliers.saveItem.fulfilled.match(result)) {
@@ -48,7 +50,7 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
       onSubmit={handleSubmit}
       noValidate
       aria-label={supplier ? "Edit supplier" : "Add supplier"}
-      className="card grid gap-4 p-5 sm:grid-cols-3"
+      className="card grid gap-5 p-6 sm:grid-cols-3"
     >
       {formError && (
         <p role="alert" className="text-sm text-danger sm:col-span-3">

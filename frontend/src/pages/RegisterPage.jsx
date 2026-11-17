@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
 import { useAuth } from "../auth/AuthContext";
 import Field from "../components/Field";
 
@@ -51,10 +52,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="page-title">Create an account</h1>
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="page-title">Create an account</h1>
+        <p className="text-sm text-muted">
+          New accounts start as Employee. An administrator can change your role.
+        </p>
+      </div>
       {formError && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {formError}
         </p>
       )}
@@ -92,12 +98,12 @@ export default function RegisterPage() {
           onChange={handleChange}
           error={errors.confirm}
         />
-        <button type="submit" className="btn-primary">
+        <button type="submit" className="btn-primary mt-2 min-h-11">
           Create account
         </button>
-        <p className="text-sm">
+        <p className="border-t border-line pt-4 text-center text-sm text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="text-brand-dark underline">
+          <Link to="/login" className="link">
             Sign in
           </Link>
         </p>

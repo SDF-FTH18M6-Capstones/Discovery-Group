@@ -27,9 +27,26 @@ const PATHS = {
   plus: "M12 5v14M5 12h14",
   minus: "M5 12h14",
   printer: "M6 9V3h12v6M6 18H4v-6h16v6h-2M7 14h10v7H7v-7Z",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm9 3-4.3-4.3",
+  chevron: "m9 6 6 6-6 6",
+  chevronDown: "m6 9 6 6 6-6",
+  logout: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3",
+  shield: "M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z",
+  phone: "M8 2h8a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm3 17h2",
+  up: "M7 17 17 7M9 7h8v8",
+  down: "M7 7l10 10M17 9v8H9",
+  alert:
+    "M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v5l3 2",
+  cash: "M3 7h18v10H3V7Zm9 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM6 10v4m12-4v4",
+  card: "M3 6h18v12H3V6Zm0 4h18M7 15h3",
+  lock: "M6 11h12v10H6V11Zm2 0V8a4 4 0 0 1 8 0v3",
+  layers: "m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 9a8 8 0 0 1 16 0",
+  arrow: "M5 12h14m-6-6 6 6-6 6",
 };
 
-export default function Icon({ name, size = 18, className = "" }) {
+export default function Icon({ name, size = 18, className = "", strokeWidth = 1.8 }) {
   return (
     <svg
       aria-hidden="true"
@@ -38,7 +55,7 @@ export default function Icon({ name, size = 18, className = "" }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={`shrink-0 ${className}`}
