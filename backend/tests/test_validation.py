@@ -15,6 +15,8 @@ LISTS = [
     "/api/sales/",
     "/api/purchases/",
     "/api/stock/movements",
+    "/api/repairs/",
+    "/api/notifications/",
 ]
 
 ONE_ITEM = [
@@ -39,6 +41,9 @@ ONE_ITEM = [
     ("GET", "/api/purchases/999999"),
     ("POST", "/api/purchases/999999/receive"),
     ("POST", "/api/purchases/999999/cancel"),
+    ("GET", "/api/repairs/999999"),
+    ("PUT", "/api/repairs/999999/status"),
+    ("POST", "/api/notifications/999999/read"),
 ]
 
 VALID = {
@@ -54,6 +59,7 @@ VALID = {
     "/api/requests/": {"item": "Pens", "quantity": 1, "reason": "Out of pens"},
     "/api/assets/": {"asset_code": "AST-1", "name": "Laptop"},
     "/api/users/999999/role": {"role": "sales"},
+    "/api/repairs/999999/status": {"status": "in_progress"},
 }
 
 # endpoint, bad body, fields that must be named in the error details

@@ -37,6 +37,7 @@ PURCHASE = {
     "supplier_id": "{supplier}",
     "items": [{"product_id": "{product}", "quantity": 5, "unit_cost": "1.00"}],
 }
+REPAIR = {"asset_id": "{spare_asset}", "description": "Screen flickers"}
 ADJUSTMENT = {"product_id": "{product}", "change": -1, "reason": "Damaged in store"}
 
 # method, path, roles allowed, success status, JSON body
@@ -83,6 +84,22 @@ ENDPOINTS = [
     ("POST", "/api/purchases/{purchase}/cancel", BUYING, 200, None),
     ("GET", "/api/stock/movements", STOCK, 200, None),
     ("POST", "/api/stock/adjustments", STOCK, 201, ADJUSTMENT),
+    ("GET", "/api/repairs/", ALL, 200, None),
+    ("POST", "/api/repairs/", ALL, 201, REPAIR),
+    ("GET", "/api/repairs/{my_repair}", ALL, 200, None),
+    ("PUT", "/api/repairs/{my_repair}/status", STOCK, 200, {"status": "in_progress"}),
+    ("GET", "/api/notifications/", ALL, 200, None),
+    ("POST", "/api/notifications/{my_notification}/read", ALL, 200, None),
+    ("POST", "/api/notifications/read-all", ALL, 200, None),
+    ("GET", "/api/reports/summary", ("admin",), 200, None),
+    ("PUT", "/api/auth/me", ALL, 200, {"full_name": "New Name"}),
+    (
+        "POST",
+        "/api/auth/password",
+        ALL,
+        200,
+        {"current_password": "Secret123!", "new_password": "NewSecret123"},
+    ),
 ]
 
 # Open to everyone, by design. /refresh needs a refresh token and is tested in test_auth.py.
