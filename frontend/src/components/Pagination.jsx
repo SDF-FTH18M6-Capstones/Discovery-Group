@@ -11,7 +11,7 @@ export default function Pagination({ page, pages, count, onChange }) {
       <div className="flex gap-2">
         <button
           type="button"
-          className="rounded-md border border-line bg-white px-3 py-1 disabled:opacity-50"
+          className="btn-secondary px-3 py-1 text-sm"
           disabled={page <= 1}
           onClick={() => onChange(page - 1)}
         >
@@ -19,7 +19,7 @@ export default function Pagination({ page, pages, count, onChange }) {
         </button>
         <button
           type="button"
-          className="rounded-md border border-line bg-white px-3 py-1 disabled:opacity-50"
+          className="btn-secondary px-3 py-1 text-sm"
           disabled={page >= pages}
           onClick={() => onChange(page + 1)}
         >

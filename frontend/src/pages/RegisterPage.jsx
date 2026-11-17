@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import { useAuth } from "../auth/AuthContext";
 import Field from "../components/Field";
 
@@ -52,10 +51,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <section className="mx-auto flex max-w-sm flex-col gap-4 py-10">
-      <h1 className="text-2xl font-bold">Create an account</h1>
+    <section className="flex flex-col gap-4">
+      <h1 className="page-title">Create an account</h1>
       {formError && (
-        <p role="alert" className="rounded-lg bg-orange-50 p-3 text-sm text-danger">
+        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
           {formError}
         </p>
       )}
@@ -93,7 +92,7 @@ export default function RegisterPage() {
           onChange={handleChange}
           error={errors.confirm}
         />
-        <button type="submit" className="rounded-lg bg-brand px-4 py-2 font-semibold text-white">
+        <button type="submit" className="btn-primary">
           Create account
         </button>
         <p className="text-sm">

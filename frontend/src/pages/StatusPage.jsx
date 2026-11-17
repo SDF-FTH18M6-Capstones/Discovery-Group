@@ -13,7 +13,7 @@ export default function StatusPage() {
 
   return (
     <section className="flex max-w-lg flex-col gap-3">
-      <h1 className="text-2xl font-bold">System status</h1>
+      <h1 className="page-title">System status</h1>
       <p className="text-muted">API address: {API_URL}</p>
       {result.state === "checking" && <p>Checking…</p>}
       {result.state === "ok" && (
@@ -22,7 +22,7 @@ export default function StatusPage() {
         </p>
       )}
       {result.state === "error" && (
-        <p role="alert" className="rounded-lg bg-orange-50 p-3 text-danger">
+        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-danger">
           {result.message}
         </p>
       )}
