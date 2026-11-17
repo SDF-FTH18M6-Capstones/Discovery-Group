@@ -1,6 +1,5 @@
 import re
 
-from flask import current_app
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -11,7 +10,7 @@ from flask_smorest import Blueprint, abort
 from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 
 from app.auth import roles_required
-from app.extensions import db, limiter
+from app.extensions import db
 from app.models import Employee, User
 from app.models.user import check_secret, hash_secret
 from app.schemas import Schema
@@ -19,9 +18,6 @@ from app.schemas import Schema
 blp = Blueprint("auth", __name__, url_prefix="/api/auth", description="Sign-in and accounts")
 
 BAD_LOGIN = "Email or password is incorrect."
-
-
-# ---------- schemas ----------
 
 
 class RegisterSchema(Schema):
@@ -79,7 +75,6 @@ class AccessSchema(Schema):
     access_token = fields.String()
 
 
-# ---------- helpers ----------
 
 _dummy = {}
 
@@ -96,18 +91,10 @@ def find_user(email):
     return db.session.scalar(db.select(User).filter_by(email=email.lower()))
 
 
-# ---------- routes ----------
 
-
-TOO_MANY = "Too many attempts. Wait a minute and try again."
-
-
-def rate_limit():
-    return current_app.config["LOGIN_RATE_LIMIT"]
 
 
 @blp.route("/register", methods=["POST"])
-@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(RegisterSchema)
 @blp.response(201, MessageSchema)
 @blp.doc(security=[])
@@ -123,7 +110,6 @@ def register(data):
 
 
 @blp.route("/login", methods=["POST"])
-@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(LoginSchema)
 @blp.response(200, SessionSchema)
 @blp.doc(security=[])
