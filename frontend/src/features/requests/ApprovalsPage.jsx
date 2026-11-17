@@ -4,11 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import Pagination from "../../components/Pagination";
+import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
 import { requests } from "../../store";
 import { StatusTabs, shortDate } from "./RequestsPage";
 
-function DecisionPanel({ request, onDone, onClose }) {
+function DecisionPanel({ request, onStart, onDone, onClose }) {
   const { user, hasRole } = useAuth();
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
@@ -24,6 +25,7 @@ function DecisionPanel({ request, onDone, onClose }) {
     }
     setBusy(true);
     setError("");
+    const undo = onStart(action === "approve" ? "approved" : "rejected");
     try {
       await api(`/api/requests/${request.id}/${action}`, {
         method: "POST",
@@ -31,16 +33,14 @@ function DecisionPanel({ request, onDone, onClose }) {
       });
       onDone(`${request.item}: ${action === "approve" ? "approved" : "rejected"}.`);
     } catch (err) {
+      undo();
       setError(err.message);
       setBusy(false);
     }
   };
 
   return (
-    <aside
-      aria-label={`Request ${request.id}`}
-      className="flex flex-col gap-3 rounded-xl border border-line bg-white p-5"
-    >
+    <aside aria-label={`Request ${request.id}`} className="card flex flex-col gap-3 p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold">
           {request.item} × {request.quantity}
@@ -77,7 +77,7 @@ function DecisionPanel({ request, onDone, onClose }) {
               setComment(event.target.value);
               setError("");
             }}
-            className="rounded-lg border border-line px-3 py-2"
+            className="input h-auto py-2"
           />
           <span className="text-xs text-muted">Required when rejecting.</span>
           {error && (
@@ -90,7 +90,7 @@ function DecisionPanel({ request, onDone, onClose }) {
               type="button"
               disabled={busy}
               onClick={() => decide("reject")}
-              className="flex-1 rounded-lg border border-danger px-4 py-2 font-semibold text-danger"
+              className="btn-danger flex-1"
             >
               Reject
             </button>
@@ -98,7 +98,7 @@ function DecisionPanel({ request, onDone, onClose }) {
               type="button"
               disabled={busy}
               onClick={() => decide("approve")}
-              className="flex-1 rounded-lg bg-brand px-4 py-2 font-semibold text-white"
+              className="flex-1 btn-primary"
             >
               Approve
             </button>
@@ -135,7 +135,7 @@ export default function ApprovalsPage() {
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Approvals</h1>
+        <h1 className="page-title">Approvals</h1>
         <p className="text-muted">Every staff request. Open one to approve or reject it.</p>
       </div>
 
@@ -160,9 +160,9 @@ export default function ApprovalsPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="relative min-w-0 overflow-x-auto rounded-xl border border-line bg-white">
+        <div className="card relative min-w-0 overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-canvas text-muted">
+            <thead className="table-head">
               <tr>
                 <th className="p-3">Item</th>
                 <th className="p-3 text-right">Qty</th>
@@ -175,6 +175,7 @@ export default function ApprovalsPage() {
               </tr>
             </thead>
             <tbody>
+              {list.status === "loading" && <SkeletonRows cols={6} />}
               {list.status === "ready" && list.items.length === 0 && (
                 <tr>
                   <td colSpan="6" className="p-3 text-muted">
@@ -218,6 +219,14 @@ export default function ApprovalsPage() {
             key={selected.id}
             request={selected}
             onClose={() => setSelected(null)}
+            onStart={(newStatus) => {
+              // Optimistic: the row shows the decision straight away; undone if the server says no.
+              const before = { items: list.items, count: list.count };
+              dispatch(
+                requests.actions.patchItem({ id: selected.id, changes: { status: newStatus } }),
+              );
+              return () => dispatch(requests.actions.restoreItems(before));
+            }}
             onDone={(message) => {
               setNotice(message);
               setSelected(null);

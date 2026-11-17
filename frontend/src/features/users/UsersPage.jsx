@@ -33,7 +33,7 @@ function RoleCell({ person, isYou, onChanged }) {
         value={role}
         disabled={isYou}
         onChange={(event) => setRole(event.target.value)}
-        className="h-9 rounded-lg border border-line bg-white px-2 disabled:bg-canvas"
+        className="input h-9 px-2 disabled:opacity-60"
       >
         {ROLES.map((value) => (
           <option key={value} value={value}>
@@ -47,7 +47,7 @@ function RoleCell({ person, isYou, onChanged }) {
           disabled={busy || role === person.role}
           onClick={save}
           aria-label={`Save role for ${person.full_name}`}
-          className="rounded-lg bg-brand px-3 py-1 text-sm font-semibold text-white disabled:opacity-40"
+          className="btn-primary px-3 py-1 text-sm"
         >
           Save
         </button>
@@ -73,7 +73,7 @@ export default function UsersPage() {
   return (
     <section className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Users and roles</h1>
+        <h1 className="page-title">Users and roles</h1>
         <p className="text-muted">
           Everyone signs up as an Employee. Change a role here; it applies from their next request.
         </p>
@@ -103,7 +103,7 @@ export default function UsersPage() {
             setSearch(event.target.value);
             setPage(1);
           }}
-          className="h-10 w-full max-w-sm rounded-lg border border-line bg-white px-3"
+          className="input w-full max-w-sm"
         />
         <label htmlFor="user-role" className="sr-only">
           Filter by role
@@ -115,7 +115,7 @@ export default function UsersPage() {
             setRole(event.target.value);
             setPage(1);
           }}
-          className="h-10 rounded-lg border border-line bg-white px-2"
+          className="input px-2"
         >
           <option value="">All roles</option>
           {ROLES.map((value) => (
@@ -126,9 +126,9 @@ export default function UsersPage() {
         </select>
       </div>
 
-      <div className="relative overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="card relative overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="bg-canvas text-muted">
+          <thead className="table-head">
             <tr>
               <th className="p-3">Name</th>
               <th className="p-3">Email</th>
