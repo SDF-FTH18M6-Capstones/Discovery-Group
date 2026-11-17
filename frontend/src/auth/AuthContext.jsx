@@ -11,6 +11,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => loadSession()?.user || null);
   const [sessionExpired, setSessionExpired] = useState(false);
 
+  // When a request finds the session has expired, forget the user. <RequireAuth> then
+  // sends them to /login, which shows "Your session has expired".
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setSessionExpired(true);
@@ -18,6 +20,7 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
+  // On page load, confirm the stored session is still valid and refresh the user's details.
   useEffect(() => {
     if (!loadSession()?.accessToken) return;
     api("/api/auth/me")
@@ -28,6 +31,7 @@ export function AuthProvider({ children }) {
       .catch(() => {});
   }, []);
 
+  // Email + password. The backend answers with the tokens, which are kept for the next visit.
   const signIn = useCallback(async (email, password) => {
     const session = await api("/api/auth/login", {
       method: "POST",
@@ -55,11 +59,17 @@ export function AuthProvider({ children }) {
     navigate("/login", { replace: true });
   }, [navigate]);
 
+  // After the person edits their profile: keep the new details for this visit and the next.
+  const updateUser = useCallback((fresh) => {
+    saveSession({ ...loadSession(), user: fresh });
+    setUser(fresh);
+  }, []);
+
   const hasRole = useCallback((...roles) => Boolean(user && roles.includes(user.role)), [user]);
 
   const value = useMemo(
-    () => ({ user, sessionExpired, signIn, register, signOut, hasRole }),
-    [user, sessionExpired, signIn, register, signOut, hasRole],
+    () => ({ user, sessionExpired, signIn, register, signOut, hasRole, updateUser }),
+    [user, sessionExpired, signIn, register, signOut, hasRole, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

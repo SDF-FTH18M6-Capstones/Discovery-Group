@@ -1,14 +1,23 @@
 import { Link, Route, Routes } from "react-router-dom";
 
 import RequireAuth from "./auth/RequireAuth";
-import { PROCUREMENT } from "./auth/roles";
+import { PROCUREMENT, PURCHASE_VIEWERS, SELLERS, STOCK_MANAGERS } from "./auth/roles";
 import Layout from "./components/Layout";
 import AssetsPage from "./features/assets/AssetsPage";
 import CategoriesPage from "./features/categories/CategoriesPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
+import NotificationsPage from "./features/notifications/NotificationsPage";
+import ProductDetailPage from "./features/products/ProductDetailPage";
 import ProductsPage from "./features/products/ProductsPage";
+import PurchasesPage from "./features/purchases/PurchasesPage";
+import RepairsPage from "./features/repairs/RepairsPage";
+import ReportsPage from "./features/reports/ReportsPage";
 import ApprovalsPage from "./features/requests/ApprovalsPage";
 import RequestsPage from "./features/requests/RequestsPage";
+import PosPage from "./features/sales/PosPage";
+import SalesPage from "./features/sales/SalesPage";
+import SettingsPage from "./features/settings/SettingsPage";
+import StockPage from "./features/stock/StockPage";
 import SuppliersPage from "./features/suppliers/SuppliersPage";
 import UsersPage from "./features/users/UsersPage";
 import LoginPage from "./pages/LoginPage";
@@ -18,8 +27,8 @@ import StatusPage from "./pages/StatusPage";
 function NotFound() {
   return (
     <section className="flex flex-col gap-3">
-      <h1 className="text-2xl font-bold">Page not found</h1>
-      <Link to="/" className="text-brand-dark underline">
+      <h1 className="page-title">Page not found</h1>
+      <Link to="/" className="link">
         Go to the dashboard
       </Link>
     </section>
@@ -41,7 +50,27 @@ export default function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="requests" element={<RequestsPage />} />
+          <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="assets" element={<AssetsPage />} />
+          <Route path="repairs" element={<RepairsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* Administrator or Sales Attendant */}
+        <Route element={<RequireAuth roles={SELLERS} />}>
+          <Route path="sales" element={<SalesPage />} />
+          <Route path="sales/new" element={<PosPage />} />
+        </Route>
+
+        {/* Administrator or Inventory Manager */}
+        <Route element={<RequireAuth roles={STOCK_MANAGERS} />}>
+          <Route path="stock" element={<StockPage />} />
+        </Route>
+
+        {/* Administrator, Procurement or Inventory Manager */}
+        <Route element={<RequireAuth roles={PURCHASE_VIEWERS} />}>
+          <Route path="purchases" element={<PurchasesPage />} />
         </Route>
 
         {/* Administrator or Procurement Manager only */}
@@ -53,6 +82,7 @@ export default function App() {
         {/* Administrator only */}
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route path="users" element={<UsersPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
