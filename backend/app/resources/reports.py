@@ -1,7 +1,4 @@
-"""/api/reports — figures for the Administrator, worked out from the sales, purchase and
-stock tables. "estimated_profit" uses each product's current cost price."""
-
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 from flask_smorest import Blueprint
@@ -11,6 +8,7 @@ from app.auth import roles_required
 from app.extensions import db
 from app.models import Product, Purchase, Sale, SaleItem
 from app.schemas import Schema
+from app.shoptime import day_bounds, shop_day, shop_today
 
 blp = Blueprint("reports", __name__, url_prefix="/api/reports", description="Reports (Admin)")
 
@@ -62,9 +60,9 @@ class SummaryOut(Schema):
 @roles_required("admin")
 def summary(args):
     days = args["days"]
-    today = datetime.now(UTC).date()
+    today = shop_today() 
     date_from = today - timedelta(days=days - 1)
-    since = datetime.combine(date_from, datetime.min.time(), tzinfo=UTC)
+    since, _ = day_bounds(date_from)
     in_range = Sale.created_at >= since
     zero = Decimal("0")
 
@@ -92,7 +90,7 @@ def summary(args):
         db.select(db.func.coalesce(db.func.sum(Product.quantity * Product.cost_price), 0))
     )
 
-    day = db.func.date(Sale.created_at)
+    day = shop_day(Sale.created_at)
     rows = db.session.execute(
         db.select(day, db.func.sum(Sale.total), db.func.count(Sale.id))
         .where(in_range)

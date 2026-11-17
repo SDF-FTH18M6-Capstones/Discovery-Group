@@ -44,7 +44,7 @@ describe("optimistic requests", () => {
     reason: "Reports",
     status: "pending",
     requester_id: 99,
-    requester_name: "Alex Kamau",
+    requester_name: "Barclay Koin",
     created_at: "2026-11-10T09:00:00Z",
   };
 
@@ -86,7 +86,9 @@ describe("optimistic requests", () => {
     const user = userEvent.setup();
     renderAt("/requests", { as: "employee" });
 
-    await user.click(await screen.findByRole("button", { name: "Withdraw" }));
+    await user.click(await screen.findByRole("button", { name: "View request for Printer paper" }));
+    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await user.click(screen.getByRole("button", { name: "Yes, withdraw" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Only pending requests can be withdrawn.",

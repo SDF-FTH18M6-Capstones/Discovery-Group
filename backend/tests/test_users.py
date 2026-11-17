@@ -46,3 +46,12 @@ def test_unknown_role_is_422(admin, employee):
 
     assert response.status_code == 422
     assert "role" in response.json["error"]["details"]
+
+
+def test_choices_list_names_for_asset_assignment_without_emails(as_role, employee):
+    response = as_role("inventory").get("/api/users/choices")
+
+    assert response.status_code == 200
+    names = {row["full_name"] for row in response.json}
+    assert employee.full_name in names 
+    assert all(set(row) == {"id", "full_name", "role"} for row in response.json)

@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/*
+  StockPilot theme.
+  Palette: pine (the shell), jade (actions, money in), saffron (attention, highlights),
+  brick (money out, errors), on a cool paper background. Every colour is a variable with a
+  light and a dark value, so classes like bg-surface or text-muted are right in both themes.
+  Dark mode = the "dark" class on <html> (src/theme/ThemeContext.jsx, and a tiny script in
+  index.html that sets it before the first paint).
+  Type: Bricolage Grotesque for headings and figures, Geist for everything else, Geist Mono
+  for codes (SKUs, receipt and order numbers). Self-hosted from npm, see main.jsx.
+*/
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -466,6 +476,27 @@
     opacity: 1;
     transform: none;
   }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+/* pop-up windows (components/Modal.jsx) */
+.animate-fade {
+  animation: fade-in 0.18s ease-out both;
+}
+.animate-pop {
+  animation: pop-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .animate-print {

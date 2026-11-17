@@ -15,7 +15,7 @@ export function validateRequest(values) {
   return errors;
 }
 
-export default function RequestForm({ request, onSaved, onCancel }) {
+export default function RequestForm({ request, onSaved, onCancel, bare = false }) {
   const dispatch = useDispatch();
   const [values, setValues] = useState({
     item: request?.item || "",
@@ -61,7 +61,7 @@ export default function RequestForm({ request, onSaved, onCancel }) {
       onSubmit={handleSubmit}
       noValidate
       aria-label={request ? "Edit request" : "New request"}
-      className="card grid gap-5 p-6 sm:grid-cols-4"
+      className={bare ? "grid gap-5 sm:grid-cols-4" : "card grid gap-5 p-6 sm:grid-cols-4"}
     >
       {formError && (
         <p role="alert" className="text-sm text-danger sm:col-span-4">
@@ -109,16 +109,16 @@ export default function RequestForm({ request, onSaved, onCancel }) {
             <textarea
               id={id}
               name="reason"
-              rows="2"
+              rows={bare ? 4 : 2}
               value={values.reason}
               onChange={handleChange}
               aria-invalid={Boolean(errors.reason)}
-              className={`rounded-lg border px-3 py-2 ${errors.reason ? "border-danger" : "border-line"}`}
+              className={`input h-auto py-2 ${errors.reason ? "border-danger" : ""}`}
             />
           )}
         </Field>
       </div>
-      <div className="flex gap-2 sm:col-span-4">
+      <div className={`flex gap-2 sm:col-span-4 ${bare ? "flex-row-reverse justify-start" : ""}`}>
         <button type="submit" className="btn-primary">
           {request ? "Save changes" : "Submit request"}
         </button>

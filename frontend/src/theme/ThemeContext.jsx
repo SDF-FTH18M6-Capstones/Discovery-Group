@@ -36,8 +36,7 @@ export function ThemeProvider({ children }) {
     setChoice(value);
     try {
       localStorage.setItem(KEY, value);
-    } catch {
-  }
+    } catch {}
   }, []);
 
   const toggle = useCallback(() => choose(dark ? "light" : "dark"), [choose, dark]);

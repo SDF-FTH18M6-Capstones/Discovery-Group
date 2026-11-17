@@ -5,7 +5,6 @@ import Icon from "../components/Icon";
 import Logo from "../components/Logo";
 import ThemeSwitch from "../components/ThemeSwitch";
 
-
 function TillScene() {
   return (
     <div
@@ -47,9 +46,9 @@ function TillScene() {
       </div>
 
       {/* the receipt that prints out of it */}
-      <div className="hidden sm:absolute sm:top-[17rem] sm:left-6 sm:z-0 sm:block sm:w-48">
+      <div className="hidden sm:absolute sm:top-68 sm:left-6 sm:z-0 sm:block sm:w-48">
         <div className="animate-print perforated rounded-t-sm bg-white px-4 pt-8 pb-4 font-mono text-[11px] leading-5 text-[#2c3b36] shadow-xl">
-          <p className="text-center font-semibold">StockPilot Demo Shop</p>
+          <p className="text-center font-semibold">StockPilot Shop</p>
           <p className="text-center text-[#5f6f69]">Receipt S-0042</p>
           <p className="mt-2 flex justify-between border-t border-dashed border-[#c9d3cd] pt-2">
             <span>Total</span>
@@ -57,7 +56,7 @@ function TillScene() {
           </p>
           <p className="flex justify-between text-[#5f6f69]">
             <span>M-Pesa</span>
-            <span>Pauline</span>
+            <span>Vincent</span>
           </p>
         </div>
       </div>
@@ -95,7 +94,6 @@ function TillScene() {
     </div>
   );
 }
-
 
 const FLOW = [
   {
@@ -168,7 +166,6 @@ function HowItWorks() {
     </section>
   );
 }
-
 
 const ROLES = [
   {
@@ -266,7 +263,6 @@ function Roles() {
     </section>
   );
 }
-
 
 function Features() {
   return (
@@ -478,12 +474,6 @@ export default function LandingPage() {
               <li className="flex items-center gap-2">
                 <Icon name="cash" size={16} className="text-saffron" /> Cash, M-Pesa and card
               </li>
-              <li className="flex items-center gap-2">
-                <Icon name="users" size={16} className="text-saffron" /> Five roles
-              </li>
-              <li className="flex items-center gap-2">
-                <Icon name="moon" size={16} className="text-saffron" /> Light and dark
-              </li>
             </ul>
           </div>
           <TillScene />
@@ -521,7 +511,7 @@ export default function LandingPage() {
           <span className="rounded-xl bg-evergreen px-3 py-2">
             <Logo size={24} />
           </span>
-          <span>Discovery Group capstone, 2026</span>
+          <span>StockPilot, 2026</span>
           <span className="flex gap-5 sm:ml-auto">
             <Link to="/login" className="hover:text-ink">
               Sign in

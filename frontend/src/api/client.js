@@ -30,7 +30,7 @@ async function send(path, { method, body, token }) {
   }
 }
 
-let refreshing = null; 
+let refreshing = null;
 
 async function refreshAccessToken() {
   const session = loadSession();

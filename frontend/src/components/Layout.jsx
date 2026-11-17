@@ -170,9 +170,7 @@ function SignedOutShell() {
           </p>
           <LedgerPreview />
         </div>
-        <p className="relative text-sm text-sidebar-ink">
-          Discovery Group capstone. Built with Flask, React and PostgreSQL.
-        </p>
+        <p className="relative text-sm text-sidebar-ink">StockPilot by Discovery</p>
       </aside>
       <div className="flex min-w-0 flex-col">
         <div className="flex items-center justify-between gap-3 p-4 sm:p-6">

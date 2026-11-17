@@ -11,7 +11,6 @@ ALL_ROLES = ("admin", "procurement", "inventory", "sales", "employee")
 
 
 def roles_required(*roles):
-    """Signed-in users only. With roles given, only those roles; everyone else gets 403."""
     allowed = roles or ALL_ROLES
 
     def decorator(view):

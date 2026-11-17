@@ -1,7 +1,3 @@
-## What does this PR do?
-
-Closes #<!-- issue number -->
-
 ## How did you test it?
 
 - [ ] Tests added or updated

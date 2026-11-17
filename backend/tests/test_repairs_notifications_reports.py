@@ -1,9 +1,9 @@
-"""Repairs, notifications, reports and the profile endpoints."""
-
+from datetime import datetime, time
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from app.extensions import db
-from app.models import Asset, Category, Notification, Product
+from app.models import Asset, Category, Notification, Product, Sale
 
 
 def holding(user, code="AST-9", name="Laptop"):
@@ -19,8 +19,6 @@ def messages_for(user):
         .where(Notification.user_id == user.id)
         .order_by(Notification.id)
     ).all()
-
-
 
 
 def test_a_repair_moves_forward_and_updates_the_asset(as_role):
@@ -69,11 +67,11 @@ def test_you_can_only_report_an_asset_you_hold(as_role, make_user):
 
 
 def test_one_open_repair_per_asset(as_role):
-    alex = as_role("employee")
-    laptop = holding(alex.user)
-    alex.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Keys stick"})
+    barclay = as_role("employee")
+    laptop = holding(barclay.user)
+    barclay.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Keys stick"})
 
-    again = alex.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Still broken"})
+    again = barclay.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Still broken"})
 
     assert again.status_code == 409
 
@@ -95,28 +93,26 @@ def test_employees_see_only_their_own_repairs(as_role):
 
 
 def test_short_description_is_422(as_role):
-    alex = as_role("employee")
-    response = alex.post(
-        "/api/repairs/", json={"asset_id": holding(alex.user).id, "description": " "}
+    barclay = as_role("employee")
+    response = barclay.post(
+        "/api/repairs/", json={"asset_id": holding(barclay.user).id, "description": " "}
     )
 
     assert response.status_code == 422
     assert "description" in response.json["error"]["details"]
 
 
-
-
 def test_requests_notify_procurement_then_the_requester(as_role):
-    alex, jane = as_role("employee"), as_role("procurement")
+    barclay, carlos = as_role("employee"), as_role("procurement")
 
-    request_id = alex.post(
+    request_id = barclay.post(
         "/api/requests/",
         json={"item": "Laptop", "quantity": 1, "urgency": "urgent", "reason": "New hire"},
     ).json["id"]
-    jane.post(f"/api/requests/{request_id}/reject", json={"comment": "Use the spare one"})
+    carlos.post(f"/api/requests/{request_id}/reject", json={"comment": "Use the spare one"})
 
-    assert messages_for(jane.user) == [f"Urgent request from {alex.user.full_name}: Laptop × 1."]
-    assert messages_for(alex.user) == ["Your request for Laptop was rejected: Use the spare one"]
+    assert messages_for(carlos.user) == [f"Urgent request from {barclay.user.full_name}: Laptop × 1."]
+    assert messages_for(barclay.user) == ["Your request for Laptop was rejected: Use the spare one"]
 
 
 def test_a_role_change_is_announced_to_that_person(admin, employee):
@@ -152,8 +148,6 @@ def test_people_read_only_their_own_notifications(as_role, make_user):
     assert me.get("/api/notifications/?unread=true").json["count"] == 0
 
 
-
-
 def test_the_summary_adds_up_sales_and_stock(as_role):
     category = Category(name="Beverages")
     db.session.add(category)
@@ -186,8 +180,8 @@ def test_the_summary_adds_up_sales_and_stock(as_role):
     assert body["sales_total"] == "750.00"
     assert body["sales_count"] == 2
     assert body["average_sale"] == "375.00"
-    assert body["estimated_profit"] == "210.00"  # 3 × (250 − 180)
-    assert body["stock_value"] == "1260.00"  # 7 left × 180
+    assert body["estimated_profit"] == "210.00" 
+    assert body["stock_value"] == "1260.00" 
     assert len(body["by_day"]) == 7
     assert body["by_day"][-1]["total"] == "750.00"
     assert body["top_products"] == [
@@ -201,15 +195,13 @@ def test_report_days_are_checked(admin):
     assert admin.get("/api/reports/summary?days=400").status_code == 422
 
 
-
-
 def test_you_can_change_your_own_name(as_role):
     me = as_role("employee")
 
-    response = me.put("/api/auth/me", json={"full_name": "  Alex K.  "})
+    response = me.put("/api/auth/me", json={"full_name": "  Barclay K.  "})
 
-    assert response.json["full_name"] == "Alex K."
-    assert me.get("/api/auth/me").json["full_name"] == "Alex K."
+    assert response.json["full_name"] == "Barclay K."
+    assert me.get("/api/auth/me").json["full_name"] == "Barclay K."
 
 
 def test_changing_password_needs_the_current_one(as_role, client):
@@ -235,3 +227,24 @@ def test_changing_password_needs_the_current_one(as_role, client):
     email = me.user.email
     login = client.post("/api/auth/login", json={"email": email, "password": "Better1234"})
     assert login.status_code == 200
+
+
+def test_report_days_follow_the_shop_clock(as_role, make_user):
+    nairobi = ZoneInfo("Africa/Nairobi")
+    today = datetime.now(nairobi).date()
+    seller = make_user("sales")
+    db.session.add(
+        Sale(
+            attendant_id=seller.id,
+            payment_method="cash",
+            total=Decimal("100"),
+            created_at=datetime.combine(today, time(0, 30), tzinfo=nairobi),
+        )
+    )
+    db.session.commit()
+
+    body = as_role("admin").get("/api/reports/summary?days=1").json
+
+    assert body["date_to"] == today.isoformat()
+    assert body["sales_total"] == "100.00"
+    assert body["by_day"] == [{"day": today.isoformat(), "total": "100.00", "count": 1}]

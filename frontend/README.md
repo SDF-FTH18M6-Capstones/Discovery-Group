@@ -2,7 +2,7 @@
 
 ## You need
 
-- Node.js 
+- Node.js
 - The backend running (see `../backend/README.md`)
 
 ## Set up and run

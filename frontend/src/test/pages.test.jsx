@@ -133,7 +133,7 @@ describe("categories", () => {
 const pending = {
   id: 7,
   requester_id: 2,
-  requester_name: "Alex Kamau",
+  requester_name: "Barclay Koin",
   item: "Printer paper",
   quantity: 5,
   urgency: "normal",
@@ -190,7 +190,7 @@ describe("my requests", () => {
       id: 8,
       item: "Standing desk",
       status: "rejected",
-      reviewer_name: "Jane Otieno",
+      reviewer_name: "Carlos Muchemi",
       review_comment: "Not in this quarter's budget.",
     };
     const spy = mockApi(
@@ -203,12 +203,18 @@ describe("my requests", () => {
     const user = userEvent.setup();
     renderAt("/requests", { as: "employee" });
 
+    await user.click(await screen.findByRole("button", { name: "View request for Standing desk" }));
+    const decidedView = screen.getByRole("dialog");
     expect(
-      await screen.findByText("Jane Otieno: “Not in this quarter's budget.”"),
+      within(decidedView).getByText("Carlos Muchemi: “Not in this quarter's budget.”"),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Withdraw" })).toHaveLength(1);
+    expect(within(decidedView).queryByRole("button", { name: "Withdraw" })).toBeNull();
+    expect(within(decidedView).queryByRole("button", { name: "Edit" })).toBeNull();
+    await user.click(within(decidedView).getByRole("button", { name: "Close" }));
 
+    await user.click(screen.getByRole("button", { name: "View request for Printer paper" }));
     await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await user.click(screen.getByRole("button", { name: "Yes, withdraw" }));
 
     expect(await screen.findByText("Request for Printer paper withdrawn.")).toBeInTheDocument();
     expect(spy.mock.calls.some(([, o]) => o?.method === "DELETE")).toBe(true);
@@ -301,7 +307,7 @@ describe("assets", () => {
   it("need a holder when assigned, picked from the people list", async () => {
     const spy = mockApi(
       {
-        "GET /api/users/choices": [200, [{ id: 2, full_name: "Alex Kamau", role: "employee" }]],
+        "GET /api/users/choices": [200, [{ id: 2, full_name: "Barclay Koin", role: "employee" }]],
         "POST /api/assets/": [201, { id: 9 }],
       },
       "inventory",
@@ -333,7 +339,7 @@ describe("assets", () => {
 describe("users", () => {
   const people = [
     { id: 1, full_name: "Test admin", email: "admin@test.com", role: "admin" },
-    { id: 2, full_name: "Alex Kamau", email: "alex@test.com", role: "employee" },
+    { id: 2, full_name: "Barclay Koin", email: "barclay@test.com", role: "employee" },
   ];
 
   it("let an administrator change someone's role, but not their own", async () => {
@@ -348,10 +354,10 @@ describe("users", () => {
     renderAt("/users", { as: "admin" });
 
     expect(await screen.findByLabelText("Role for Test admin")).toBeDisabled();
-    await user.selectOptions(screen.getByLabelText("Role for Alex Kamau"), "sales");
-    await user.click(screen.getByRole("button", { name: "Save role for Alex Kamau" }));
+    await user.selectOptions(screen.getByLabelText("Role for Barclay Koin"), "sales");
+    await user.click(screen.getByRole("button", { name: "Save role for Barclay Koin" }));
 
-    expect(await screen.findByText("Alex Kamau is now Sales Attendant.")).toBeInTheDocument();
+    expect(await screen.findByText("Barclay Koin is now Sales Attendant.")).toBeInTheDocument();
     expect(bodyOf(spy, "PUT", "/api/users/2/role")).toEqual({ role: "sales" });
   });
 

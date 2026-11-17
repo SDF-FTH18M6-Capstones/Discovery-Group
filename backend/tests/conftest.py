@@ -105,4 +105,4 @@ def category(app):
 
 @pytest.fixture()
 def employee(make_user):
-    return make_user("employee", email="alex@test.com", full_name="Alex Kamau")
+    return make_user("employee", email="barclay@test.com", full_name="Barclay Koin")

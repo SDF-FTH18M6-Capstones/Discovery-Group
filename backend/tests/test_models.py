@@ -8,11 +8,11 @@ from app.models import Admin, ProcurementManager, Product, User
 
 
 def test_roles_load_as_their_own_class(app):
-    db.session.add(ProcurementManager(full_name="Jane", email="jane@test.com", password_hash="x"))
+    db.session.add(ProcurementManager(full_name="Carlos", email="carlos@test.com", password_hash="x"))
     db.session.commit()
     db.session.expire_all()
 
-    user = db.session.scalar(db.select(User).filter_by(email="jane@test.com"))
+    user = db.session.scalar(db.select(User).filter_by(email="carlos@test.com"))
 
     assert isinstance(user, ProcurementManager)
     assert user.can_approve_requests is True

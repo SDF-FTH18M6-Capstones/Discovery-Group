@@ -131,9 +131,6 @@ def test_filter_requests_by_status(employee_client, manager):
     assert manager.get("/api/requests/?status=approved").json["count"] == 1
 
 
-# ---------- assets ----------
-
-
 def test_assets_crud_and_holder_rule(admin, employee):
     created = admin.post("/api/assets/", json={"asset_code": "AST-0001", "name": "Laptop"})
     assert created.status_code == 201
@@ -175,3 +172,18 @@ def test_employees_see_only_the_assets_they_hold(admin, as_role):
     assert stranger.get("/api/assets/").json["count"] == 0
     assert stranger.get(f"/api/assets/{mine['id']}").status_code == 404
     assert admin.get("/api/assets/").json["count"] == 2
+
+
+def test_mine_shows_a_procurement_manager_only_their_own_requests(as_role):
+    procurement = as_role("procurement")
+    other = as_role("employee")
+    other.post("/api/requests/", json={"item": "Chairs", "quantity": 2, "reason": "Meeting room"})
+    procurement.post(
+        "/api/requests/", json={"item": "Toner", "quantity": 1, "reason": "Printer empty"}
+    )
+
+    everything = procurement.get("/api/requests/").json
+    mine = procurement.get("/api/requests/?mine=true").json
+
+    assert everything["count"] == 2
+    assert [r["item"] for r in mine["results"]] == ["Toner"]

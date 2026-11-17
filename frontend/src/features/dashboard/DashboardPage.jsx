@@ -14,7 +14,8 @@ import Icon from "../../components/Icon";
 import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../components/ui";
 import { money, shortDate, timeAgo } from "../../format";
 
-const todayUtc = () => new Date().toISOString().slice(0, 10);
+// Today on this computer's calendar (YYYY-MM-DD); the API reads days on the shop's clock too.
+const today = () => new Date().toLocaleDateString("en-CA");
 
 function cardsFor(hasRole) {
   const seesAllRequests = hasRole(...PROCUREMENT);
@@ -24,7 +25,7 @@ function cardsFor(hasRole) {
     cards.push({
       key: "sales",
       label: hasRole("admin") ? "Sales today" : "Your sales today",
-      path: `/api/sales/?day=${todayUtc()}&per_page=1`,
+      path: `/api/sales/?day=${today()}&per_page=1`,
       to: "/sales",
       icon: "receipt",
       tone: "brand",
@@ -242,7 +243,7 @@ function Shortcuts({ hasRole }) {
     hasRole(...SELLERS) && { to: "/sales/new", icon: "sale", label: "Ring up a sale" },
     hasRole(...STOCK_MANAGERS) && { to: "/stock", icon: "ledger", label: "Adjust stock" },
     hasRole(...PROCUREMENT) && { to: "/purchases", icon: "truck", label: "Place an order" },
-    { to: "/requests", icon: "inbox", label: "Ask for something" },
+    { to: "/requests?new=1", icon: "inbox", label: "Ask for something" },
     { to: "/repairs", icon: "wrench", label: "Report a fault" },
   ].filter(Boolean);
   return (
@@ -272,7 +273,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Each figure loads on its own, so one failing count does not blank the others.
     Promise.allSettled(paths.split("|").map((path) => api(path))).then((results) => {
       if (cancelled) return;
       setCounts(
@@ -304,7 +304,10 @@ export default function DashboardPage() {
               <Icon name="sale" size={16} /> New sale
             </Link>
           )}
-          <Link to="/requests" className={hasRole(...SELLERS) ? "btn-secondary" : "btn-primary"}>
+          <Link
+            to="/requests?new=1"
+            className={hasRole(...SELLERS) ? "btn-secondary" : "btn-primary"}
+          >
             New request
           </Link>
           <Link to="/products" className="btn-secondary">

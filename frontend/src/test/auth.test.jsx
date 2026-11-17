@@ -138,19 +138,19 @@ describe("sign up", () => {
     const user = userEvent.setup();
     renderAt("/register");
 
-    await user.type(screen.getByLabelText("Full name"), "Alex Kamau");
-    await user.type(screen.getByLabelText("Email"), "alex@test.com");
+    await user.type(screen.getByLabelText("Full name"), "Barclay Koin");
+    await user.type(screen.getByLabelText("Email"), "barclay@test.com");
     await user.type(screen.getByLabelText("Password"), "Secret123!");
     await user.type(screen.getByLabelText("Confirm password"), "Secret123!");
     await user.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Account created. You can now sign in.");
-    expect(screen.getByLabelText("Email")).toHaveValue("alex@test.com");
+    expect(screen.getByLabelText("Email")).toHaveValue("barclay@test.com");
     const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/register"));
     expect(JSON.parse(call[1].body)).toEqual({
-      full_name: "Alex Kamau",
-      email: "alex@test.com",
+      full_name: "Barclay Koin",
+      email: "barclay@test.com",
       password: "Secret123!",
     });
   });
@@ -165,8 +165,8 @@ describe("sign up", () => {
     const user = userEvent.setup();
     renderAt("/register");
 
-    await user.type(screen.getByLabelText("Full name"), "Alex Kamau");
-    await user.type(screen.getByLabelText("Email"), "alex@test.com");
+    await user.type(screen.getByLabelText("Full name"), "Barclay Koin");
+    await user.type(screen.getByLabelText("Email"), "barclay@test.com");
     await user.type(screen.getByLabelText("Password"), "Secret123!");
     await user.type(screen.getByLabelText("Confirm password"), "Secret123!");
     await user.click(screen.getByRole("button", { name: "Create account" }));

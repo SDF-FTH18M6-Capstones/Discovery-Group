@@ -1,5 +1,6 @@
 import re
 
+from flask import current_app
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -10,7 +11,7 @@ from flask_smorest import Blueprint, abort
 from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 
 from app.auth import roles_required
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models import Employee, User
 from app.models.user import check_secret, hash_secret
 from app.schemas import Schema
@@ -22,7 +23,7 @@ BAD_LOGIN = "Email or password is incorrect."
 
 class RegisterSchema(Schema):
     class Meta:
-        unknown = EXCLUDE  # a "role" sent by the browser is ignored, never trusted
+        unknown = EXCLUDE  
 
     full_name = fields.String(required=True, validate=validate.Length(min=2, max=120))
     email = fields.Email(required=True)
@@ -75,13 +76,10 @@ class AccessSchema(Schema):
     access_token = fields.String()
 
 
-
 _dummy = {}
 
 
 def dummy_hash():
-    """A real hash to check against when the email is unknown, so the answer takes as long
-    as for a real account and nobody can tell which emails exist."""
     if "hash" not in _dummy:
         _dummy["hash"] = hash_secret("not-a-real-password-1")
     return _dummy["hash"]
@@ -92,14 +90,19 @@ def find_user(email):
 
 
 
+TOO_MANY = "Too many attempts. Wait a minute and try again."
+
+
+def rate_limit():
+    return current_app.config["LOGIN_RATE_LIMIT"]
 
 
 @blp.route("/register", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(RegisterSchema)
 @blp.response(201, MessageSchema)
 @blp.doc(security=[])
 def register(data):
-    """Create an account. Every new account is an Employee, whatever the request says."""
     if find_user(data["email"]):
         abort(409, message="An account with this email already exists.")
     user = Employee(full_name=data["full_name"], email=data["email"].lower())
@@ -110,14 +113,14 @@ def register(data):
 
 
 @blp.route("/login", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(LoginSchema)
 @blp.response(200, SessionSchema)
 @blp.doc(security=[])
 def login(data):
-    """Check email and password and return the tokens."""
     user = find_user(data["email"])
     if user is None:
-        check_secret(dummy_hash(), data["password"])  # same delay as a real check
+        check_secret(dummy_hash(), data["password"])
         abort(401, message=BAD_LOGIN)
     if not user.check_password(data["password"]):
         abort(401, message=BAD_LOGIN)
@@ -132,7 +135,6 @@ def login(data):
 @blp.response(200, AccessSchema)
 @jwt_required(refresh=True)
 def refresh():
-    """Swap the refresh token for a new access token."""
     token = create_access_token(
         identity=current_user, additional_claims={"role": current_user.role}
     )
@@ -143,7 +145,6 @@ def refresh():
 @blp.response(200, AccountSchema)
 @roles_required()
 def me():
-    """The signed-in user."""
     return current_user
 
 
@@ -152,7 +153,6 @@ def me():
 @blp.response(200, AccountSchema)
 @roles_required()
 def update_me(data):
-    """Change your own name. Email and role are changed by an administrator only."""
     current_user.full_name = data["full_name"]
     db.session.commit()
     return current_user

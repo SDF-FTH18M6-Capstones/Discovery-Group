@@ -98,6 +98,29 @@ describe("products page", () => {
   });
 });
 
+describe("deleting", () => {
+  it("a product that has sales keeps the server's message on screen", async () => {
+    mockApi(
+      {
+        "GET /api/products/": [200, page([water])],
+        "DELETE /api/products/1": [
+          409,
+          { error: { code: 409, message: "This product has sales and cannot be deleted." } },
+        ],
+      },
+      "admin",
+    );
+    const user = userEvent.setup();
+    renderAt("/products", { as: "admin" });
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This product has sales and cannot be deleted.",
+    );
+  });
+});
+
 describe("suppliers page", () => {
   it("validates email and saves a supplier", async () => {
     const fetchSpy = mockApi({ "POST /api/suppliers/": [201, { id: 1, name: "Metro" }] }, "admin");

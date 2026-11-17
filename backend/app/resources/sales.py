@@ -1,4 +1,3 @@
-from datetime import UTC, datetime, time
 from decimal import Decimal
 
 from flask_jwt_extended import current_user
@@ -13,6 +12,7 @@ from app.models import Product, Sale, SaleItem, StockMovement
 from app.models.sales import PAYMENT_METHODS
 from app.notify import warn_if_low
 from app.schemas import Schema
+from app.shoptime import day_bounds
 
 blp = Blueprint("sales", __name__, url_prefix="/api/sales", description="Sales (point of sale)")
 
@@ -59,7 +59,6 @@ class SaleOut(Schema):
     def get_receipt(self, sale):
         return f"S-{sale.id:04d}"
 
-
 class SaleQuery(PageQuery):
     payment_method = fields.String(load_default=None, validate=validate.OneOf(PAYMENT_METHODS))
     day = fields.Date(load_default=None)
@@ -83,9 +82,8 @@ def list_sales(args):
     if args["payment_method"]:
         query = query.where(Sale.payment_method == args["payment_method"])
     if args["day"]:
-        start = datetime.combine(args["day"], time.min, tzinfo=UTC)
-        end = datetime.combine(args["day"], time.max, tzinfo=UTC)
-        query = query.where(Sale.created_at.between(start, end))
+        start, end = day_bounds(args["day"])  
+        query = query.where(Sale.created_at >= start, Sale.created_at < end)
     return paginate(query, args["page"], args["per_page"])
 
 
@@ -95,10 +93,8 @@ def list_sales(args):
 @roles_required(*SELLERS)
 def create_sale(data):
     wanted = {}
-    for line in data["items"]:  # the same product twice becomes one line
+    for line in data["items"]:  
         wanted[line["product_id"]] = wanted.get(line["product_id"], 0) + line["quantity"]
-
-    # Lock the rows so two tills cannot sell the last unit at the same time.
     products = {
         p.id: p
         for p in db.session.scalars(

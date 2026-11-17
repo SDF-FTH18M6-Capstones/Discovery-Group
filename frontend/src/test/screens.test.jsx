@@ -197,7 +197,7 @@ describe("sales history", () => {
               receipt_number: "S-0003",
               payment_method: "cash",
               total: "120.00",
-              attendant_name: "Pauline Wanjiku",
+              attendant_name: "Vincent Mutuma",
               created_at: "2026-11-10T09:00:00Z",
               items: [
                 {
@@ -220,7 +220,7 @@ describe("sales history", () => {
     await user.click(await screen.findByRole("button", { name: "S-0003" }));
 
     const receipt = screen.getByRole("article", { name: "Receipt S-0003" });
-    expect(within(receipt).getByText(/Served by Pauline Wanjiku/)).toBeInTheDocument();
+    expect(within(receipt).getByText(/Served by Vincent Mutuma/)).toBeInTheDocument();
     expect(within(receipt).getByRole("button", { name: "Print" })).toBeInTheDocument();
   });
 });
@@ -229,7 +229,7 @@ const order = {
   id: 4,
   reference: "PO-0004",
   supplier_name: "Metro Wholesale",
-  creator_name: "Jane Otieno",
+  creator_name: "Carlos Muchemi",
   status: "ordered",
   total: "400.00",
   created_at: "2026-11-09T09:00:00Z",
@@ -305,7 +305,7 @@ describe("stock ledger", () => {
               change: -1,
               type: "sale",
               reason: "Point of sale",
-              user_name: "Pauline Wanjiku",
+              user_name: "Vincent Mutuma",
               created_at: "2026-11-10T09:00:00Z",
             },
           ]),
@@ -354,7 +354,7 @@ describe("product detail", () => {
               change: 10,
               type: "purchase",
               reason: "PO-0001 received",
-              user_name: "Brian Mwangi",
+              user_name: "Keith Gachuche",
               created_at: "2026-11-10T09:00:00Z",
             },
           ]),
@@ -384,7 +384,7 @@ const repair = {
   reference: "REP-002",
   asset_code: "AST-0004",
   asset_name: "Laptop",
-  reporter_name: "Pauline Wanjiku",
+  reporter_name: "Vincent Mutuma",
   description: "Screen flickers",
   status: "submitted",
   created_at: "2026-11-10T09:00:00Z",
@@ -543,7 +543,7 @@ describe("settings", () => {
       {
         "PUT /api/auth/me": [
           200,
-          { id: 1, full_name: "Ada Wekesa", email: "employee@test.com", role: "employee" },
+          { id: 1, full_name: "David Nyongesa", email: "employee@test.com", role: "employee" },
         ],
       },
       "employee",
@@ -553,12 +553,12 @@ describe("settings", () => {
 
     const name = await screen.findByLabelText("Full name");
     await user.clear(name);
-    await user.type(name, "Ada Wekesa");
+    await user.type(name, "David Nyongesa");
     await user.click(screen.getByRole("button", { name: "Save profile" }));
 
     expect(await screen.findByText("Profile saved.")).toBeInTheDocument();
-    expect(bodyOf(spy, "PUT", "/api/auth/me")).toEqual({ full_name: "Ada Wekesa" });
-    expect(screen.getAllByText("Ada Wekesa").length).toBeGreaterThan(0);
+    expect(bodyOf(spy, "PUT", "/api/auth/me")).toEqual({ full_name: "David Nyongesa" });
+    expect(screen.getAllByText("David Nyongesa").length).toBeGreaterThan(0);
   });
 
   it("shows the server's answer under the current password", async () => {

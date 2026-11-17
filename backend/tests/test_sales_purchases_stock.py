@@ -1,11 +1,11 @@
-"""The business rules behind sales, purchases and the stock ledger."""
-
+from datetime import datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from app.extensions import db
-from app.models import Category, Notification, Product, StockMovement, Supplier
+from app.models import Category, Notification, Product, Sale, StockMovement, Supplier
 
 
 @pytest.fixture()
@@ -46,9 +46,6 @@ def stock(product_id):
 def sell(client, lines, payment="mpesa"):
     items = [{"product_id": pid, "quantity": qty} for pid, qty in lines]
     return client.post("/api/sales/", json={"payment_method": payment, "items": items})
-
-
-# ---------- sales ----------
 
 
 def test_a_sale_takes_prices_from_the_server_and_reduces_stock(as_role, shop):
@@ -130,16 +127,13 @@ def test_selling_to_the_reorder_level_warns_inventory(as_role, make_user, shop):
 
 
 def test_attendants_see_only_their_own_sales_and_admin_sees_all(as_role, shop):
-    pauline, other, admin = as_role("sales"), as_role("sales"), as_role("admin")
-    mine = sell(pauline, [(shop["water"], 1)]).json["id"]
+    vincent, other, admin = as_role("sales"), as_role("sales"), as_role("admin")
+    mine = sell(vincent, [(shop["water"], 1)]).json["id"]
     theirs = sell(other, [(shop["water"], 1)]).json["id"]
 
-    assert [s["id"] for s in pauline.get("/api/sales/").json["results"]] == [mine]
-    assert pauline.get(f"/api/sales/{theirs}").status_code == 404
+    assert [s["id"] for s in vincent.get("/api/sales/").json["results"]] == [mine]
+    assert vincent.get(f"/api/sales/{theirs}").status_code == 404
     assert admin.get("/api/sales/").json["count"] == 2
-
-
-# ---------- purchases ----------
 
 
 def order(client, shop, quantity=12):
@@ -220,9 +214,6 @@ def test_purchases_filter_by_status(as_role, shop):
     assert buyer.get("/api/purchases/?status=cancelled").json["count"] == 1
 
 
-# ---------- stock ledger ----------
-
-
 def test_adjustments_change_stock_with_a_reason(as_role, shop):
     store = as_role("inventory")
 
@@ -278,3 +269,26 @@ def test_the_ledger_lists_every_change_newest_first_and_filters(as_role, shop):
     assert [(m["product_name"], m["change"]) for m in everything] == [("Tea", 4), ("Water", -1)]
     assert [m["type"] for m in water_only] == ["sale"]
     assert [m["product_name"] for m in sales_only] == ["Water"]
+
+
+def test_day_filter_uses_the_shop_clock(as_role):
+    nairobi = ZoneInfo("Africa/Nairobi")
+    today = datetime.now(nairobi).date()
+    admin = as_role("admin")
+    for when, total in (
+        (datetime.combine(today, time(0, 30), tzinfo=nairobi), "100"),
+        (datetime.combine(today - timedelta(days=1), time(23, 30), tzinfo=nairobi), "50"),
+    ):
+        db.session.add(
+            Sale(
+                attendant_id=admin.user.id,
+                payment_method="cash",
+                total=Decimal(total),
+                created_at=when,
+            )
+        )
+    db.session.commit()
+
+    response = admin.get(f"/api/sales/?day={today.isoformat()}")
+
+    assert [sale["total"] for sale in response.json["results"]] == ["100.00"]

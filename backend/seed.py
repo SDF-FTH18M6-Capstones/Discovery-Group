@@ -152,7 +152,8 @@ def seed():
 
 def add_history(users):
     now = datetime.now(UTC)
-    ago = lambda days, hour=10: (now - timedelta(days=days)).replace(hour=hour, minute=15)
+    def ago(days, hour=10):
+        return (now - timedelta(days=days)).replace(hour=hour, minute=15)
     products = {p.sku: p for p in db.session.scalars(db.select(Product))}
     suppliers = {s.name: s for s in db.session.scalars(db.select(Supplier))}
     keith = users["inventory@stockpilot.test"]
