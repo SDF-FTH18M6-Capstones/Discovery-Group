@@ -1,18 +1,15 @@
+const LOGO_SRC = "/stockpilot1.png"; // file lives in public/stockpilot1.png
+
 export function LogoMark({ size = 36 }) {
   return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 64 64" className="shrink-0">
-      <rect width="64" height="64" rx="16" fill="#124a40" />
-      <rect x="1" y="1" width="62" height="62" rx="15" fill="none" stroke="rgb(255 255 255 / .1)" />
-      <path
-        d="M15 39 32 19l17 20"
-        fill="none"
-        stroke="#f2b655"
-        strokeWidth="6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M21 47h22" stroke="#3ccb95" strokeWidth="6" strokeLinecap="round" />
-    </svg>
+    <img
+      src={LOGO_SRC}
+      alt=""
+      aria-hidden="true"
+      width={size}
+      height={size}
+      className="shrink-0 rounded-2xl bg-white object-contain p-0.5 shadow-sm ring-1 ring-white/20"
+    />
   );
 }
 
