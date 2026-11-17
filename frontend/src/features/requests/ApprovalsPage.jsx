@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
+import Icon from "../../components/Icon";
 import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import { Avatar } from "../../components/ui";
 import { requests } from "../../store";
 import { StatusTabs, shortDate } from "./RequestsPage";
 
@@ -40,18 +42,27 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
   };
 
   return (
-    <aside aria-label={`Request ${request.id}`} className="card flex flex-col gap-3 p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">
-          {request.item} × {request.quantity}
-        </h2>
+    <aside
+      aria-label={`Request ${request.id}`}
+      className="panel flex flex-col gap-4 p-5 lg:sticky lg:top-24"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-1">
+          <span className="code text-muted">REQ-{String(request.id).padStart(4, "0")}</span>
+          <h2 className="text-xl font-bold">
+            {request.item} × {request.quantity}
+          </h2>
+        </div>
         <StatusBadge value={request.urgency} />
       </div>
-      <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-1 text-sm">
-        <dt className="text-muted">Requested by</dt>
-        <dd>{request.requester_name}</dd>
-        <dt className="text-muted">Submitted</dt>
-        <dd>{shortDate(request.created_at)}</dd>
+      <div className="flex items-center gap-3 rounded-xl bg-surface-2 p-3">
+        <Avatar name={request.requester_name} size={36} />
+        <span className="text-sm">
+          <span className="block font-medium">{request.requester_name}</span>
+          <span className="text-muted">Asked on {shortDate(request.created_at)}</span>
+        </span>
+      </div>
+      <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2 text-sm">
         <dt className="text-muted">Reason</dt>
         <dd>{request.reason}</dd>
         {request.status !== "pending" && (
@@ -66,7 +77,10 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
 
       {canDecide && (
         <>
-          <label htmlFor="decision-comment" className="text-sm font-semibold">
+          <label
+            htmlFor="decision-comment"
+            className="border-t border-line pt-4 text-sm font-medium"
+          >
             Comment
           </label>
           <textarea
@@ -133,19 +147,19 @@ export default function ApprovalsPage() {
   }, [dispatch, status, page]);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <div>
         <h1 className="page-title">Approvals</h1>
         <p className="text-muted">Every staff request. Open one to approve or reject it.</p>
       </div>
 
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
       {list.error && (
-        <p role="alert" className="text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {list.error}
         </p>
       )}
@@ -159,17 +173,17 @@ export default function ApprovalsPage() {
         }}
       />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="card relative min-w-0 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="panel relative min-w-0 overflow-x-auto">
+          <table className="data-table w-full text-left text-sm">
             <thead className="table-head">
               <tr>
-                <th className="p-3">Item</th>
-                <th className="p-3 text-right">Qty</th>
-                <th className="p-3">Requested by</th>
-                <th className="p-3">Urgency</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">
+                <th className="px-4 py-3">Item</th>
+                <th className="px-4 py-3 text-right">Qty</th>
+                <th className="px-4 py-3">Requested by</th>
+                <th className="px-4 py-3">Urgency</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -178,7 +192,7 @@ export default function ApprovalsPage() {
               {list.status === "loading" && <SkeletonRows cols={6} />}
               {list.status === "ready" && list.items.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="p-3 text-muted">
+                  <td colSpan="6" className="px-4 py-3 text-muted">
                     Nothing to show.
                   </td>
                 </tr>
@@ -188,20 +202,25 @@ export default function ApprovalsPage() {
                   key={request.id}
                   className={`border-t border-line ${selected?.id === request.id ? "bg-mint" : ""}`}
                 >
-                  <td className="p-3 font-semibold">{request.item}</td>
-                  <td className="p-3 text-right">{request.quantity}</td>
-                  <td className="p-3">{request.requester_name}</td>
-                  <td className="p-3">
+                  <td className="px-4 py-3 font-semibold">{request.item}</td>
+                  <td className="px-4 py-3 text-right">{request.quantity}</td>
+                  <td className="px-4 py-3">
+                    <span className="flex items-center gap-2">
+                      <Avatar name={request.requester_name} size={26} />
+                      {request.requester_name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
                     <StatusBadge value={request.urgency} />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <StatusBadge value={request.status} />
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <button
                       type="button"
                       onClick={() => setSelected(request)}
-                      className="text-brand-dark"
+                      className="btn-secondary min-h-0 px-3 py-1.5 text-xs"
                       aria-label={`Open request for ${request.item}`}
                     >
                       Open
@@ -214,6 +233,12 @@ export default function ApprovalsPage() {
           <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
         </div>
 
+        {!selected && (
+          <div className="rounded-2xl border border-dashed border-line-strong p-8 text-center text-sm text-muted">
+            <Icon name="check" size={28} className="mx-auto mb-3 text-line-strong" />
+            Open a request to read the reason and decide.
+          </div>
+        )}
         {selected && (
           <DecisionPanel
             key={selected.id}

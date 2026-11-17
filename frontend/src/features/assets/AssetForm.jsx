@@ -40,6 +40,7 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
     setValues((current) => ({
       ...current,
       [name]: value,
+      // An available asset has nobody holding it.
       ...(name === "status" && value === "available" ? { assigned_to: "" } : {}),
     }));
     setErrors((current) => ({ ...current, [name]: undefined }));
@@ -74,7 +75,7 @@ export default function AssetForm({ asset, onSaved, onCancel }) {
       onSubmit={handleSubmit}
       noValidate
       aria-label={asset ? "Edit asset" : "Add asset"}
-      className="card grid gap-4 p-5 sm:grid-cols-4"
+      className="card grid gap-5 p-6 sm:grid-cols-4"
     >
       {formError && (
         <p role="alert" className="text-sm text-danger sm:col-span-4">

@@ -4,10 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { PROCUREMENT, STOCK_MANAGERS } from "../../auth/roles";
+import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import { EmptyState } from "../../components/ui";
 import { money, shortDate } from "../../format";
 import { purchases } from "../../store";
 import PurchaseForm from "./PurchaseForm";
@@ -59,13 +61,14 @@ export default function PurchasesPage() {
   };
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <PageHeader
         title="Purchases"
         subtitle="Orders to suppliers. Receiving an order adds its goods to stock."
       >
         {canOrder && !creating && (
           <button type="button" onClick={() => setCreating(true)} className="btn-primary">
+            <Icon name="plus" size={16} />
             New purchase order
           </button>
         )}
@@ -83,61 +86,94 @@ export default function PurchasesPage() {
       )}
 
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
       {(error || list.error) && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {error || list.error}
         </p>
       )}
 
-      <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            aria-pressed={status === tab.value}
-            onClick={() => {
-              setStatus(tab.value);
-              setPage(1);
-            }}
-            className="chip"
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="group" aria-label="Filter by status" className="seg">
+          {TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              aria-pressed={status === tab.value}
+              onClick={() => {
+                setStatus(tab.value);
+                setPage(1);
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {list.status === "ready" && (
+          <p className="text-sm text-muted">
+            {list.count} {list.count === 1 ? "order" : "orders"}
+          </p>
+        )}
       </div>
 
       {list.status === "loading" && <SkeletonCards count={3} />}
       {list.status === "ready" && list.items.length === 0 && (
-        <p className="card p-4 text-muted">No purchase orders here.</p>
+        <div className="panel">
+          <EmptyState icon="truck" title="No purchase orders here">
+            {canOrder
+              ? "Place an order with a supplier to restock."
+              : "Orders placed by procurement appear here."}
+          </EmptyState>
+        </div>
       )}
-      <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {list.status === "ready" &&
           list.items.map((purchase) => (
-            <li key={purchase.id} className="card flex flex-col gap-3 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-display text-lg font-bold">{purchase.reference}</span>
+            <li key={purchase.id} className="panel flex flex-col">
+              <div className="flex flex-wrap items-start justify-between gap-3 p-5 pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-11 place-items-center rounded-xl bg-surface-2 text-brand-dark">
+                    <Icon name="truck" />
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="code text-sm font-semibold">{purchase.reference}</span>
+                    <span className="font-display text-lg font-semibold">
+                      {purchase.supplier_name}
+                    </span>
+                  </span>
+                </div>
                 <StatusBadge value={purchase.status} />
               </div>
-              <span className="text-sm text-muted">
-                {purchase.supplier_name} · by {purchase.creator_name} ·{" "}
-                {shortDate(purchase.created_at)}
-              </span>
-              <ul className="flex flex-col gap-1 rounded-lg bg-surface-2 p-3 text-sm">
-                {purchase.items.map((line) => (
-                  <li key={line.product_id} className="flex justify-between gap-3">
-                    <span>
-                      {line.quantity} × {line.product_name}
-                    </span>
-                    <span className="text-muted">{money(line.unit_cost)} each</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">{money(purchase.total)}</span>
+              <table className="mx-5 text-sm">
+                <thead className="sr-only">
+                  <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Unit cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchase.items.map((line) => (
+                    <tr key={line.product_id} className="border-t border-dashed border-line-strong">
+                      <td className="py-2">{line.product_name}</td>
+                      <td className="py-2 text-right text-muted">{line.quantity} ×</td>
+                      <td className="w-28 py-2 text-right">{money(line.unit_cost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="px-5 pt-3 text-xs text-muted">
+                Ordered by {purchase.creator_name} on {shortDate(purchase.created_at)}
+              </p>
+              <span className="h-4" aria-hidden="true" />
+              <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line bg-surface-2 px-5 py-3">
+                <span className="flex items-baseline gap-2">
+                  <span className="text-sm text-muted">Total</span>
+                  <span className="figure text-xl">{money(purchase.total)}</span>
+                </span>
                 {purchase.status === "ordered" && (
                   <div className="flex gap-2">
                     {canOrder && (
@@ -168,7 +204,13 @@ export default function PurchasesPage() {
             </li>
           ))}
       </ul>
-      <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
+      <Pagination
+        standalone
+        page={list.page}
+        pages={list.pages}
+        count={list.count}
+        onChange={setPage}
+      />
     </section>
   );
 }

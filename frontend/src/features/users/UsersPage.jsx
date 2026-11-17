@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { ROLE_NAMES, ROLES } from "../../auth/roles";
 import Pagination from "../../components/Pagination";
+import { Avatar } from "../../components/ui";
 import { users } from "../../store";
 
 function RoleCell({ person, isYou, onChanged }) {
@@ -71,7 +72,7 @@ export default function UsersPage() {
   }, [dispatch, search, role, page]);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <div>
         <h1 className="page-title">Users and roles</h1>
         <p className="text-muted">
@@ -80,7 +81,7 @@ export default function UsersPage() {
       </div>
 
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
@@ -126,24 +127,25 @@ export default function UsersPage() {
         </select>
       </div>
 
-      <div className="card relative overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="panel relative overflow-x-auto">
+        <table className="data-table w-full text-left text-sm">
           <thead className="table-head">
             <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Role</th>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Role</th>
             </tr>
           </thead>
           <tbody>
             {list.items.map((person) => (
               <tr key={`${person.id}-${person.role}`} className="border-t border-line">
-                <td className="p-3 font-semibold">
+                <td className="px-4 py-3 font-semibold">
+                  <Avatar name={person.full_name} size={30} className="mr-3 align-middle" />
                   {person.full_name}
                   {person.id === user.id && <span className="font-normal text-muted"> (you)</span>}
                 </td>
-                <td className="p-3">{person.email}</td>
-                <td className="p-3">
+                <td className="px-4 py-3">{person.email}</td>
+                <td className="px-4 py-3">
                   <RoleCell
                     person={person}
                     isYou={person.id === user.id}

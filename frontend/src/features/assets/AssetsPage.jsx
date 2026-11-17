@@ -32,9 +32,9 @@ export default function AssetsPage() {
   }, [dispatch, search, status, page]);
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-col gap-1.5">
           <h1 className="page-title">{manager ? "Assets" : "My assets"}</h1>
           <p className="text-muted">
             {manager
@@ -102,16 +102,16 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <div className="card relative overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="panel relative overflow-x-auto">
+        <table className="data-table w-full text-left text-sm">
           <thead className="table-head">
             <tr>
-              <th className="p-3">Code</th>
-              <th className="p-3">Asset</th>
-              <th className="p-3">Status</th>
-              {manager && <th className="p-3">Held by</th>}
+              <th className="px-4 py-3">Code</th>
+              <th className="px-4 py-3">Asset</th>
+              <th className="px-4 py-3">Status</th>
+              {manager && <th className="px-4 py-3">Held by</th>}
               {manager && (
-                <th className="p-3">
+                <th className="px-4 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               )}
@@ -120,21 +120,25 @@ export default function AssetsPage() {
           <tbody>
             {list.status === "ready" && list.items.length === 0 && (
               <tr>
-                <td colSpan={manager ? 5 : 3} className="p-3 text-muted">
+                <td colSpan={manager ? 5 : 3} className="px-4 py-3 text-muted">
                   {manager ? "No assets found." : "No assets are assigned to you."}
                 </td>
               </tr>
             )}
             {list.items.map((asset) => (
               <tr key={asset.id} className="border-t border-line">
-                <td className="p-3 font-mono text-xs">{asset.asset_code}</td>
-                <td className="p-3 font-semibold">{asset.name}</td>
-                <td className="p-3">
+                <td className="px-4 py-3">
+                  <span className="code rounded-md bg-surface-2 px-1.5 py-0.5">
+                    {asset.asset_code}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-semibold">{asset.name}</td>
+                <td className="px-4 py-3">
                   <StatusBadge value={asset.status} />
                 </td>
-                {manager && <td className="p-3">{asset.holder_name || "—"}</td>}
+                {manager && <td className="px-4 py-3">{asset.holder_name || "—"}</td>}
                 {manager && (
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     <div className="flex gap-3">
                       <button
                         type="button"

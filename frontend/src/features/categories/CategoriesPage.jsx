@@ -14,7 +14,7 @@ export default function CategoriesPage() {
   const canEdit = hasRole(...STOCK_MANAGERS);
   const list = useSelector((state) => state.categories);
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); 
+  const [editing, setEditing] = useState(null); // null = closed, {} = new, category = rename
   const [name, setName] = useState("");
   const [fieldError, setFieldError] = useState("");
 
@@ -47,15 +47,17 @@ export default function CategoriesPage() {
     }
   };
 
+  // On failure (for example a category still used by products) the server's message
+  // stays on screen; reload only after a successful delete.
   const handleDelete = async (category) => {
     const result = await dispatch(categories.deleteItem(category.id));
     if (categories.deleteItem.fulfilled.match(result)) reload();
   };
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-col gap-1.5">
           <h1 className="page-title">Categories</h1>
           <p className="text-muted">Groups of products, such as Beverages or Packaging.</p>
         </div>
@@ -71,7 +73,7 @@ export default function CategoriesPage() {
           onSubmit={handleSave}
           noValidate
           aria-label={editing.id ? "Rename category" : "Add category"}
-          className="card flex flex-wrap items-end gap-3 p-5"
+          className="card flex flex-wrap items-end gap-4 p-6"
         >
           <div className="min-w-0 flex-1">
             <Field
@@ -100,12 +102,12 @@ export default function CategoriesPage() {
         </p>
       )}
 
-      <div className="card relative overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="panel relative overflow-x-auto">
+        <table className="data-table w-full text-left text-sm">
           <thead className="table-head">
             <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -114,15 +116,15 @@ export default function CategoriesPage() {
             {list.status === "loading" && <SkeletonRows cols={2} />}
             {list.status === "ready" && list.items.length === 0 && (
               <tr>
-                <td colSpan="2" className="p-3 text-muted">
+                <td colSpan="2" className="px-4 py-3 text-muted">
                   No categories yet.
                 </td>
               </tr>
             )}
             {list.items.map((category) => (
               <tr key={category.id} className="border-t border-line">
-                <td className="p-3 font-semibold">{category.name}</td>
-                <td className="p-3">
+                <td className="px-4 py-3 font-semibold">{category.name}</td>
+                <td className="px-4 py-3">
                   {canEdit && (
                     <div className="flex gap-3">
                       <button

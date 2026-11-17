@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
+import Icon from "../../components/Icon";
+import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
 import { suppliers } from "../../store";
 import SupplierForm from "./SupplierForm";
@@ -18,13 +20,13 @@ export default function SuppliersPage() {
   const reload = () => dispatch(suppliers.fetchList({ page, per_page: 10 }));
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="page-title">Suppliers</h1>
+    <section className="flex flex-col gap-6">
+      <PageHeader title="Suppliers" subtitle="Who the shop buys from, and how to reach them.">
         <button type="button" onClick={() => setEditing({})} className="btn-primary">
+          <Icon name="plus" size={16} />
           Add supplier
         </button>
-      </div>
+      </PageHeader>
 
       {editing && (
         <SupplierForm
@@ -44,14 +46,14 @@ export default function SuppliersPage() {
         </p>
       )}
 
-      <div className="card relative overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      <div className="panel relative overflow-x-auto">
+        <table className="data-table w-full text-left text-sm">
           <thead className="table-head">
             <tr>
-              <th className="p-3">Name</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Phone</th>
-              <th className="p-3">
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Phone</th>
+              <th className="px-4 py-3">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -59,10 +61,15 @@ export default function SuppliersPage() {
           <tbody>
             {list.items.map((supplier) => (
               <tr key={supplier.id} className="border-t border-line">
-                <td className="p-3 font-semibold">{supplier.name}</td>
-                <td className="p-3">{supplier.email || "—"}</td>
-                <td className="p-3">{supplier.phone || "—"}</td>
-                <td className="flex gap-2 p-3">
+                <td className="px-4 py-3 font-semibold">
+                  <span className="mr-3 inline-grid size-8 place-items-center rounded-lg bg-surface-2 align-middle text-brand-dark">
+                    <Icon name="building" size={16} />
+                  </span>
+                  {supplier.name}
+                </td>
+                <td className="px-4 py-3">{supplier.email || "—"}</td>
+                <td className="px-4 py-3">{supplier.phone || "—"}</td>
+                <td className="flex justify-end gap-2 px-4 py-3">
                   <button
                     type="button"
                     onClick={() => setEditing(supplier)}

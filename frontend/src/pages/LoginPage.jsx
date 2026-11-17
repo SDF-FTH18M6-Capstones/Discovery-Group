@@ -8,6 +8,7 @@ export default function LoginPage() {
   const { signIn, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // Coming from "Create account", the email is filled in and a message says the account is ready.
   const [values, setValues] = useState({ email: location.state?.email || "", password: "" });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState(
@@ -44,15 +45,18 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="page-title">Sign in</h1>
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="page-title">Sign in</h1>
+        <p className="text-sm text-muted">Use the email and password you signed up with.</p>
+      </div>
       {message && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {message}
         </p>
       )}
       {formError && (
-        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {formError}
         </p>
       )}
@@ -75,12 +79,12 @@ export default function LoginPage() {
           onChange={handleChange}
           error={errors.password}
         />
-        <button type="submit" disabled={busy} className="btn-primary">
+        <button type="submit" disabled={busy} className="btn-primary mt-2 min-h-11">
           {busy ? "Signing in…" : "Sign in"}
         </button>
-        <p className="text-sm">
+        <p className="border-t border-line pt-4 text-center text-sm text-muted">
           New here?{" "}
-          <Link to="/register" className="text-brand-dark underline">
+          <Link to="/register" className="link">
             Create an account
           </Link>
         </p>

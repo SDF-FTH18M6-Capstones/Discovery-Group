@@ -4,10 +4,12 @@ import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
 import Field from "../../components/Field";
+import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import { EmptyState, StatStrip } from "../../components/ui";
 import { dateTime } from "../../format";
 import { movements } from "../../store";
 
@@ -54,7 +56,7 @@ function AdjustmentForm({ products, onSaved, onCancel }) {
       onSubmit={submit}
       noValidate
       aria-label="Adjust stock"
-      className="card flex flex-col gap-4 p-5"
+      className="card flex flex-col gap-5 p-6"
     >
       <h2 className="text-lg font-bold">Adjust stock</h2>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -133,8 +135,19 @@ export default function StockPage() {
       .then((data) => setProducts(data.results))
       .catch(() => {});
 
+  const [totals, setTotals] = useState({});
+  const loadTotals = () =>
+    Promise.allSettled(
+      ["sale", "purchase", "adjustment"].map((kind) =>
+        api(`/api/stock/movements?type=${kind}&per_page=1`),
+      ),
+    ).then((results) =>
+      setTotals(Object.fromEntries(results.map((r, i) => [i, r.value?.count ?? "—"]))),
+    );
+
   useEffect(() => {
     loadProducts();
+    loadTotals();
   }, []);
 
   useEffect(() => {
@@ -142,14 +155,23 @@ export default function StockPage() {
   }, [dispatch, type, productId, page]);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <PageHeader title="Stock ledger" subtitle="Every change to stock, with who made it and why.">
         {!adjusting && (
           <button type="button" onClick={() => setAdjusting(true)} className="btn-primary">
+            <Icon name="ledger" size={16} />
             Adjust stock
           </button>
         )}
       </PageHeader>
+
+      <StatStrip
+        items={[
+          { label: "Lines from the till", value: totals[0], icon: "receipt", tone: "info" },
+          { label: "Deliveries received", value: totals[1], icon: "truck", tone: "brand" },
+          { label: "Adjustments made", value: totals[2], icon: "ledger", tone: "saffron" },
+        ]}
+      />
 
       {adjusting && (
         <AdjustmentForm
@@ -161,107 +183,115 @@ export default function StockPage() {
               `${movement.product_name}: ${movement.change > 0 ? "+" : ""}${movement.change}. Now ${movement.balance_now} in stock.`,
             );
             loadProducts();
+            loadTotals();
             dispatch(movements.fetchList({ type, product_id: productId, page, per_page: 15 }));
           }}
         />
       )}
 
       {notice && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}
         </p>
       )}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div role="group" aria-label="Filter by type" className="flex flex-wrap gap-2">
-          {TYPES.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              aria-pressed={type === tab.value}
-              onClick={() => {
-                setType(tab.value);
-                setPage(1);
-              }}
-              className="chip"
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <label htmlFor="ledger-product" className="sr-only">
-          Filter by product
-        </label>
-        <select
-          id="ledger-product"
-          value={productId}
-          onChange={(event) => {
-            setProductId(event.target.value);
-            setPage(1);
-          }}
-          className="input sm:ml-auto"
-        >
-          <option value="">All products</option>
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {list.error && (
-        <p role="alert" className="text-danger">
+        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
           {list.error}
         </p>
       )}
 
-      <div className="card relative overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="table-head">
-            <tr>
-              <th className="p-3">When</th>
-              <th className="p-3">Product</th>
-              <th className="p-3">Type</th>
-              <th className="p-3 text-right">Change</th>
-              <th className="p-3">Reason</th>
-              <th className="p-3">By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.status === "loading" && <SkeletonRows cols={6} />}
-            {list.status === "ready" && list.items.length === 0 && (
+      <div className="panel">
+        <div className="flex flex-wrap items-center gap-3 border-b border-line p-4">
+          <div role="group" aria-label="Filter by type" className="seg">
+            {TYPES.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                aria-pressed={type === tab.value}
+                onClick={() => {
+                  setType(tab.value);
+                  setPage(1);
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <label htmlFor="ledger-product" className="sr-only">
+            Filter by product
+          </label>
+          <select
+            id="ledger-product"
+            value={productId}
+            onChange={(event) => {
+              setProductId(event.target.value);
+              setPage(1);
+            }}
+            className="input sm:ml-auto"
+          >
+            <option value="">All products</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="relative overflow-x-auto">
+          <table className="data-table w-full text-left text-sm">
+            <thead className="table-head">
               <tr>
-                <td colSpan="6" className="p-3 text-muted">
-                  No stock changes found.
-                </td>
+                <th className="px-5 py-3 text-right">Change</th>
+                <th className="px-3 py-3">Product</th>
+                <th className="px-3 py-3">Reason</th>
+                <th className="px-3 py-3">Type</th>
+                <th className="px-3 py-3">By</th>
+                <th className="px-5 py-3">When</th>
               </tr>
-            )}
-            {list.status === "ready" &&
-              list.items.map((movement) => (
-                <tr key={movement.id} className="border-t border-line">
-                  <td className="p-3 whitespace-nowrap text-muted">
-                    {dateTime(movement.created_at)}
-                  </td>
-                  <td className="p-3">
-                    <Link to={`/products/${movement.product_id}`} className="link">
-                      {movement.product_name}
-                    </Link>
-                  </td>
-                  <td className="p-3">
-                    <StatusBadge value={movement.type} />
-                  </td>
-                  <td
-                    className={`p-3 text-right font-semibold tabular-nums ${movement.change < 0 ? "text-danger" : "text-brand-dark"}`}
-                  >
-                    {movement.change > 0 ? `+${movement.change}` : movement.change}
-                  </td>
-                  <td className="p-3">{movement.reason}</td>
-                  <td className="p-3 text-muted">{movement.user_name}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.status === "loading" && <SkeletonRows cols={6} />}
+              {list.status === "ready" &&
+                list.items.map((movement) => (
+                  <tr key={movement.id} className="border-t border-line">
+                    <td className="px-5 py-3 text-right">
+                      <span
+                        className={`figure inline-block min-w-12 rounded-lg px-2 py-1 text-center ${
+                          movement.change < 0
+                            ? "bg-danger-soft text-danger"
+                            : "bg-mint text-brand-dark"
+                        }`}
+                      >
+                        {movement.change > 0 ? `+${movement.change}` : movement.change}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Link
+                        to={`/products/${movement.product_id}`}
+                        className="font-medium hover:text-brand-dark hover:underline"
+                      >
+                        {movement.product_name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3">{movement.reason}</td>
+                    <td className="px-3 py-3">
+                      <StatusBadge value={movement.type} />
+                    </td>
+                    <td className="px-3 py-3 text-muted">{movement.user_name}</td>
+                    <td className="px-5 py-3 whitespace-nowrap text-muted">
+                      {dateTime(movement.created_at)}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          {list.status === "ready" && list.items.length === 0 && (
+            <EmptyState icon="ledger" title="No stock changes found">
+              Sales, deliveries and adjustments show up here as they happen.
+            </EmptyState>
+          )}
+        </div>
         <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
       </div>
     </section>

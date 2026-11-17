@@ -83,7 +83,7 @@ export default function PurchaseForm({ onSaved, onCancel }) {
       onSubmit={submit}
       noValidate
       aria-label="New purchase order"
-      className="card flex flex-col gap-4 p-5"
+      className="card flex flex-col gap-5 p-6"
     >
       <h2 className="text-lg font-bold">New purchase order</h2>
       <Field label="Supplier" name="supplier" error={errors.supplier}>

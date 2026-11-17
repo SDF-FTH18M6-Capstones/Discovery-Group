@@ -6,6 +6,7 @@ import { ROLE_NAMES } from "../../auth/roles";
 import Field from "../../components/Field";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
+import { Avatar } from "../../components/ui";
 import { useTheme } from "../../theme/ThemeContext";
 
 const firstMessages = (details = {}) =>
@@ -44,11 +45,19 @@ function ProfileForm() {
       onSubmit={submit}
       noValidate
       aria-labelledby="profile-title"
-      className="card flex flex-col gap-4 p-5"
+      className="card flex flex-col gap-5 p-6"
     >
-      <h2 id="profile-title" className="text-lg font-bold">
-        My profile
-      </h2>
+      <div className="-mx-6 -mt-6 flex items-center gap-4 rounded-t-2xl border-b border-line bg-surface-2 px-6 py-5">
+        <Avatar name={user.full_name} size={56} />
+        <div className="min-w-0">
+          <h2 id="profile-title" className="text-lg font-bold">
+            My profile
+          </h2>
+          <p className="truncate text-sm text-muted">
+            {ROLE_NAMES[user.role] || user.role}, {user.email}
+          </p>
+        </div>
+      </div>
       <Field
         label="Full name"
         name="full_name"
@@ -59,14 +68,9 @@ function ProfileForm() {
         }}
         error={error}
       />
-      <dl className="grid grid-cols-[6rem_1fr] gap-y-2 text-sm">
-        <dt className="text-muted">Email</dt>
-        <dd className="break-all">{user.email}</dd>
-        <dt className="text-muted">Role</dt>
-        <dd>{ROLE_NAMES[user.role] || user.role}</dd>
-      </dl>
+      <p className="text-xs text-muted">Your email and role are set by an administrator.</p>
       {saved && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {saved}
         </p>
       )}
@@ -122,7 +126,7 @@ function PasswordForm() {
       onSubmit={submit}
       noValidate
       aria-labelledby="password-title"
-      className="card flex flex-col gap-4 p-5"
+      className="card flex flex-col gap-5 p-6"
     >
       <h2 id="password-title" className="text-lg font-bold">
         Change password
@@ -160,7 +164,7 @@ function PasswordForm() {
         </p>
       )}
       {saved && (
-        <p role="status" className="rounded-lg bg-mint p-3 text-sm">
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {saved}
         </p>
       )}
@@ -177,32 +181,56 @@ const THEMES = [
   { value: "system", label: "Same as my device", icon: "settings" },
 ];
 
+// A tiny picture of the app in each theme.
+function Preview({ value }) {
+  const half = (bg, card, line) => (
+    <span className="flex flex-1 gap-1 p-1.5" style={{ background: bg }}>
+      <span className="w-3 rounded-sm" style={{ background: "#0d3b33" }} />
+      <span className="flex flex-1 flex-col gap-1">
+        <span className="h-2 w-2/3 rounded-sm" style={{ background: line }} />
+        <span className="flex-1 rounded-sm" style={{ background: card }} />
+      </span>
+    </span>
+  );
+  return (
+    <span aria-hidden="true" className="flex h-16 overflow-hidden rounded-lg ring-1 ring-line">
+      {value !== "dark" && half("#f4f6f3", "#ffffff", "#c9d3cd")}
+      {value !== "light" && half("#0b1a17", "#10231f", "#2d524a")}
+    </span>
+  );
+}
+
 function Appearance() {
   const { choice, choose } = useTheme();
   return (
-    <fieldset className="card flex flex-col gap-3 p-5">
+    <fieldset className="card flex flex-col gap-4 p-6">
       <legend className="sr-only">Appearance</legend>
       <h2 aria-hidden="true" className="text-lg font-bold">
         Appearance
       </h2>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         {THEMES.map((theme) => (
           <label
             key={theme.value}
-            className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm ${
-              choice === theme.value ? "border-brand bg-mint font-semibold" : "border-line"
+            className={`flex cursor-pointer flex-col gap-3 rounded-xl border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-saffron ${
+              choice === theme.value
+                ? "border-brand bg-mint font-semibold text-brand-dark"
+                : "border-line-strong hover:border-brand"
             }`}
           >
-            <input
-              type="radio"
-              name="theme"
-              value={theme.value}
-              checked={choice === theme.value}
-              onChange={() => choose(theme.value)}
-              className="accent-[var(--sp-brand)]"
-            />
-            <Icon name={theme.icon} size={16} />
-            {theme.label}
+            <Preview value={theme.value} />
+            <span className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="theme"
+                value={theme.value}
+                checked={choice === theme.value}
+                onChange={() => choose(theme.value)}
+                className="accent-[var(--sp-brand)]"
+              />
+              <Icon name={theme.icon} size={16} />
+              {theme.label}
+            </span>
           </label>
         ))}
       </div>
@@ -213,10 +241,10 @@ function Appearance() {
 
 export default function SettingsPage() {
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-6">
       <PageHeader title="Settings" subtitle="Your profile, password and how StockPilot looks." />
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <div className="flex flex-col gap-6">
           <ProfileForm />
           <Appearance />
         </div>
