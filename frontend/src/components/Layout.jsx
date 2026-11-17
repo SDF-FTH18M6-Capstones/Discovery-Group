@@ -106,7 +106,7 @@ function SignedOutShell() {
             Every sale and delivery is written to the stock ledger, so the numbers always add up.
           </p>
         </div>
-        <p className="relative z-10 text-sm text-sidebar-ink">Discovery Group · Capstone</p>
+        <p className="relative z-10 text-sm text-sidebar-ink"> STOCKPILOT </p>
         <div
           aria-hidden="true"
           className="absolute -bottom-40 -left-24 size-[28rem] rounded-full border-[56px] border-brand/10"

@@ -6,9 +6,9 @@
   --sp-canvas: #f3f6f5;
   --sp-surface: #ffffff;
   --sp-surface-2: #f7faf9;
-  --sp-ink: #13211e;
+  --sp-ink: #141b1a;
   --sp-muted: #5a6b66;
-  --sp-line: #e1e9e6;
+  --sp-line: #a5b3ae;
   --sp-brand: #08a875;
   --sp-on-brand: #ffffff;
   --sp-brand-strong: #067b56;
@@ -29,7 +29,7 @@
   --sp-canvas: #08110f;
   --sp-surface: #0f1d1a;
   --sp-surface-2: #142622;
-  --sp-ink: #e4efeb;
+  --sp-ink: #2a2e2c;
   --sp-muted: #92a8a1;
   --sp-line: #22362f;
   --sp-brand: #27c492;
@@ -42,7 +42,7 @@
   --sp-danger-soft: #3a1c10;
   --sp-warn: #f5c56b;
   --sp-warn-soft: #382a0d;
-  --sp-info: #9db8ff;
+  --sp-info: #425891;
   --sp-info-soft: #18223f;
   --sp-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   color-scheme: dark;

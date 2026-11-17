@@ -45,9 +45,9 @@ PRODUCTS = [
 ]
 
 SUPPLIERS = [
-    ("Nairobi Packaging Supplies", "sales@nairobipack.example", "+254700000001"),
-    ("Metro Wholesale", "orders@metro.example", "+254700000002"),
-    ("Highland Coffee Traders", "hello@highland.example", "+254700000003"),
+    ("Nairobi Packaging Supplies", "sales@nairobipack.example", "+254754381261"),
+    ("Metro Wholesale", "orders@metro.example", "+254712758495"),
+    ("Highland Coffee Traders", "hello@highland.example", "+254774658223"),
 ]
 
 ASSETS = [
