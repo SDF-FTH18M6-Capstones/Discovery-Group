@@ -37,7 +37,21 @@ export function makeResourceSlice(name, path) {
   const slice = createSlice({
     name,
     initialState: { items: [], count: 0, page: 1, pages: 0, status: "idle", error: null },
-    reducers: {},
+    reducers: {
+      patchItem(state, { payload: { id, changes } }) {
+        const item = state.items.find((row) => row.id === id);
+        if (item) Object.assign(item, changes);
+      },
+      removeItem(state, { payload: id }) {
+        const before = state.items.length;
+        state.items = state.items.filter((row) => row.id !== id);
+        if (state.items.length < before) state.count -= 1;
+      },
+      restoreItems(state, { payload: { items, count } }) {
+        state.items = items;
+        state.count = count;
+      },
+    },
     extraReducers: (builder) => {
       builder
         .addCase(fetchList.pending, (state) => {
@@ -61,5 +75,5 @@ export function makeResourceSlice(name, path) {
     },
   });
 
-  return { reducer: slice.reducer, fetchList, saveItem, deleteItem };
+  return { reducer: slice.reducer, actions: slice.actions, fetchList, saveItem, deleteItem };
 }

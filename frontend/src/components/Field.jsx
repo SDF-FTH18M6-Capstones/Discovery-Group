@@ -12,7 +12,7 @@ export default function Field({ label, name, error, children, ...inputProps }) {
           id={id}
           name={name}
           aria-invalid={Boolean(error)}
-          className={`h-10 rounded-lg border px-3 ${error ? "border-danger" : "border-line"}`}
+          className={`input ${error ? "border-danger" : ""}`}
           {...inputProps}
         />
       )}

@@ -8,7 +8,6 @@ export default function LoginPage() {
   const { signIn, sessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  // Coming from "Create account", the email is filled in and a message says the account is ready.
   const [values, setValues] = useState({ email: location.state?.email || "", password: "" });
   const [errors, setErrors] = useState({});
   const [message, setMessage] = useState(
@@ -37,7 +36,7 @@ export default function LoginPage() {
     setFormError("");
     try {
       await signIn(values.email, values.password);
-      navigate(location.state?.from || "/products", { replace: true });
+      navigate(location.state?.from || "/", { replace: true });
     } catch (error) {
       setFormError(error.message);
       setBusy(false);
@@ -45,15 +44,15 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="mx-auto flex max-w-sm flex-col gap-4 py-10">
-      <h1 className="text-2xl font-bold">Sign in</h1>
+    <section className="flex flex-col gap-4">
+      <h1 className="page-title">Sign in</h1>
       {message && (
         <p role="status" className="rounded-lg bg-mint p-3 text-sm">
           {message}
         </p>
       )}
       {formError && (
-        <p role="alert" className="rounded-lg bg-orange-50 p-3 text-sm text-danger">
+        <p role="alert" className="rounded-lg bg-danger-soft p-3 text-sm text-danger">
           {formError}
         </p>
       )}
@@ -76,11 +75,7 @@ export default function LoginPage() {
           onChange={handleChange}
           error={errors.password}
         />
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white disabled:opacity-60"
-        >
+        <button type="submit" disabled={busy} className="btn-primary">
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="text-sm">
