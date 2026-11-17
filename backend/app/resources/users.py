@@ -1,14 +1,25 @@
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
-from marshmallow import Schema, fields, validate
+from marshmallow import fields, validate
 
 from app.auth import roles_required
 from app.crud import PageQuery, get_or_404, page_schema, paginate
 from app.extensions import db
 from app.models import User
 from app.models.user import ROLES
+from app.notify import notify
+from app.schemas import Schema
+
+ROLE_LABELS = {
+    "admin": "Administrator",
+    "procurement": "Procurement Manager",
+    "inventory": "Inventory Manager",
+    "sales": "Sales Attendant",
+    "employee": "Employee",
+}
 
 blp = Blueprint("users", __name__, url_prefix="/api/users", description="Users (Administrator)")
+
 
 class UserSchema(Schema):
     id = fields.Integer(dump_only=True)
@@ -66,11 +77,11 @@ def get_user(user_id):
 @blp.response(200, UserSchema)
 @roles_required("admin")
 def change_role(data, user_id):
-   
     user = get_or_404(User, user_id)
     if user_id == current_user.id:
         abort(409, message="You cannot change your own role.")
     db.session.execute(db.update(User).where(User.id == user_id).values(role=data["role"]))
+    notify([user_id], f"Your role is now {ROLE_LABELS[data['role']]}.")
     db.session.commit()
-    db.session.expunge(user)  # forget the old object so it reloads as its new role class
+    db.session.expunge(user) 
     return db.session.get(User, user_id)

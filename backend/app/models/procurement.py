@@ -7,7 +7,7 @@ PURCHASE_STATUSES = ("ordered", "received", "cancelled")
 
 
 class Request(TimestampMixin, db.Model):
-
+   
     __tablename__ = "requests"
     __table_args__ = (
         db.CheckConstraint("quantity > 0", name="quantity_positive"),
@@ -50,6 +50,7 @@ class Purchase(TimestampMixin, db.Model):
     total = db.Column(Money, nullable=False, server_default="0")
 
     supplier = db.relationship("Supplier")
+    creator = db.relationship("User")
     items = db.relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
 
 

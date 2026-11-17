@@ -1,22 +1,17 @@
-"""/api/requests — employee requests, and the Procurement Manager's decision.
-
-- Anyone signed in can make a request; it always belongs to them.
-- Employees see only their own requests. Admin and Procurement Manager see all of them.
-- Only the person who made a request can edit or delete it, and only while it is pending.
-- Only a Procurement Manager can approve or reject, and never their own request.
-"""
-
 from datetime import UTC, datetime
 
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
-from marshmallow import Schema, fields, validate
+from marshmallow import fields, validate
+from sqlalchemy.orm import selectinload
 
 from app.auth import is_role, roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Request
 from app.models.procurement import REQUEST_STATUSES, URGENCIES
+from app.notify import notify, notify_roles
+from app.schemas import Schema
 
 blp = Blueprint("requests", __name__, url_prefix="/api/requests", description="Employee requests")
 
@@ -41,7 +36,8 @@ class RequestSchema(Schema):
 
 class RequestQuery(PageQuery):
     status = fields.String(load_default=None, validate=validate.OneOf(REQUEST_STATUSES))
-    mine = fields.Boolean(load_default=False) 
+    mine = fields.Boolean(load_default=False)  # true: only the signed-in user's own requests
+
 
 class DecisionSchema(Schema):
     comment = fields.String(load_default=None, validate=validate.Length(max=1000))
@@ -55,7 +51,6 @@ class RejectSchema(Schema):
 
 
 def visible_request(request_id):
-    """The request, or 404 if it does not exist or this user may not see it."""
     req = get_or_404(Request, request_id)
     if not is_role(*SEE_ALL) and req.requester_id != current_user.id:
         abort(404, message=f"Request {request_id} not found")
@@ -81,6 +76,8 @@ def decide(request_id, status, comment):
     req.reviewed_by = current_user.id
     req.review_comment = comment
     req.reviewed_at = datetime.now(UTC)
+    note = f": {comment}" if comment else "."
+    notify([req.requester_id], f"Your request for {req.item} was {status}{note}")
     return save(req, "Could not save this decision")
 
 
@@ -89,7 +86,11 @@ def decide(request_id, status, comment):
 @blp.response(200, page_schema(RequestSchema))
 @roles_required()
 def list_requests(args):
-    query = db.select(Request).order_by(Request.created_at.desc(), Request.id.desc())
+    query = (
+        db.select(Request)
+        .options(selectinload(Request.requester), selectinload(Request.reviewer))
+        .order_by(Request.created_at.desc(), Request.id.desc())
+    )
     if args["mine"] or not is_role(*SEE_ALL):
         query = query.where(Request.requester_id == current_user.id)
     if args["status"]:
@@ -102,7 +103,14 @@ def list_requests(args):
 @blp.response(201, RequestSchema)
 @roles_required()
 def create_request(data):
-    return save(Request(requester_id=current_user.id, **data), "Could not save this request")
+    req = Request(requester_id=current_user.id, **data)
+    urgent = "Urgent request" if data.get("urgency") == "urgent" else "New request"
+    notify_roles(
+        ("procurement",),
+        f"{urgent} from {current_user.full_name}: {data['item']} × {data['quantity']}.",
+        exclude=current_user.id,
+    )
+    return save(req, "Could not save this request")
 
 
 @blp.route("/<int:request_id>")
@@ -135,7 +143,6 @@ def delete_request(request_id):
 @blp.response(200, RequestSchema)
 @roles_required("procurement")
 def approve_request(data, request_id):
-    """Procurement Manager only."""
     return decide(request_id, "approved", data["comment"])
 
 
@@ -144,5 +151,4 @@ def approve_request(data, request_id):
 @blp.response(200, RequestSchema)
 @roles_required("procurement")
 def reject_request(data, request_id):
-    """Procurement Manager only. A reason is required."""
     return decide(request_id, "rejected", data["comment"])
