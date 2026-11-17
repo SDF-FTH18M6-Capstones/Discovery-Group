@@ -1,40 +1,39 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { PROCUREMENT, ROLE_NAMES, STOCK_MANAGERS } from "../auth/roles";
+import { PROCUREMENT, PURCHASE_VIEWERS, ROLE_NAMES, SELLERS, STOCK_MANAGERS } from "../auth/roles";
+import { NOTIFICATIONS_CHANGED } from "../events";
 import { useTheme } from "../theme/ThemeContext";
 import ErrorBoundary from "./ErrorBoundary";
 import Icon from "./Icon";
 
+// `roles` = who sees the link. No `roles` = every signed-in user.
 const groups = [
+  { title: "Overview", links: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }] },
   {
-    title: "Overview",
-    links: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }],
+    title: "Selling",
+    links: [
+      { to: "/sales/new", label: "New sale", icon: "sale", roles: SELLERS },
+      { to: "/sales", label: "Sales", icon: "receipt", roles: SELLERS, end: true },
+    ],
   },
   {
     title: "Stock",
     links: [
       { to: "/products", label: "Products", icon: "box" },
       { to: "/categories", label: "Categories", icon: "tag" },
-      {
-        to: "/suppliers",
-        label: "Suppliers",
-        icon: "building",
-        roles: PROCUREMENT,
-      },
+      { to: "/stock", label: "Stock ledger", icon: "ledger", roles: STOCK_MANAGERS },
+      { to: "/purchases", label: "Purchases", icon: "truck", roles: PURCHASE_VIEWERS },
+      { to: "/suppliers", label: "Suppliers", icon: "building", roles: PROCUREMENT },
     ],
   },
   {
     title: "Requests",
     links: [
       { to: "/requests", label: "My requests", icon: "inbox" },
-      {
-        to: "/approvals",
-        label: "Approvals",
-        icon: "check",
-        roles: PROCUREMENT,
-      },
+      { to: "/approvals", label: "Approvals", icon: "check", roles: PROCUREMENT },
     ],
   },
   {
@@ -47,15 +46,22 @@ const groups = [
         icon: "laptop",
         roles: ["procurement", "sales", "employee"],
       },
+      { to: "/repairs", label: "Repairs", icon: "wrench" },
     ],
   },
   {
     title: "Admin",
-    links: [{ to: "/users", label: "Users", icon: "users", roles: ["admin"] }],
+    links: [
+      { to: "/reports", label: "Reports", icon: "chart", roles: ["admin"] },
+      { to: "/users", label: "Users", icon: "users", roles: ["admin"] },
+    ],
   },
   {
     title: "Account",
-    links: [{ to: "/status", label: "System status", icon: "pulse" }],
+    links: [
+      { to: "/settings", label: "Settings", icon: "settings" },
+      { to: "/status", label: "System status", icon: "pulse" },
+    ],
   },
 ];
 
@@ -71,6 +77,43 @@ function ThemeSwitch({ className = "" }) {
     >
       <Icon name={dark ? "sun" : "moon"} />
     </button>
+  );
+}
+
+function Bell() {
+  const { pathname } = useLocation();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () =>
+      api("/api/notifications/?unread=true&per_page=1")
+        .then((data) => !cancelled && setUnread(data?.count || 0))
+        .catch(() => {});
+    load();
+    window.addEventListener(NOTIFICATIONS_CHANGED, load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICATIONS_CHANGED, load);
+    };
+  }, [pathname]);
+
+  return (
+    <Link
+      to="/notifications"
+      aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+      className="relative grid size-10 place-items-center rounded-lg border border-line bg-surface text-ink hover:border-brand"
+    >
+      <Icon name="bell" />
+      {unread > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -top-1.5 -right-1.5 min-w-5 rounded-full bg-danger px-1 text-center text-[11px] leading-5 font-bold text-white dark:text-canvas"
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -106,7 +149,7 @@ function SignedOutShell() {
             Every sale and delivery is written to the stock ledger, so the numbers always add up.
           </p>
         </div>
-        <p className="relative z-10 text-sm text-sidebar-ink"> STOCKPILOT </p>
+        <p className="relative z-10 text-sm text-sidebar-ink">Discovery Group · Capstone</p>
         <div
           aria-hidden="true"
           className="absolute -bottom-40 -left-24 size-[28rem] rounded-full border-[56px] border-brand/10"
@@ -252,6 +295,7 @@ export default function Layout() {
           </span>
           <div className="ml-auto flex items-center gap-2">
             <ThemeSwitch />
+            <Bell />
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl min-w-0 flex-1 p-4 md:p-8">
