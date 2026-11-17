@@ -65,13 +65,13 @@ export default function ProductsPage() {
       <input
         id="product-search"
         type="search"
-        placeholder="Search by name or SKU"
+        placeholder="Search by name or CODE"
         value={search}
         onChange={(event) => {
           setSearch(event.target.value);
           setPage(1);
         }}
-        className="h-10 max-w-sm rounded-lg border border-line bg-white px-3"
+        className="h-10 max-w-sm rounded-lg border border-line bg-gray-600 px-3"
       />
 
       {list.error && (
@@ -80,12 +80,12 @@ export default function ProductsPage() {
         </p>
       )}
 
-      <div className="relative overflow-x-auto rounded-xl border border-line bg-white">
+      <div className="relative overflow-x-auto rounded-xl border border-line bg-gray-600">
         <table className="w-full text-left text-sm">
           <thead className="bg-canvas text-muted">
             <tr>
               <th className="p-3">Product</th>
-              <th className="p-3">SKU</th>
+              <th className="p-3">CODE</th>
               <th className="p-3">Category</th>
               <th className="p-3 text-right">In stock</th>
               <th className="p-3 text-right">Price (KES)</th>
@@ -118,7 +118,7 @@ export default function ProductsPage() {
                   <td className="p-3 text-right">
                     {product.quantity}
                     {product.is_low_stock && (
-                      <span className="ml-2 rounded-full bg-orange-50 px-2 text-xs text-danger">
+                      <span className="ml-2 rounded-full bg-orange-100 px-2 text-xs text-danger">
                         low
                       </span>
                     )}
