@@ -23,6 +23,7 @@ class Sale(db.Model):
     )
 
     items = db.relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
+    attendant = db.relationship("User")
 
 
 class SaleItem(db.Model):
@@ -65,5 +66,5 @@ class StockMovement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
 
-    product = db.relationship("Product")
+    product = db.relationship("Product", back_populates="movements")
     user = db.relationship("User")

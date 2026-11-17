@@ -33,6 +33,7 @@ class Product(TimestampMixin, db.Model):
     reorder_level = db.Column(db.Integer, nullable=False, server_default="0")
 
     category = db.relationship("Category", back_populates="products")
+    movements = db.relationship("StockMovement", back_populates="product")
 
     @property
     def is_low_stock(self) -> bool:

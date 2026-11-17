@@ -35,6 +35,7 @@ class Repair(TimestampMixin, db.Model):
     status = db.Column(db.String(12), nullable=False, server_default="submitted", index=True)
 
     asset = db.relationship("Asset", back_populates="repairs")
+    reporter = db.relationship("User")
 
 
 class Notification(db.Model):

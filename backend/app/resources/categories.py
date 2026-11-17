@@ -1,10 +1,11 @@
 from flask_smorest import Blueprint
-from marshmallow import Schema, fields, validate
+from marshmallow import fields, validate
 
 from app.auth import roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Category
+from app.schemas import Schema
 
 blp = Blueprint("categories", __name__, url_prefix="/api/categories", description="Categories")
 

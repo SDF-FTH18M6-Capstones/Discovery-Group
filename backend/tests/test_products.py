@@ -13,7 +13,7 @@ def product_data(category_id, **overrides):
 
 
 def test_full_crud_cycle(admin, category):
-    created = admin.post("/api/products/", json=product_data(category.id))
+    created = admin.post("/api/products/", json=product_data(category.id, quantity=0))
     assert created.status_code == 201
     product_id = created.json["id"]
     assert created.json["category_name"] == "Beverages"
@@ -22,7 +22,8 @@ def test_full_crud_cycle(admin, category):
     assert admin.get(f"/api/products/{product_id}").json["sku"] == "SP-001"
 
     updated = admin.put(
-        f"/api/products/{product_id}", json=product_data(category.id, selling_price="300.00")
+        f"/api/products/{product_id}",
+        json=product_data(category.id, selling_price="300.00", quantity=0),
     )
     assert updated.status_code == 200
     assert updated.json["selling_price"] == "300.00"
@@ -87,3 +88,12 @@ def test_category_with_products_cannot_be_deleted(admin, category):
     )
 
     assert admin.delete(f"/api/categories/{category.id}").status_code == 409
+
+
+def test_a_product_with_stock_history_cannot_be_deleted(admin, category):
+    product_id = admin.post("/api/products/", json=product_data(category.id)).json["id"]
+
+    response = admin.delete(f"/api/products/{product_id}")
+
+    assert response.status_code == 409
+    assert "stock history" in response.json["error"]["message"]

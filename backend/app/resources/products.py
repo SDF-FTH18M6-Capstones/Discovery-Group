@@ -1,10 +1,14 @@
+from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
-from marshmallow import Schema, fields, validate
+from marshmallow import fields, validate
+from sqlalchemy.orm import selectinload
 
 from app.auth import roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
-from app.models import Category, Product
+from app.models import Category, Product, StockMovement
+from app.notify import warn_if_low
+from app.schemas import Schema
 
 blp = Blueprint("products", __name__, url_prefix="/api/products", description="Products")
 
@@ -41,7 +45,7 @@ def check_category(category_id):
 @blp.response(200, page_schema(ProductSchema))
 @roles_required()
 def list_products(args):
-    query = db.select(Product).order_by(Product.name)
+    query = db.select(Product).options(selectinload(Product.category)).order_by(Product.name)
     if args["search"]:
         term = f"%{args['search']}%"
         query = query.where(Product.name.ilike(term) | Product.sku.ilike(term))
@@ -58,7 +62,17 @@ def list_products(args):
 @roles_required("admin", "inventory")
 def create_product(data):
     check_category(data["category_id"])
-    return save(Product(**data), f"SKU '{data['sku']}' is already used")
+    product = Product(**data)
+    if product.quantity:  # the starting count is the first line of the stock ledger
+        product.movements.append(
+            StockMovement(
+                change=product.quantity,
+                type="adjustment",
+                reason="Opening stock",
+                user_id=current_user.id,
+            )
+        )
+    return save(product, f"SKU '{data['sku']}' is already used")
 
 
 @blp.route("/<int:product_id>")
@@ -75,8 +89,20 @@ def get_product(product_id):
 def update_product(data, product_id):
     product = get_or_404(Product, product_id)
     check_category(data["category_id"])
+    change = data["quantity"] - product.quantity
+    if change:  # a count typed on the form is still recorded in the stock ledger
+        product.movements.append(
+            StockMovement(
+                change=change,
+                type="adjustment",
+                reason="Changed on the product form",
+                user_id=current_user.id,
+            )
+        )
     for key, value in data.items():
         setattr(product, key, value)
+    if change < 0:
+        warn_if_low(product, actor_id=current_user.id)
     return save(product, f"SKU '{data['sku']}' is already used")
 
 
@@ -85,4 +111,7 @@ def update_product(data, product_id):
 @roles_required("admin", "inventory")
 def delete_product(product_id):
     product = get_or_404(Product, product_id)
-    delete(product, "This product has sales or purchases and cannot be deleted.")
+    delete(
+        product,
+        "This product has stock history (sales, purchases or adjustments) and cannot be deleted.",
+    )

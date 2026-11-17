@@ -1,12 +1,14 @@
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
-from marshmallow import Schema, ValidationError, fields, validate, validates_schema
+from marshmallow import ValidationError, fields, validate, validates_schema
+from sqlalchemy.orm import selectinload
 
 from app.auth import is_role, roles_required
 from app.crud import PageQuery, delete, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.models import Asset, User
 from app.models.assets import ASSET_STATUSES
+from app.schemas import Schema
 
 MANAGERS = ("admin", "inventory")
 
@@ -45,8 +47,7 @@ def check_holder(user_id):
 @blp.response(200, page_schema(AssetSchema))
 @roles_required()
 def list_assets(args):
-    """Admin and Inventory Manager see every asset; everyone else sees the assets they hold."""
-    query = db.select(Asset).order_by(Asset.asset_code)
+    query = db.select(Asset).options(selectinload(Asset.holder)).order_by(Asset.asset_code)
     if not is_role(*MANAGERS):
         query = query.where(Asset.assigned_to == current_user.id)
     if args["search"]:
