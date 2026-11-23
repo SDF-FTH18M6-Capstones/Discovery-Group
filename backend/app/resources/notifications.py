@@ -1,5 +1,3 @@
-"""/api/notifications — each person's in-app messages. Nobody can see or change anyone else's."""
-
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
 from marshmallow import fields
@@ -18,6 +16,7 @@ blp = Blueprint(
 class NotificationOut(Schema):
     id = fields.Integer()
     message = fields.String()
+    link = fields.String(allow_none=True)
     is_read = fields.Boolean()
     created_at = fields.DateTime()
 

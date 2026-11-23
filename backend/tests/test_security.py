@@ -102,6 +102,7 @@ def test_production_sends_hsts(monkeypatch):
     )
     monkeypatch.setenv("DATABASE_URL", "set")
     monkeypatch.setenv("CORS_ORIGINS", FRONTEND)
+    monkeypatch.setenv("FRONTEND_URL", FRONTEND)
 
     response = create_app(ProductionConfig).test_client().get("/api/health")
 

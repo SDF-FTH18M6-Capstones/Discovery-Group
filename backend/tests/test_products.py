@@ -90,15 +90,14 @@ def test_category_with_products_cannot_be_deleted(admin, category):
     assert admin.delete(f"/api/categories/{category.id}").status_code == 409
 
 
-def test_opening_stock_and_form_edits_are_written_to_the_stock_ledger(admin, category):
+def test_opening_stock_is_the_first_ledger_line_and_the_form_cannot_change_stock(admin, category):
     product_id = admin.post("/api/products/", json=product_data(category.id)).json["id"]
-    admin.put(f"/api/products/{product_id}", json=product_data(category.id, quantity=7))
+    edited = admin.put(f"/api/products/{product_id}", json=product_data(category.id, quantity=7))
 
+    assert edited.json["quantity"] == 10  # US-09: stock changes only through adjustments
     ledger = admin.get(f"/api/stock/movements?product_id={product_id}").json["results"]
-
-    assert [(m["change"], m["reason"]) for m in ledger] == [
-        (-3, "Changed on the product form"),
-        (10, "Opening stock"),
+    assert [(m["change"], m["quantity_after"], m["reason"]) for m in ledger] == [
+        (10, 10, "Opening stock")
     ]
 
 

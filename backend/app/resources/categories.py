@@ -13,14 +13,21 @@ blp = Blueprint("categories", __name__, url_prefix="/api/categories", descriptio
 class CategorySchema(Schema):
     id = fields.Integer(dump_only=True)
     name = fields.String(required=True, validate=validate.Length(min=1, max=100))
+    is_active = fields.Boolean(load_default=True)
+
+
+class CategoryQuery(PageQuery):
+    active = fields.Boolean(load_default=None)
 
 
 @blp.route("/")
-@blp.arguments(PageQuery, location="query")
+@blp.arguments(CategoryQuery, location="query")
 @blp.response(200, page_schema(CategorySchema))
 @roles_required()
 def list_categories(args):
     query = db.select(Category).order_by(Category.name)
+    if args["active"] is not None:
+        query = query.where(Category.is_active.is_(args["active"]))
     return paginate(query, args["page"], args["per_page"])
 
 
@@ -46,6 +53,7 @@ def get_category(category_id):
 def update_category(data, category_id):
     category = get_or_404(Category, category_id)
     category.name = data["name"]
+    category.is_active = data["is_active"]
     return save(category, f"Category '{data['name']}' already exists")
 
 
@@ -54,4 +62,7 @@ def update_category(data, category_id):
 @roles_required("admin", "inventory")
 def delete_category(category_id):
     category = get_or_404(Category, category_id)
-    delete(category, "This category still has products. Move or delete them first.")
+    delete(
+        category,
+        "This category still has products. Move them, or deactivate the category instead.",
+    )

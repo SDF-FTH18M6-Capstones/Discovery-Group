@@ -8,7 +8,9 @@ from app.models import Admin, ProcurementManager, Product, User
 
 
 def test_roles_load_as_their_own_class(app):
-    db.session.add(ProcurementManager(full_name="Carlos", email="carlos@test.com", password_hash="x"))
+    db.session.add(
+        ProcurementManager(full_name="Carlos", email="carlos@test.com", password_hash="x")
+    )
     db.session.commit()
     db.session.expire_all()
 

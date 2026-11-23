@@ -10,7 +10,6 @@ from app.models import Category, Notification, Product, Sale, StockMovement, Sup
 
 @pytest.fixture()
 def shop(app):
-    """Two products and a supplier."""
     beverages = Category(name="Beverages")
     db.session.add(beverages)
     db.session.flush()
@@ -136,12 +135,13 @@ def test_attendants_see_only_their_own_sales_and_admin_sees_all(as_role, shop):
     assert admin.get("/api/sales/").json["count"] == 2
 
 
-def order(client, shop, quantity=12):
+def order(client, shop, quantity=12, confirm=True):
     return client.post(
         "/api/purchases/",
         json={
             "supplier_id": shop["supplier"],
             "items": [{"product_id": shop["water"], "quantity": quantity, "unit_cost": "180.00"}],
+            "confirm": confirm,
         },
     )
 
@@ -173,14 +173,19 @@ def test_receiving_tells_the_buyer(as_role, shop):
 
     as_role("inventory").post(f"/api/purchases/{purchase_id}/receive")
 
-    note = db.session.scalar(db.select(Notification).where(Notification.user_id == buyer.user.id))
-    assert note.message == f"PO-{purchase_id:04d} was received into stock."
+    notes = db.session.scalars(
+        db.select(Notification.message).where(Notification.user_id == buyer.user.id)
+    ).all()
+    assert notes == ["PO-0001 was received in full (GRN-0001)."]
 
 
 def test_a_cancelled_order_cannot_be_received(as_role, shop):
     purchase_id = order(as_role("procurement"), shop).json["id"]
     assert (
-        as_role("admin").post(f"/api/purchases/{purchase_id}/cancel").json["status"] == "cancelled"
+        as_role("admin")
+        .post(f"/api/purchases/{purchase_id}/cancel", json={"reason": "Supplier closed"})
+        .json["status"]
+        == "cancelled"
     )
 
     response = as_role("inventory").post(f"/api/purchases/{purchase_id}/receive")
@@ -208,7 +213,7 @@ def test_purchases_filter_by_status(as_role, shop):
     buyer = as_role("procurement")
     order(buyer, shop)
     cancelled = order(buyer, shop).json["id"]
-    buyer.post(f"/api/purchases/{cancelled}/cancel")
+    buyer.post(f"/api/purchases/{cancelled}/cancel", json={"reason": "Ordered twice"})
 
     assert buyer.get("/api/purchases/?status=ordered").json["count"] == 1
     assert buyer.get("/api/purchases/?status=cancelled").json["count"] == 1

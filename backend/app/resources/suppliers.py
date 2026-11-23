@@ -12,6 +12,7 @@ blp = Blueprint("suppliers", __name__, url_prefix="/api/suppliers", description=
 
 class SupplierSchema(Schema):
     id = fields.Integer(dump_only=True)
+    code = fields.String(dump_only=True)
     name = fields.String(required=True, validate=validate.Length(min=1, max=150))
     email = fields.Email(allow_none=True, load_default=None)
     phone = fields.String(
@@ -19,10 +20,13 @@ class SupplierSchema(Schema):
         load_default=None,
         validate=validate.Regexp(r"^\+?[0-9 ]{7,20}$", error="Enter a valid phone number."),
     )
+    address = fields.String(allow_none=True, load_default=None, validate=validate.Length(max=300))
+    is_active = fields.Boolean(load_default=True)
 
 
 class SupplierQuery(PageQuery):
     search = fields.String(load_default=None)
+    active = fields.Boolean(load_default=None)
 
 
 @blp.route("/")
@@ -32,7 +36,14 @@ class SupplierQuery(PageQuery):
 def list_suppliers(args):
     query = db.select(Supplier).order_by(Supplier.name)
     if args["search"]:
-        query = query.where(Supplier.name.ilike(f"%{args['search']}%"))
+        term = f"%{args['search']}%"
+        code = args["search"].upper().removeprefix("SUP-").lstrip("0")
+        match = Supplier.name.ilike(term) | Supplier.email.ilike(term)
+        if code.isdigit():
+            match = match | (Supplier.number == int(code))
+        query = query.where(match)
+    if args["active"] is not None:
+        query = query.where(Supplier.is_active.is_(args["active"]))
     return paginate(query, args["page"], args["per_page"])
 
 
@@ -67,4 +78,7 @@ def update_supplier(data, supplier_id):
 @roles_required("admin", "procurement")
 def delete_supplier(supplier_id):
     supplier = get_or_404(Supplier, supplier_id)
-    delete(supplier, "This supplier has purchase orders and cannot be deleted.")
+    delete(
+        supplier,
+        "This supplier has purchase orders and cannot be deleted. Mark it inactive instead.",
+    )

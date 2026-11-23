@@ -5,6 +5,7 @@ from sqlalchemy import text
 from app import create_app
 from app.config import TestConfig
 from app.extensions import db as _db
+from app.tenancy import clear_business, set_business
 
 PASSWORD = "Secret123!"
 
@@ -22,13 +23,33 @@ def _schema():
 
 @pytest.fixture()
 def app(_schema):
+    from app.models import Business
+
     app = create_app(TestConfig)
     with app.app_context():
+        business = Business(name="Test Shop", join_code="TESTJOIN")
+        _db.session.add(business)
+        _db.session.commit()
+        set_business(business.id)
+        app.extensions["outbox"] = []
         yield app
+        clear_business()
         _db.session.remove()
         tables = ", ".join(t.name for t in _db.metadata.sorted_tables)
         _db.session.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
         _db.session.commit()
+
+
+@pytest.fixture()
+def business(app):
+    from app.models import Business
+
+    return _db.session.scalar(_db.select(Business).filter_by(join_code="TESTJOIN"))
+
+
+@pytest.fixture()
+def outbox(app):
+    return app.extensions["outbox"]
 
 
 @pytest.fixture()
@@ -57,8 +78,6 @@ def make_user(app):
 
 
 class AuthClient:
-   
-
     def __init__(self, client, user):
         self.client = client
         self.user = user

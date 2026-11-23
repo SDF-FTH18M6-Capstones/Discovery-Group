@@ -1,7 +1,7 @@
 import importlib
 import pkgutil
 
-from flask import Flask
+from flask import Flask, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.config import config_for_environment
@@ -13,7 +13,7 @@ from app.security import add_security_headers
 def create_app(config_class=None):
     config_class = config_class or config_for_environment()
     if hasattr(config_class, "check"):
-        config_class.check()  
+        config_class.check()
     app = Flask(__name__)
     app.config.from_object(config_class)
     if app.config["BEHIND_PROXY"]:
@@ -28,12 +28,28 @@ def create_app(config_class=None):
     limiter.init_app(app)
     add_security_headers(app)
 
-    from app import auth, models, resources
+    from app import auth, mail, models, resources, tenancy  
+
+    @app.before_request
+    def start_outside_any_business():
+        g.outer_business_id = tenancy.current_business_id()
+        tenancy.clear_business()
+        g.pop("business", None)
+        db.session.info.pop("emails", None)
+
+    @app.teardown_request
+    def leave_business(_exc):
+        outer = g.pop("outer_business_id", None)
+        tenancy.clear_business()
+        g.pop("business", None)
+        if outer is not None:
+            tenancy.set_business(outer)
 
     for info in pkgutil.iter_modules(resources.__path__):
         module = importlib.import_module(f"app.resources.{info.name}")
-        if hasattr(module, "blp"):
-            api.register_blueprint(module.blp)
+        for blueprint in getattr(module, "blueprints", [getattr(module, "blp", None)]):
+            if blueprint is not None:
+                api.register_blueprint(blueprint)
 
     register_error_handlers(app)
     return app

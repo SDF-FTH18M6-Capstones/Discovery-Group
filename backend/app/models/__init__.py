@@ -1,6 +1,15 @@
-from app.models.assets import Asset, Notification, Repair
+from app.models.assets import Asset, AssetAssignment, AssetCategory, Notification, Repair
+from app.models.business import (
+    AuditLog,
+    Business,
+    DocumentCounter,
+    Expense,
+    Image,
+    PasswordReset,
+    RevokedToken,
+)
 from app.models.catalogue import Category, Product, Supplier
-from app.models.procurement import Purchase, PurchaseItem, Request
+from app.models.procurement import GoodsReceipt, GoodsReceiptItem, Purchase, PurchaseItem, Request
 from app.models.sales import Sale, SaleItem, StockMovement
 from app.models.user import (
     ROLE_CLASSES,
@@ -12,20 +21,31 @@ from app.models.user import (
     User,
 )
 
-_all_ = [
+__all__ = [
     "ROLE_CLASSES",
     "Admin",
     "Asset",
+    "AssetAssignment",
+    "AssetCategory",
+    "AuditLog",
+    "Business",
     "Category",
+    "DocumentCounter",
     "Employee",
+    "Expense",
+    "GoodsReceipt",
+    "GoodsReceiptItem",
+    "Image",
     "InventoryManager",
     "Notification",
+    "PasswordReset",
     "ProcurementManager",
     "Product",
     "Purchase",
     "PurchaseItem",
     "Repair",
     "Request",
+    "RevokedToken",
     "Sale",
     "SaleItem",
     "SalesAttendant",
