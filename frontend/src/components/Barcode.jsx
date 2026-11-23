@@ -1,7 +1,3 @@
-// Code 128 (subset B) barcode as an SVG, drawn in the browser: no library, no image request.
-// US-33: the asset page shows the barcode with the code in text beneath it.
-
-// Bar and space widths for each Code 128 value (0–105), then the stop pattern.
 const PATTERNS = (
   "212222 222122 222221 121223 121322 131222 122213 122312 132212 221213 221312 231212 " +
   "112232 122132 122231 113222 123122 123221 223211 221132 221231 213212 223112 312131 " +

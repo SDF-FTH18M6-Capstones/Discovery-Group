@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import Field from "../components/Field";
 
-// US-05: always the same answer, whether or not the email has an account.
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");

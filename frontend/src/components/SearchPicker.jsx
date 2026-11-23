@@ -2,9 +2,6 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { api } from "../api/client";
 
-// Type to search the API and pick one result. Replaces dropdowns that could only list the
-// first 100 records. `path` is a list endpoint that accepts ?search=…; `describe(item)` gives
-// the main and secondary text of each option.
 export default function SearchPicker({
   label,
   path,

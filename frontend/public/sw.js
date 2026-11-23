@@ -1,7 +1,3 @@
-/* StockPilot service worker (US-43).
- * Caches only the app shell (HTML, JS, CSS, icons) so the app opens like an installed app.
- * API responses and tokens are never cached: requests to other origins and to /api/ are
- * left to the network untouched. */
 const VERSION = "stockpilot-shell-v1";
 const SHELL = [
   "/",

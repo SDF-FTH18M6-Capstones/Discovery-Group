@@ -15,7 +15,6 @@ const bodyOf = (spy, method, path) => {
 
 describe("barcodes (US-33)", () => {
   it("encode Code 128 with start, checksum and stop", () => {
-    // Checked against an independent encoder (python-barcode) for the same text.
     expect(code128Modules("Ab-x!")).toBe(
       "110100100001010001100010010000110100110111001111001001011001101100100011101101100011101011",
     );

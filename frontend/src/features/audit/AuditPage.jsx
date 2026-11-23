@@ -26,7 +26,6 @@ const changeText = (changes) =>
         .join("; ")
     : "";
 
-// US-06: who changed what, when. Append-only.
 export default function AuditPage() {
   const [kind, setKind] = useState("");
   const [page, setPage] = useState(1);

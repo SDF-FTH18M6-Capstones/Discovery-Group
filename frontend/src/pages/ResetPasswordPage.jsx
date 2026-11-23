@@ -4,7 +4,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import Field from "../components/Field";
 
-// Opened from the emailed link: /reset-password?token=…
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
