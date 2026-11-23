@@ -57,26 +57,81 @@ function RoleCell({ person, isYou, onChanged }) {
   );
 }
 
+function ActiveCell({ person, isYou, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  if (isYou) return <span className="text-sm text-muted">Active</span>;
+
+  const toggle = async () => {
+    const verb = person.is_active ? "deactivate" : "reactivate";
+    if (
+      person.is_active &&
+      !window.confirm(
+        `Deactivate ${person.full_name}? They are signed out at once and cannot sign in. Their sales, requests and approvals stay on record.`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      const updated = await api(`/api/users/${person.id}/${verb}`, { method: "POST" });
+      onChanged(
+        `${updated.full_name} is ${updated.is_active ? "active again" : "deactivated"}.`,
+        null,
+      );
+    } catch (error) {
+      onChanged(null, error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${person.is_active ? "bg-mint text-brand-dark" : "bg-danger-soft text-danger"}`}
+      >
+        {person.is_active ? "Active" : "Deactivated"}
+      </span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={toggle}
+        aria-label={`${person.is_active ? "Deactivate" : "Reactivate"} ${person.full_name}`}
+        className={`${person.is_active ? "btn-ghost text-danger" : "btn-secondary"} px-3 py-1 text-sm`}
+      >
+        {person.is_active ? "Deactivate" : "Reactivate"}
+      </button>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const dispatch = useDispatch();
   const { user } = useAuth();
   const list = useSelector((state) => state.users);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
+  const [active, setActive] = useState("");
   const [page, setPage] = useState(1);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    dispatch(users.fetchList({ search, role, page, per_page: 10 }));
-  }, [dispatch, search, role, page]);
+    dispatch(users.fetchList({ search, role, active, page, per_page: 10 }));
+  }, [dispatch, search, role, active, page]);
+
+  const changed = (message, failure) => {
+    setNotice(message || "");
+    setError(failure || "");
+    if (message) dispatch(users.fetchList({ search, role, active, page, per_page: 10 }));
+  };
 
   return (
     <section className="flex flex-col gap-6">
       <div>
         <h1 className="page-title">Users and roles</h1>
         <p className="text-muted">
-          Everyone signs up as an Employee. Change a role here; it applies from their next request.
+          Staff join with your business's code (see Settings) and start as Employee. Change a role
+          here; it applies from their next request. Deactivate people who leave.
         </p>
       </div>
 
@@ -125,6 +180,22 @@ export default function UsersPage() {
             </option>
           ))}
         </select>
+        <label htmlFor="user-active" className="sr-only">
+          Filter by status
+        </label>
+        <select
+          id="user-active"
+          value={active}
+          onChange={(event) => {
+            setActive(event.target.value);
+            setPage(1);
+          }}
+          className="input px-2"
+        >
+          <option value="">Active and deactivated</option>
+          <option value="true">Active only</option>
+          <option value="false">Deactivated only</option>
+        </select>
       </div>
 
       <div className="panel relative overflow-x-auto">
@@ -134,11 +205,15 @@ export default function UsersPage() {
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Access</th>
             </tr>
           </thead>
           <tbody>
             {list.items.map((person) => (
-              <tr key={`${person.id}-${person.role}`} className="border-t border-line">
+              <tr
+                key={`${person.id}-${person.role}-${person.is_active}`}
+                className={`border-t border-line ${person.is_active === false ? "opacity-70" : ""}`}
+              >
                 <td className="px-4 py-3 font-semibold">
                   <Avatar name={person.full_name} size={30} className="mr-3 align-middle" />
                   {person.full_name}
@@ -146,15 +221,10 @@ export default function UsersPage() {
                 </td>
                 <td className="px-4 py-3">{person.email}</td>
                 <td className="px-4 py-3">
-                  <RoleCell
-                    person={person}
-                    isYou={person.id === user.id}
-                    onChanged={(message, failure) => {
-                      setNotice(message || "");
-                      setError(failure || "");
-                      if (message) dispatch(users.fetchList({ search, role, page, per_page: 10 }));
-                    }}
-                  />
+                  <RoleCell person={person} isYou={person.id === user.id} onChanged={changed} />
+                </td>
+                <td className="px-4 py-3">
+                  <ActiveCell person={person} isYou={person.id === user.id} onChanged={changed} />
                 </td>
               </tr>
             ))}
@@ -163,7 +233,8 @@ export default function UsersPage() {
         <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
       </div>
       <p className="text-xs text-muted">
-        You cannot change your own role, so there is always an administrator.
+        You cannot change your own role or deactivate yourself, so there is always an administrator.
+        Every role change and deactivation is written to the audit log.
       </p>
     </section>
   );

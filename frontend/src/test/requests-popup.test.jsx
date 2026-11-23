@@ -74,19 +74,19 @@ describe("request pop-ups", () => {
     expect(bodyOf(spy, "PUT", "/api/requests/7")).toMatchObject({ quantity: 5 });
   });
 
-  it("ask before withdrawing, and Keep it changes nothing", async () => {
+  it("ask before cancelling, and Keep it changes nothing", async () => {
     const spy = mockApi({ "GET /api/requests/": [200, page([pending])] }, "employee");
     const user = userEvent.setup();
     renderAt("/requests", { as: "employee" });
 
     await user.click(await screen.findByRole("button", { name: "View request for Printer paper" }));
-    await user.click(screen.getByRole("button", { name: "Withdraw" }));
-    expect(screen.getByText("Withdraw this request?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel request" }));
+    expect(screen.getByText("Cancel this request?")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Keep it" }));
 
-    expect(screen.getByRole("button", { name: "Withdraw" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel request" })).toBeInTheDocument();
     await waitFor(() =>
-      expect(spy.mock.calls.some(([, options]) => options?.method === "DELETE")).toBe(false),
+      expect(spy.mock.calls.some(([url]) => url.endsWith("/cancel"))).toBe(false),
     );
   });
 });

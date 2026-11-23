@@ -5,11 +5,19 @@ import { useAuth } from "./AuthContext";
 
 // Wrap routes that need a signed-in user. With `roles`, only those roles get in.
 export default function RequireAuth({ roles }) {
-  const { user } = useAuth();
+  const { user, signedOut } = useAuth();
   const location = useLocation();
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    // After an expired session, come back to this page once signed in again (US-04);
+    // after a deliberate sign-out, start the next person on the dashboard.
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={signedOut ? undefined : { from: location.pathname + location.search }}
+      />
+    );
   }
   if (roles && !roles.includes(user.role)) {
     return (

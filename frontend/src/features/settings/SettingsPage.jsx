@@ -8,6 +8,7 @@ import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import { Avatar } from "../../components/ui";
 import { useTheme } from "../../theme/ThemeContext";
+import BusinessSettings from "./BusinessSettings";
 
 const firstMessages = (details = {}) =>
   Object.fromEntries(
@@ -17,6 +18,8 @@ const firstMessages = (details = {}) =>
 function ProfileForm() {
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(user.full_name);
+  const [phone, setPhone] = useState(user.phone || "");
+  const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,11 +33,16 @@ function ProfileForm() {
     }
     setBusy(true);
     try {
-      const fresh = await api("/api/auth/me", { method: "PUT", body: { full_name: name.trim() } });
+      const fresh = await api("/api/auth/me", {
+        method: "PUT",
+        body: { full_name: name.trim(), phone: phone.trim() || null },
+      });
       updateUser(fresh);
       setSaved("Profile saved.");
     } catch (err) {
-      setError(firstMessages(err.details).full_name || err.message);
+      const fields = firstMessages(err.details);
+      setPhoneError(fields.phone || "");
+      setError(fields.full_name || (fields.phone ? "" : err.message));
     } finally {
       setBusy(false);
     }
@@ -67,6 +75,19 @@ function ProfileForm() {
           setError("");
         }}
         error={error}
+      />
+      <Field
+        label="Phone (optional)"
+        name="phone"
+        type="tel"
+        autoComplete="tel"
+        placeholder="+254 712 345678"
+        value={phone}
+        onChange={(event) => {
+          setPhone(event.target.value);
+          setPhoneError("");
+        }}
+        error={phoneError}
       />
       <p className="text-xs text-muted">Your email and role are set by an administrator.</p>
       {saved && (
@@ -242,7 +263,11 @@ function Appearance() {
 export default function SettingsPage() {
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title="Settings" subtitle="Your profile, password and how StockPilot looks." />
+      <PageHeader
+        title="Settings"
+        subtitle="Your business, your profile, your password and how StockPilot looks."
+      />
+      <BusinessSettings />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ProfileForm />

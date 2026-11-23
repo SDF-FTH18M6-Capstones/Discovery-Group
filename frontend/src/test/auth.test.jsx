@@ -100,8 +100,11 @@ describe("sign in", () => {
     expect(fetchSpy.mock.calls.some(([url]) => url.endsWith("/api/auth/login"))).toBe(false);
   });
 
-  it("signs out and clears the stored session", async () => {
-    mockApi({}, "admin");
+  it("signs out on the server too, and clears the stored session", async () => {
+    const fetchSpy = mockApi(
+      { "POST /api/auth/logout": [200, { message: "Signed out." }] },
+      "admin",
+    );
     const user = userEvent.setup();
     renderAt("/products", { as: "admin" });
 
@@ -109,6 +112,40 @@ describe("sign in", () => {
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(loadSession()).toBeNull();
+    const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/api/auth/logout"));
+    expect(call[1].headers.Authorization).toBe("Bearer test-access");
+  });
+
+  it("sends a password reset link and always gives the same answer", async () => {
+    const answer = "If that email has an account, we sent a link to reset the password.";
+    const fetchSpy = mockApi({ "POST /api/auth/forgot-password": [200, { message: answer }] });
+    const user = userEvent.setup();
+    renderAt("/login");
+
+    await user.click(screen.getByRole("link", { name: "Forgot your password?" }));
+    await user.type(screen.getByLabelText("Email"), "barclay@test.com");
+    await user.click(screen.getByRole("button", { name: "Send the link" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(answer);
+    const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/forgot-password"));
+    expect(JSON.parse(call[1].body)).toEqual({ email: "barclay@test.com" });
+  });
+
+  it("sets a new password from the emailed link", async () => {
+    const fetchSpy = mockApi({
+      "POST /api/auth/reset-password": [200, { message: "Password changed. You can now sign in." }],
+    });
+    const user = userEvent.setup();
+    renderAt("/reset-password?token=abc123def456");
+
+    await user.type(screen.getByLabelText("New password"), "Brand9New");
+    await user.type(screen.getByLabelText("Confirm new password"), "Brand9New");
+    await user.click(screen.getByRole("button", { name: "Save new password" }));
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Password changed.");
+    const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/reset-password"));
+    expect(JSON.parse(call[1].body)).toEqual({ token: "abc123def456", password: "Brand9New" });
   });
 });
 
@@ -136,8 +173,9 @@ describe("sign up", () => {
       "POST /api/auth/register": [201, { message: "Account created. You can now sign in." }],
     });
     const user = userEvent.setup();
-    renderAt("/register");
+    renderAt("/register?code=demo2026");
 
+    expect(screen.getByLabelText("Join code")).toHaveValue("DEMO2026");
     await user.type(screen.getByLabelText("Full name"), "Barclay Koin");
     await user.type(screen.getByLabelText("Email"), "barclay@test.com");
     await user.type(screen.getByLabelText("Password"), "Secret123!");
@@ -152,6 +190,38 @@ describe("sign up", () => {
       full_name: "Barclay Koin",
       email: "barclay@test.com",
       password: "Secret123!",
+      join_code: "DEMO2026",
+    });
+  });
+
+  it("starts a new business and signs its owner in as Administrator", async () => {
+    const owner = { ...userFor("admin"), business: { id: 9, name: "Mama Mboga", currency: "KES" } };
+    const fetchSpy = mockApi({
+      "POST /api/auth/register-business": [
+        201,
+        { access_token: "a", refresh_token: "r", user: owner },
+      ],
+      "GET /api/auth/me": [200, owner],
+      "GET /api/dashboard/pulse": [200, { role: "admin", tiles: [] }],
+    });
+    const user = userEvent.setup();
+    renderAt("/register");
+
+    await user.click(screen.getByRole("button", { name: "New business" }));
+    await user.type(screen.getByLabelText("Business name"), "Mama Mboga");
+    await user.type(screen.getByLabelText("Full name"), "Wanjiku Kamau");
+    await user.type(screen.getByLabelText("Your work email"), "w@mboga.test");
+    await user.type(screen.getByLabelText("Password"), "Secret123!");
+    await user.type(screen.getByLabelText("Confirm password"), "Secret123!");
+    await user.click(screen.getByRole("button", { name: "Create business" }));
+
+    expect(await screen.findByText("Your business is ready")).toBeInTheDocument();
+    const call = fetchSpy.mock.calls.find(([url]) => url.endsWith("/register-business"));
+    expect(JSON.parse(call[1].body)).toEqual({
+      business_name: "Mama Mboga",
+      full_name: "Wanjiku Kamau",
+      email: "w@mboga.test",
+      password: "Secret123!",
     });
   });
 
@@ -165,6 +235,7 @@ describe("sign up", () => {
     const user = userEvent.setup();
     renderAt("/register");
 
+    await user.type(screen.getByLabelText("Join code"), "DEMO2026");
     await user.type(screen.getByLabelText("Full name"), "Barclay Koin");
     await user.type(screen.getByLabelText("Email"), "barclay@test.com");
     await user.type(screen.getByLabelText("Password"), "Secret123!");

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
@@ -7,9 +8,24 @@ import Icon from "../../components/Icon";
 import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import Timeline from "../../components/Timeline";
 import { Avatar } from "../../components/ui";
+import { timeAgo } from "../../format";
 import { requests } from "../../store";
-import { StatusTabs, shortDate } from "./RequestsPage";
+import { reference, shortDate } from "./RequestsPage";
+
+// US-17: the queue's filters. Awaiting and Urgent are sorted most urgent first, then oldest.
+const QUEUES = [
+  { key: "awaiting", label: "Awaiting", params: { status: "pending", sort: "urgency" } },
+  {
+    key: "urgent",
+    label: "Urgent",
+    params: { status: "pending", urgency: "urgent", sort: "urgency" },
+  },
+  { key: "today", label: "Decided today", params: { decided_today: "true" } },
+  { key: "approved", label: "Approved", params: { status: "approved" } },
+  { key: "all", label: "All", params: {} },
+];
 
 function DecisionPanel({ request, onStart, onDone, onClose }) {
   const { user, hasRole } = useAuth();
@@ -19,6 +35,19 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
 
   const own = request.requester_id === user.id;
   const canDecide = hasRole("procurement") && !own && request.status === "pending";
+  const canFulfil = request.status === "approved";
+
+  const fulfil = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/requests/${request.id}/fulfil`, { method: "POST" });
+      onDone(`${request.item}: marked fulfilled.`);
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
 
   const decide = async (action) => {
     if (action === "reject" && !comment.trim()) {
@@ -48,7 +77,7 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <span className="code text-muted">REQ-{String(request.id).padStart(4, "0")}</span>
+          <span className="code text-muted">{reference(request)}</span>
           <h2 className="text-xl font-bold">
             {request.item} × {request.quantity}
           </h2>
@@ -119,6 +148,32 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
           </div>
         </>
       )}
+      {canFulfil && (
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
+          <p className="text-sm text-muted">
+            Order it from a supplier, or hand it over from the store and mark it fulfilled.
+          </p>
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Link to={`/purchases?new=1&request=${request.id}`} className="btn-primary">
+              <Icon name="truck" size={16} /> Raise a purchase order
+            </Link>
+            <button type="button" disabled={busy} onClick={fulfil} className="btn-secondary">
+              Mark fulfilled
+            </button>
+          </div>
+        </div>
+      )}
+      <details className="border-t border-line pt-3">
+        <summary className="cursor-pointer text-sm font-medium">Trace timeline</summary>
+        <div className="-mx-5 mt-2">
+          <Timeline url={`/api/requests/${request.id}/timeline`} />
+        </div>
+      </details>
       {request.status === "pending" && own && (
         <p className="text-sm text-muted">
           This is your own request: another Procurement Manager decides it.
@@ -137,20 +192,33 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
 export default function ApprovalsPage() {
   const dispatch = useDispatch();
   const list = useSelector((state) => state.requests);
-  const [status, setStatus] = useState("pending");
+  const [searchParams] = useSearchParams();
+  const [queue, setQueue] = useState("awaiting");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [notice, setNotice] = useState("");
+  const params = QUEUES.find((q) => q.key === queue).params;
 
   useEffect(() => {
-    dispatch(requests.fetchList({ status, page, per_page: 10 }));
-  }, [dispatch, status, page]);
+    dispatch(requests.fetchList({ ...params, page, per_page: 10 }));
+  }, [dispatch, queue, page]); // params follow `queue`
+
+  // Opened from a notification: /approvals?open=12
+  useEffect(() => {
+    const id = searchParams.get("open");
+    if (id)
+      api(`/api/requests/${id}`)
+        .then(setSelected)
+        .catch(() => {});
+  }, [searchParams]);
 
   return (
     <section className="flex flex-col gap-6">
       <div>
         <h1 className="page-title">Approvals</h1>
-        <p className="text-muted">Every staff request. Open one to approve or reject it.</p>
+        <p className="text-muted">
+          Most urgent first, then oldest. Open one to read the reason and decide.
+        </p>
       </div>
 
       {notice && (
@@ -164,35 +232,45 @@ export default function ApprovalsPage() {
         </p>
       )}
 
-      <StatusTabs
-        value={status}
-        onChange={(value) => {
-          setStatus(value);
-          setPage(1);
-          setSelected(null);
-        }}
-      />
+      <div role="group" aria-label="Queue" className="seg self-start">
+        {QUEUES.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            aria-pressed={queue === option.key}
+            onClick={() => {
+              setQueue(option.key);
+              setPage(1);
+              setSelected(null);
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="panel relative min-w-0 overflow-x-auto">
           <table className="data-table w-full text-left text-sm">
             <thead className="table-head">
               <tr>
+                <th className="px-4 py-3">Request</th>
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3 text-right">Qty</th>
                 <th className="px-4 py-3">Requested by</th>
                 <th className="px-4 py-3">Urgency</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Age</th>
                 <th className="px-4 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {list.status === "loading" && <SkeletonRows cols={6} />}
+              {list.status === "loading" && <SkeletonRows cols={8} />}
               {list.status === "ready" && list.items.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-4 py-3 text-muted">
+                  <td colSpan="8" className="px-4 py-3 text-muted">
                     Nothing to show.
                   </td>
                 </tr>
@@ -202,6 +280,7 @@ export default function ApprovalsPage() {
                   key={request.id}
                   className={`border-t border-line ${selected?.id === request.id ? "bg-mint" : ""}`}
                 >
+                  <td className="code px-4 py-3 text-muted">{reference(request)}</td>
                   <td className="px-4 py-3 font-semibold">{request.item}</td>
                   <td className="px-4 py-3 text-right">{request.quantity}</td>
                   <td className="px-4 py-3">
@@ -215,6 +294,9 @@ export default function ApprovalsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge value={request.status} />
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-muted">
+                    {timeAgo(request.created_at)}
                   </td>
                   <td className="px-4 py-3">
                     <button
@@ -255,7 +337,7 @@ export default function ApprovalsPage() {
             onDone={(message) => {
               setNotice(message);
               setSelected(null);
-              dispatch(requests.fetchList({ status, page, per_page: 10 }));
+              dispatch(requests.fetchList({ ...params, page, per_page: 10 }));
             }}
           />
         )}

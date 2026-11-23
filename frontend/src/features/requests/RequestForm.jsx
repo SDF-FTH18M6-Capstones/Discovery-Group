@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 
 import Field from "../../components/Field";
+import SearchPicker, { describeProduct } from "../../components/SearchPicker";
 import { requests } from "../../store";
 
 export const URGENCIES = ["low", "normal", "high", "urgent"];
@@ -23,6 +24,12 @@ export default function RequestForm({ request, onSaved, onCancel, bare = false }
     urgency: request?.urgency || "normal",
     reason: request?.reason || "",
   });
+  // Optional (US-14): point at a product from the catalogue instead of describing it.
+  const [product, setProduct] = useState(
+    request?.product_id
+      ? { id: request.product_id, name: request.item, sku: request.product_sku, quantity: "?" }
+      : null,
+  );
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
 
@@ -43,6 +50,7 @@ export default function RequestForm({ request, onSaved, onCancel, bare = false }
       quantity: Number(values.quantity),
       urgency: values.urgency,
       reason: values.reason.trim(),
+      product_id: product?.id ?? null,
     };
     const result = await dispatch(requests.saveItem({ id: request?.id, data }));
     if (requests.saveItem.fulfilled.match(result)) {
@@ -68,10 +76,27 @@ export default function RequestForm({ request, onSaved, onCancel, bare = false }
           {formError}
         </p>
       )}
+      <div className="sm:col-span-4">
+        <SearchPicker
+          label="From the catalogue (optional)"
+          path="/api/products/"
+          placeholder="Search products by name or SKU"
+          value={product}
+          describe={describeProduct}
+          onPick={(picked) => {
+            setProduct(picked);
+            if (picked) {
+              setValues((current) => ({ ...current, item: picked.name }));
+              setErrors((current) => ({ ...current, item: undefined }));
+            }
+          }}
+        />
+      </div>
       <div className="sm:col-span-2">
         <Field
           label="What do you need?"
           name="item"
+          data-autofocus
           value={values.item}
           onChange={handleChange}
           error={errors.item}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d3b33" />
+    <title>StockPilot · Offline</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0d3b33;
+        color: #fff;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        text-align: center;
+        padding: 24px;
+      }
+      img {
+        width: 96px;
+        height: 96px;
+        border-radius: 20px;
+        background: #fff;
+      }
+      button {
+        margin-top: 16px;
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 12px;
+        background: #f2b655;
+        color: #2a1a00;
+        font-weight: 700;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" alt="" />
+      <h1>You are offline</h1>
+      <p>
+        StockPilot needs a connection to load sales and stock.<br />Check your internet and try
+        again.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

@@ -44,7 +44,7 @@ const groups = [
       { to: "/assets", label: "Assets", icon: "laptop", roles: STOCK_MANAGERS },
       {
         to: "/assets",
-        label: "My assets",
+        label: "Assets with me",
         icon: "laptop",
         roles: ["procurement", "sales", "employee"],
       },
@@ -56,6 +56,7 @@ const groups = [
     links: [
       { to: "/reports", label: "Reports", icon: "chart", roles: ["admin"] },
       { to: "/users", label: "Users", icon: "users", roles: ["admin"] },
+      { to: "/audit", label: "Audit log", icon: "shield", roles: ["admin"] },
     ],
   },
   {
@@ -81,6 +82,32 @@ function whereAmI(pathname) {
   }
   if (pathname === "/notifications") return { section: "Account", page: "Notifications" };
   return best ? { section: best.group.title, page: best.link.label } : null;
+}
+
+// A clear message instead of a browser error when the connection drops (US-43).
+function OfflineBanner() {
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine !== false,
+  );
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online", up);
+      window.removeEventListener("offline", down);
+    };
+  }, []);
+  if (online) return null;
+  return (
+    <p
+      role="status"
+      className="sticky top-0 z-50 bg-saffron px-4 py-2 text-center text-sm font-semibold text-[#2a1a00]"
+    >
+      You are offline. Sales and stock need a connection; your work is safe once you are back.
+    </p>
+  );
 }
 
 function Bell() {
@@ -218,127 +245,131 @@ export default function Layout() {
   const here = whereAmI(pathname);
 
   return (
-    <div className="min-h-screen bg-canvas text-ink lg:flex">
-      <aside
-        id="sidebar"
-        className={`fixed inset-y-0 left-0 z-40 flex w-[17rem] flex-col bg-evergreen text-white transition-[transform,visibility] duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          menuOpen ? "translate-x-0 shadow-2xl" : "max-lg:invisible max-lg:-translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <Link to="/" aria-label="StockPilot, dashboard">
-            <Logo size={34} />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close menu"
-            className="grid size-9 place-items-center rounded-lg text-sidebar-ink hover:bg-white/10 hover:text-white lg:hidden"
-          >
-            <Icon name="close" />
-          </button>
-        </div>
-
-        <nav
-          aria-label="Main"
-          className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4 [scrollbar-width:thin]"
+    <>
+      <OfflineBanner />
+      <div className="min-h-screen bg-canvas text-ink lg:flex">
+        <aside
+          id="sidebar"
+          className={`fixed inset-y-0 left-0 z-40 flex w-[17rem] flex-col bg-evergreen text-white transition-[transform,visibility] duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+            menuOpen ? "translate-x-0 shadow-2xl" : "max-lg:invisible max-lg:-translate-x-full"
+          }`}
         >
-          {visible.map((group) => (
-            <div key={group.title} className="flex flex-col gap-0.5">
-              <p className="px-3 pb-1 text-xs font-medium text-sidebar-ink/60">{group.title}</p>
-              {group.links.map((link) => (
-                <NavLink
-                  key={link.label}
-                  to={link.to}
-                  end={link.end}
-                  className={({ isActive }) =>
-                    `relative flex items-center gap-3 rounded-xl px-3 py-2 text-[0.9rem] transition-colors ${
-                      isActive
-                        ? "bg-evergreen-2 font-semibold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-1 before:rounded-r-full before:bg-saffron"
-                        : "text-sidebar-ink hover:bg-white/5 hover:text-white"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <Icon name={link.icon} className={isActive ? "text-saffron" : ""} />
-                      {link.label}
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className="m-3 flex items-center gap-3 rounded-2xl bg-black/15 p-3 ring-1 ring-white/5">
-          <Avatar name={user.full_name} size={38} />
-          <span className="min-w-0 flex-1 text-sm leading-tight">
-            <span className="block truncate font-semibold">{user.full_name}</span>
-            <span className="block truncate text-xs text-sidebar-ink">
-              {ROLE_NAMES[user.role] || user.role}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={signOut}
-            title="Sign out"
-            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-sidebar-ink hover:bg-white/10 hover:text-white"
-          >
-            <Icon name="logout" size={16} />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {menuOpen && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          tabIndex={-1}
-          onClick={() => setMenuOpen(false)}
-          className="fixed inset-0 z-30 bg-[#06201b]/50 backdrop-blur-[2px] lg:hidden"
-        />
-      )}
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-canvas/80 px-4 backdrop-blur-md md:px-8">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-            aria-controls="sidebar"
-            aria-expanded={menuOpen}
-            className="grid size-10 place-items-center rounded-xl border border-line bg-surface lg:hidden"
-          >
-            <Icon name="menu" />
-          </button>
-          {here && (
-            <p className="flex min-w-0 items-center gap-1.5 text-sm">
-              <span className="hidden text-muted sm:inline">{here.section}</span>
-              <Icon name="chevron" size={14} className="hidden text-line-strong sm:block" />
-              <span className="truncate font-medium">{here.page}</span>
-            </p>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="mr-2 hidden items-center gap-2 text-sm text-muted xl:flex">
-              <Icon name="clock" size={16} />
-              {new Date().toLocaleDateString("en-GB", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-              })}
-            </span>
-            <ThemeSwitch />
-            <Bell />
+          <div className="flex items-center justify-between px-5 pt-5 pb-4">
+            <Link to="/" aria-label="StockPilot, dashboard">
+              <Logo size={34} />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close menu"
+              className="grid size-9 place-items-center rounded-lg text-sidebar-ink hover:bg-white/10 hover:text-white lg:hidden"
+            >
+              <Icon name="close" />
+            </button>
           </div>
-        </header>
-        <main className="mx-auto w-full max-w-[90rem] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-          <ErrorBoundary key={pathname}>
-            <Outlet />
-          </ErrorBoundary>
-        </main>
+
+          <nav
+            aria-label="Main"
+            className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4 [scrollbar-width:thin]"
+          >
+            {visible.map((group) => (
+              <div key={group.title} className="flex flex-col gap-0.5">
+                <p className="px-3 pb-1 text-xs font-medium text-sidebar-ink/60">{group.title}</p>
+                {group.links.map((link) => (
+                  <NavLink
+                    key={link.label}
+                    to={link.to}
+                    end={link.end}
+                    className={({ isActive }) =>
+                      `relative flex items-center gap-3 rounded-xl px-3 py-2 text-[0.9rem] transition-colors ${
+                        isActive
+                          ? "bg-evergreen-2 font-semibold text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-1 before:rounded-r-full before:bg-saffron"
+                          : "text-sidebar-ink hover:bg-white/5 hover:text-white"
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon name={link.icon} className={isActive ? "text-saffron" : ""} />
+                        {link.label}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="m-3 flex items-center gap-3 rounded-2xl bg-black/15 p-3 ring-1 ring-white/5">
+            <Avatar name={user.full_name} size={38} />
+            <span className="min-w-0 flex-1 text-sm leading-tight">
+              <span className="block truncate font-semibold">{user.full_name}</span>
+              <span className="block truncate text-xs text-sidebar-ink">
+                {ROLE_NAMES[user.role] || user.role}
+                {user.business?.name ? ` · ${user.business.name}` : ""}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={signOut}
+              title="Sign out"
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-sidebar-ink hover:bg-white/10 hover:text-white"
+            >
+              <Icon name="logout" size={16} />
+              Sign out
+            </button>
+          </div>
+        </aside>
+
+        {menuOpen && (
+          <button
+            type="button"
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={() => setMenuOpen(false)}
+            className="fixed inset-0 z-30 bg-[#06201b]/50 backdrop-blur-[2px] lg:hidden"
+          />
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-canvas/80 px-4 backdrop-blur-md md:px-8">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              aria-controls="sidebar"
+              aria-expanded={menuOpen}
+              className="grid size-10 place-items-center rounded-xl border border-line bg-surface lg:hidden"
+            >
+              <Icon name="menu" />
+            </button>
+            {here && (
+              <p className="flex min-w-0 items-center gap-1.5 text-sm">
+                <span className="hidden text-muted sm:inline">{here.section}</span>
+                <Icon name="chevron" size={14} className="hidden text-line-strong sm:block" />
+                <span className="truncate font-medium">{here.page}</span>
+              </p>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <span className="mr-2 hidden items-center gap-2 text-sm text-muted xl:flex">
+                <Icon name="clock" size={16} />
+                {new Date().toLocaleDateString("en-GB", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </span>
+              <ThemeSwitch />
+              <Bell />
+            </div>
+          </header>
+          <main className="mx-auto w-full max-w-[90rem] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+            <ErrorBoundary key={pathname}>
+              <Outlet />
+            </ErrorBoundary>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

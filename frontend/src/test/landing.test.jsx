@@ -15,7 +15,11 @@ describe("landing page", () => {
         name: "Know what is on every shelf, to the last unit.",
       }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Create an account" })[0]).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "Start your business" })[0]).toHaveAttribute(
+      "href",
+      "/register?start=1",
+    );
+    expect(screen.getByRole("link", { name: "Join your team" })).toHaveAttribute(
       "href",
       "/register",
     );

@@ -143,6 +143,8 @@ describe("suppliers page", () => {
         name: "Metro",
         email: "orders@metro.co.ke",
         phone: null,
+        address: null,
+        is_active: true,
       });
     });
   });

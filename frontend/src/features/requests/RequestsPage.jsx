@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 
+import { api } from "../../api/client";
 import Icon from "../../components/Icon";
 import Modal from "../../components/Modal";
 import Pagination from "../../components/Pagination";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
+import Timeline from "../../components/Timeline";
 import { Avatar, EmptyState } from "../../components/ui";
 import { requests } from "../../store";
 import RequestForm from "./RequestForm";
@@ -16,6 +18,13 @@ export const STATUS_TABS = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
+];
+
+// US-15: Active (Pending, Approved) and Completed (Fulfilled, Rejected, Cancelled).
+const MY_TABS = [
+  { value: "active", label: "Active" },
+  { value: "completed", label: "Completed" },
+  { value: "", label: "All" },
 ];
 
 export const shortDate = (iso) =>
@@ -40,7 +49,8 @@ export function StatusTabs({ value, onChange }) {
   );
 }
 
-const reference = (request) => `REQ-${String(request.id).padStart(4, "0")}`;
+export const reference = (request) =>
+  request.reference || `REQ-${String(request.id).padStart(4, "0")}`;
 
 function RequestDetails({ request }) {
   return (
@@ -62,10 +72,25 @@ function RequestDetails({ request }) {
         <h3 className="text-sm font-medium text-muted">Why you need it</h3>
         <p className="border-l-2 border-saffron pl-3 text-ink-2">{request.reason}</p>
       </div>
+      {request.purchases?.length > 0 && (
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          <Icon name="truck" size={16} className="text-brand-dark" />
+          Ordered on{" "}
+          {request.purchases.map((po) => (
+            <span key={po.id} className="code rounded-md bg-surface-2 px-1.5 py-0.5">
+              {po.reference} · {po.status.replaceAll("_", " ")}
+            </span>
+          ))}
+        </p>
+      )}
       {request.status === "pending" ? (
         <p className="flex items-center gap-2 rounded-xl bg-saffron-soft p-3 text-sm text-saffron-ink">
           <Icon name="clock" size={16} />
-          Waiting for a Procurement Manager. You can still edit or withdraw it.
+          Waiting for a Procurement Manager. You can still edit or cancel it.
+        </p>
+      ) : request.status === "cancelled" ? (
+        <p className="rounded-xl bg-surface-2 p-3 text-sm text-muted">
+          You cancelled this request.
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -78,6 +103,12 @@ function RequestDetails({ request }) {
           </div>
         </div>
       )}
+      <div className="flex flex-col gap-1.5">
+        <h3 className="text-sm font-medium text-muted">Trace timeline</h3>
+        <div className="overflow-hidden rounded-xl border border-line">
+          <Timeline url={`/api/requests/${request.id}/timeline`} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -86,38 +117,53 @@ export default function RequestsPage() {
   const dispatch = useDispatch();
   const list = useSelector((state) => state.requests);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [status, setStatus] = useState("");
+  const [tab, setTab] = useState(searchParams.get("tab") ?? "active");
   const [page, setPage] = useState(1);
   const [popup, setPopup] = useState(searchParams.get("new") ? { mode: "new" } : null);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState("");
+  const [failure, setFailure] = useState("");
 
   useEffect(() => {
     if (searchParams.get("new")) setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
+
+  // Opened from a notification: /requests?open=12
+  useEffect(() => {
+    const id = searchParams.get("open");
+    if (!id) return;
+    api(`/api/requests/${id}`)
+      .then((request) => setPopup({ mode: "view", request }))
+      .catch(() => setNotice("That request could not be found."));
+  }, [searchParams]);
 
   const open = (next) => {
     setConfirming(false);
     setPopup(next);
   };
 
-  const params = { mine: true, status, page, per_page: 10 };
+  const params = { mine: true, tab, page, per_page: 10 };
   const reload = () => dispatch(requests.fetchList(params));
 
   useEffect(() => {
-    dispatch(requests.fetchList({ mine: true, status, page, per_page: 10 }));
-  }, [dispatch, status, page]);
+    dispatch(requests.fetchList({ mine: true, tab, page, per_page: 10 }));
+  }, [dispatch, tab, page]);
+
+  // US-16: cancelling keeps the request on record as Cancelled.
   const withdraw = async (request) => {
     setPopup(null);
     setNotice("");
+    setFailure("");
     const before = { items: list.items, count: list.count };
-    dispatch(requests.actions.removeItem(request.id));
-    const result = await dispatch(requests.deleteItem(request.id));
-    if (requests.deleteItem.fulfilled.match(result)) {
-      setNotice(`Request for ${request.item} withdrawn.`);
+    if (tab === "active") dispatch(requests.actions.removeItem(request.id));
+    else dispatch(requests.actions.patchItem({ id: request.id, changes: { status: "cancelled" } }));
+    try {
+      await api(`/api/requests/${request.id}/cancel`, { method: "POST" });
+      setNotice(`Request for ${request.item} cancelled.`);
       reload();
-    } else {
+    } catch (error) {
       dispatch(requests.actions.restoreItems(before));
+      setFailure(error.message);
     }
   };
 
@@ -141,19 +187,27 @@ export default function RequestsPage() {
           {notice}
         </p>
       )}
-      {list.error && (
+      {(failure || list.error) && (
         <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
-          {list.error}
+          {failure || list.error}
         </p>
       )}
 
-      <StatusTabs
-        value={status}
-        onChange={(value) => {
-          setStatus(value);
-          setPage(1);
-        }}
-      />
+      <div role="group" aria-label="Show" className="seg self-start">
+        {MY_TABS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={tab === option.value}
+            onClick={() => {
+              setTab(option.value);
+              setPage(1);
+            }}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
       <ul className="grid grid-cols-1 gap-4 xl:grid-cols-2" aria-busy={list.status === "loading"}>
         {list.status === "loading" && list.items.length === 0 && (
@@ -163,7 +217,10 @@ export default function RequestsPage() {
         )}
         {list.status === "ready" && list.items.length === 0 && (
           <li className="panel xl:col-span-2">
-            <EmptyState icon="inbox" title="No requests here yet">
+            <EmptyState
+              icon="inbox"
+              title={tab === "completed" ? "Nothing completed yet" : "No requests here yet"}
+            >
               Ask for equipment or supplies with New request; procurement decides.
             </EmptyState>
           </li>
@@ -190,7 +247,9 @@ export default function RequestsPage() {
               <span className="text-muted">
                 {request.status === "pending"
                   ? "Waiting for a decision"
-                  : `Decided by ${request.reviewer_name}`}
+                  : request.status === "cancelled"
+                    ? "Cancelled by you"
+                    : `Decided by ${request.reviewer_name}`}
               </span>
               <button
                 type="button"
@@ -255,7 +314,7 @@ export default function RequestsPage() {
               </button>
             ) : confirming ? (
               <>
-                <span className="mr-auto text-sm font-medium">Withdraw this request?</span>
+                <span className="mr-auto text-sm font-medium">Cancel this request?</span>
                 <button
                   type="button"
                   onClick={() => setConfirming(false)}
@@ -268,7 +327,7 @@ export default function RequestsPage() {
                   onClick={() => withdraw(popup.request)}
                   className="btn-danger"
                 >
-                  Yes, withdraw
+                  Yes, cancel it
                 </button>
               </>
             ) : (
@@ -278,7 +337,7 @@ export default function RequestsPage() {
                   onClick={() => setConfirming(true)}
                   className="btn-danger mr-auto"
                 >
-                  Withdraw
+                  Cancel request
                 </button>
                 <button type="button" onClick={() => setPopup(null)} className="btn-secondary">
                   Close

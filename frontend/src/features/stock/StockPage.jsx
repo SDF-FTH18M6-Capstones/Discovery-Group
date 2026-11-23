@@ -2,19 +2,21 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
-import { api } from "../../api/client";
+import { api, download } from "../../api/client";
 import Field from "../../components/Field";
+import SearchPicker, { describeProduct } from "../../components/SearchPicker";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
 import { EmptyState, StatStrip } from "../../components/ui";
-import { dateTime } from "../../format";
+import { dateTime, isoToday } from "../../format";
 import { movements } from "../../store";
 
-function AdjustmentForm({ products, onSaved, onCancel }) {
-  const [values, setValues] = useState({ product_id: "", change: "", reason: "" });
+function AdjustmentForm({ onSaved, onCancel }) {
+  const [product, setProduct] = useState(null);
+  const [values, setValues] = useState({ change: "", reason: "" });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
 
@@ -27,7 +29,7 @@ function AdjustmentForm({ products, onSaved, onCancel }) {
   const submit = async (event) => {
     event.preventDefault();
     const found = {};
-    if (!values.product_id) found.product_id = "Choose a product.";
+    if (!product) found.product_id = "Choose a product.";
     const change = Number(values.change);
     if (!Number.isInteger(change) || change === 0)
       found.change = "Enter a whole number, not 0 (minus to remove).";
@@ -39,7 +41,7 @@ function AdjustmentForm({ products, onSaved, onCancel }) {
     try {
       const saved = await api("/api/stock/adjustments", {
         method: "POST",
-        body: { product_id: Number(values.product_id), change, reason: values.reason.trim() },
+        body: { product_id: product.id, change, reason: values.reason.trim() },
       });
       onSaved(saved);
     } catch (err) {
@@ -60,24 +62,20 @@ function AdjustmentForm({ products, onSaved, onCancel }) {
     >
       <h2 className="text-lg font-bold">Adjust stock</h2>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Field label="Product" name="product_id" error={errors.product_id}>
-          {(id) => (
-            <select
-              id={id}
-              name="product_id"
-              value={values.product_id}
-              onChange={update}
-              className="input"
-            >
-              <option value="">Choose…</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} ({product.quantity} in stock)
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
+        <SearchPicker
+          id="field-product_id"
+          label="Product"
+          path="/api/products/"
+          extra="&status=all"
+          placeholder="Name or SKU"
+          value={product}
+          describe={describeProduct}
+          onPick={(picked) => {
+            setProduct(picked);
+            setErrors({});
+          }}
+          error={errors.product_id}
+        />
         <Field
           label="Change"
           name="change"
@@ -116,24 +114,23 @@ function AdjustmentForm({ products, onSaved, onCancel }) {
 const TYPES = [
   { value: "", label: "All" },
   { value: "sale", label: "Sales" },
-  { value: "purchase", label: "Purchases" },
+  { value: "purchase", label: "Receipts" },
   { value: "adjustment", label: "Adjustments" },
+  { value: "sale_void", label: "Voids" },
 ];
 
 export default function StockPage() {
   const dispatch = useDispatch();
   const list = useSelector((state) => state.movements);
-  const [products, setProducts] = useState([]);
   const [type, setType] = useState("");
-  const [productId, setProductId] = useState("");
+  const [product, setProduct] = useState(null);
+  const productId = product?.id || "";
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [exporting, setExporting] = useState("");
   const [page, setPage] = useState(1);
   const [adjusting, setAdjusting] = useState(false);
   const [notice, setNotice] = useState("");
-
-  const loadProducts = () =>
-    api("/api/products/?per_page=100")
-      .then((data) => setProducts(data.results))
-      .catch(() => {});
 
   const [totals, setTotals] = useState({});
   const loadTotals = () =>
@@ -146,17 +143,44 @@ export default function StockPage() {
     );
 
   useEffect(() => {
-    loadProducts();
     loadTotals();
   }, []);
 
+  const filters = { type, product_id: productId, date_from: dateFrom, date_to: dateTo };
   useEffect(() => {
-    dispatch(movements.fetchList({ type, product_id: productId, page, per_page: 15 }));
-  }, [dispatch, type, productId, page]);
+    dispatch(
+      movements.fetchList({
+        type,
+        product_id: productId,
+        date_from: dateFrom,
+        date_to: dateTo,
+        page,
+        per_page: 15,
+      }),
+    );
+  }, [dispatch, type, productId, dateFrom, dateTo, page]);
+
+  // US-31: the same filters, every page, as a CSV file.
+  const exportCsv = async () => {
+    setExporting("Preparing…");
+    const query = new URLSearchParams(
+      Object.entries(filters).filter(([, value]) => value !== "" && value != null),
+    );
+    try {
+      await download(`/api/stock/movements.csv?${query}`, `stock-ledger-${isoToday()}.csv`);
+      setExporting("");
+    } catch (err) {
+      setExporting(err.message);
+    }
+  };
 
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title="Stock ledger" subtitle="Every change to stock, with who made it and why.">
+        <button type="button" onClick={exportCsv} className="btn-secondary">
+          <Icon name="down" size={16} />
+          Export CSV
+        </button>
         {!adjusting && (
           <button type="button" onClick={() => setAdjusting(true)} className="btn-primary">
             <Icon name="ledger" size={16} />
@@ -175,16 +199,14 @@ export default function StockPage() {
 
       {adjusting && (
         <AdjustmentForm
-          products={products}
           onCancel={() => setAdjusting(false)}
           onSaved={(movement) => {
             setAdjusting(false);
             setNotice(
               `${movement.product_name}: ${movement.change > 0 ? "+" : ""}${movement.change}. Now ${movement.balance_now} in stock.`,
             );
-            loadProducts();
             loadTotals();
-            dispatch(movements.fetchList({ type, product_id: productId, page, per_page: 15 }));
+            dispatch(movements.fetchList({ ...filters, page, per_page: 15 }));
           }}
         />
       )}
@@ -195,9 +217,9 @@ export default function StockPage() {
         </p>
       )}
 
-      {list.error && (
-        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
-          {list.error}
+      {(list.error || exporting) && (
+        <p role={list.error ? "alert" : "status"} className="rounded-xl bg-surface-2 p-3 text-sm">
+          {list.error || exporting}
         </p>
       )}
 
@@ -218,32 +240,57 @@ export default function StockPage() {
               </button>
             ))}
           </div>
-          <label htmlFor="ledger-product" className="sr-only">
-            Filter by product
+          <div className="w-64">
+            <SearchPicker
+              id="ledger-product"
+              label="Product"
+              path="/api/products/"
+              extra="&status=all"
+              placeholder="All products"
+              value={product}
+              describe={describeProduct}
+              onPick={(picked) => {
+                setProduct(picked);
+                setPage(1);
+              }}
+            />
+          </div>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
+            From
+            <input
+              type="date"
+              className="input"
+              value={dateFrom}
+              max={dateTo || isoToday()}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                setPage(1);
+              }}
+            />
           </label>
-          <select
-            id="ledger-product"
-            value={productId}
-            onChange={(event) => {
-              setProductId(event.target.value);
-              setPage(1);
-            }}
-            className="input sm:ml-auto"
-          >
-            <option value="">All products</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
+            To
+            <input
+              type="date"
+              className="input"
+              value={dateTo}
+              min={dateFrom}
+              max={isoToday()}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
         </div>
         <div className="relative overflow-x-auto">
           <table className="data-table w-full text-left text-sm">
             <thead className="table-head">
               <tr>
                 <th className="px-5 py-3 text-right">Change</th>
+                <th className="px-3 py-3 text-right">After</th>
                 <th className="px-3 py-3">Product</th>
+                <th className="px-3 py-3">Reference</th>
                 <th className="px-3 py-3">Reason</th>
                 <th className="px-3 py-3">Type</th>
                 <th className="px-3 py-3">By</th>
@@ -251,7 +298,7 @@ export default function StockPage() {
               </tr>
             </thead>
             <tbody>
-              {list.status === "loading" && <SkeletonRows cols={6} />}
+              {list.status === "loading" && <SkeletonRows cols={8} />}
               {list.status === "ready" &&
                 list.items.map((movement) => (
                   <tr key={movement.id} className="border-t border-line">
@@ -266,6 +313,7 @@ export default function StockPage() {
                         {movement.change > 0 ? `+${movement.change}` : movement.change}
                       </span>
                     </td>
+                    <td className="figure px-3 py-3 text-right">{movement.quantity_after}</td>
                     <td className="px-3 py-3">
                       <Link
                         to={`/products/${movement.product_id}`}
@@ -274,6 +322,7 @@ export default function StockPage() {
                         {movement.product_name}
                       </Link>
                     </td>
+                    <td className="code px-3 py-3 text-muted">{movement.reference || "—"}</td>
                     <td className="px-3 py-3">{movement.reason}</td>
                     <td className="px-3 py-3">
                       <StatusBadge value={movement.type} />

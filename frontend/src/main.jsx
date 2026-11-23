@@ -26,3 +26,10 @@ createRoot(document.getElementById("root")).render(
     </Provider>
   </StrictMode>,
 );
+
+// Installable app (US-43). Only in the built app: the dev server reloads too often to cache.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

@@ -19,6 +19,8 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
     name: supplier?.name || "",
     email: supplier?.email || "",
     phone: supplier?.phone || "",
+    address: supplier?.address || "",
+    is_active: supplier ? supplier.is_active !== false : true,
   });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
@@ -36,7 +38,13 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
     if (Object.keys(found).length) return;
 
     // Empty optional fields are sent as null, not "".
-    const data = { name: values.name, email: values.email || null, phone: values.phone || null };
+    const data = {
+      name: values.name,
+      email: values.email || null,
+      phone: values.phone || null,
+      address: values.address || null,
+      is_active: values.is_active,
+    };
     const result = await dispatch(suppliers.saveItem({ id: supplier?.id, data }));
     if (suppliers.saveItem.fulfilled.match(result)) {
       onSaved(result.payload);
@@ -79,6 +87,26 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
         onChange={handleChange}
         error={errors.phone}
       />
+      <div className="sm:col-span-2">
+        <Field
+          label="Address"
+          name="address"
+          value={values.address}
+          onChange={handleChange}
+          error={errors.address}
+        />
+      </div>
+      <label className="flex items-center gap-2 self-end pb-2 text-sm">
+        <input
+          type="checkbox"
+          checked={values.is_active}
+          onChange={(event) =>
+            setValues((current) => ({ ...current, is_active: event.target.checked }))
+          }
+          className="size-4 accent-[var(--sp-brand)]"
+        />
+        Active (can receive new orders)
+      </label>
       <div className="flex gap-2 sm:col-span-3">
         <button type="submit" className="btn-primary">
           Save supplier

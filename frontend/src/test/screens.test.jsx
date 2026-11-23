@@ -90,16 +90,62 @@ describe("dashboard", () => {
             by_day: [{ day: "2026-11-10", total: "4520.00", count: 8 }],
           },
         ],
-        "GET /api/sales/": [200, { ...page([]), count: 4 }],
+        "GET /api/dashboard/pulse": [
+          200,
+          {
+            role: "admin",
+            tiles: [
+              {
+                key: "low_stock",
+                label: "Low stock",
+                count: 3,
+                link: "/products?low_stock=1",
+                tone: "warn",
+              },
+              {
+                key: "approvals",
+                label: "Pending approvals",
+                count: 2,
+                link: "/approvals",
+                tone: "warn",
+              },
+              {
+                key: "awaiting_receipt",
+                label: "Orders awaiting receipt",
+                count: 1,
+                link: "/purchases?status=awaiting",
+                tone: "warn",
+              },
+              {
+                key: "open_repairs",
+                label: "Open repairs",
+                count: 0,
+                link: "/repairs?status=open",
+                tone: "ok",
+              },
+              {
+                key: "sales_today",
+                label: "Sales today",
+                count: 4,
+                amount: "980.00",
+                link: "/sales?day=2026-11-23",
+                tone: "ok",
+              },
+            ],
+          },
+        ],
       },
       "admin",
     );
     renderAt("/", { as: "admin" });
 
     expect(await screen.findByTestId("week-sales")).toHaveTextContent("KES 4,520.00");
-    await waitFor(() => expect(screen.getByTestId("count-sales")).toHaveTextContent("4"));
-    expect(screen.getByTestId("count-orders")).toBeInTheDocument();
-    expect(screen.getByTestId("count-repairs")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("count-sales_today")).toHaveTextContent("980.00"),
+    );
+    expect(screen.getByText("4 sales")).toBeInTheDocument();
+    expect(screen.getByTestId("count-awaiting_receipt")).toHaveTextContent("1");
+    expect(screen.getByTestId("count-open_repairs")).toHaveTextContent("0");
   });
 });
 
@@ -115,6 +161,9 @@ describe("point of sale", () => {
             receipt_number: "S-0009",
             payment_method: "mpesa",
             total: "290.00",
+            vat_rate: "16.00",
+            vat_amount: "40.00",
+            net_amount: "250.00",
             attendant_name: "Test sales",
             created_at: "2026-11-10T09:00:00Z",
             items: [
@@ -154,13 +203,17 @@ describe("point of sale", () => {
 
     expect(await screen.findByRole("status")).toHaveTextContent("Sale S-0009 saved");
     expect(screen.getByTestId("receipt-total")).toHaveTextContent("KES 290.00");
-    expect(bodyOf(spy, "POST", "/api/sales/")).toEqual({
+    expect(screen.getByTestId("receipt-vat")).toHaveTextContent("KES 40.00");
+    const body = bodyOf(spy, "POST", "/api/sales/");
+    expect(body).toEqual({
       payment_method: "mpesa",
       items: [
         { product_id: 1, quantity: 2 },
         { product_id: 2, quantity: 1 },
       ],
+      idempotency_key: expect.any(String),
     });
+    expect(body.idempotency_key.length).toBeGreaterThanOrEqual(8);
   });
 
   it("shows the server's message when stock ran out meanwhile", async () => {
@@ -233,7 +286,18 @@ const order = {
   status: "ordered",
   total: "400.00",
   created_at: "2026-11-09T09:00:00Z",
-  items: [{ product_id: 1, product_name: "Tea", quantity: 5, unit_cost: "80.00" }],
+  items: [
+    {
+      id: 11,
+      product_id: 1,
+      product_name: "Tea",
+      quantity: 5,
+      received_quantity: 0,
+      outstanding: 5,
+      unit_cost: "80.00",
+    },
+  ],
+  receipts: [],
 };
 
 describe("purchases", () => {
@@ -253,11 +317,11 @@ describe("purchases", () => {
     await user.click(screen.getByRole("button", { name: "Place order" }));
     expect(screen.getByText("Choose a supplier.")).toBeInTheDocument();
 
-    await user.selectOptions(
-      screen.getByLabelText("Supplier"),
-      await screen.findByRole("option", { name: "Metro Wholesale" }),
-    );
-    await user.selectOptions(screen.getByLabelText("Product 1"), "1");
+    // Search pickers: no more "first 100" dropdowns.
+    await user.type(screen.getByLabelText("Supplier"), "Met");
+    await user.click(await screen.findByRole("option", { name: /Metro Wholesale/ }));
+    await user.type(screen.getByLabelText("Product 1"), "Tea");
+    await user.click(await screen.findByRole("option", { name: /Tea/ }));
     expect(screen.getByLabelText("Unit cost 1")).toHaveValue(80);
     await user.clear(screen.getByLabelText("Qty 1"));
     await user.type(screen.getByLabelText("Qty 1"), "5");
@@ -266,15 +330,25 @@ describe("purchases", () => {
     expect(await screen.findByText("PO-0004 placed with Metro Wholesale.")).toBeInTheDocument();
     expect(bodyOf(spy, "POST", "/api/purchases/")).toEqual({
       supplier_id: 5,
+      request_id: null,
+      notes: null,
+      confirm: true,
       items: [{ product_id: 1, quantity: 5, unit_cost: "80.00" }],
     });
   });
 
-  it("let Inventory receive an order but not place or cancel one", async () => {
+  it("let Inventory receive part of an order, but not place or cancel one", async () => {
     const spy = mockApi(
       {
         "GET /api/purchases/": [200, page([order])],
-        "POST /api/purchases/4/receive": [200, { ...order, status: "received" }],
+        "POST /api/purchases/4/receive": [
+          200,
+          {
+            ...order,
+            status: "partially_received",
+            receipts: [{ id: 1, reference: "GRN-0001", items: [] }],
+          },
+        ],
       },
       "inventory",
     );
@@ -282,9 +356,21 @@ describe("purchases", () => {
     renderAt("/purchases", { as: "inventory" });
 
     await user.click(await screen.findByRole("button", { name: "Receive PO-0004" }));
+    const dialog = screen.getByRole("dialog", { name: "Receive PO-0004" });
+    const arrived = within(dialog).getByLabelText("Tea arrived");
+    expect(arrived).toHaveValue(5);
+    await user.clear(arrived);
+    await user.type(arrived, "9");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm delivery" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("only 5 still to come");
+    await user.clear(arrived);
+    await user.type(arrived, "3");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm delivery" }));
 
-    expect(await screen.findByText("PO-0004 received. Stock updated.")).toBeInTheDocument();
-    expect(called(spy, "POST", "/api/purchases/4/receive")).toBe(true);
+    expect(await screen.findByText(/GRN-0001 recorded for PO-0004/)).toBeInTheDocument();
+    const body = bodyOf(spy, "POST", "/api/purchases/4/receive");
+    expect(body.lines).toEqual([{ item_id: 11, quantity: 3 }]);
+    expect(body.idempotency_key).toEqual(expect.any(String));
     expect(screen.queryByRole("button", { name: "New purchase order" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel PO-0004" })).toBeNull();
   });
@@ -326,7 +412,9 @@ describe("stock ledger", () => {
     expect(screen.getByText("Choose a product.")).toBeInTheDocument();
     expect(screen.getByText("Enter a whole number, not 0 (minus to remove).")).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText("Product"), "1");
+    const form = screen.getByRole("form", { name: "Adjust stock" });
+    await user.type(within(form).getByLabelText("Product"), "Tea");
+    await user.click(await screen.findByRole("option", { name: /Tea/ }));
     await user.type(screen.getByLabelText("Change"), "-1");
     await user.type(screen.getByLabelText("Reason"), "Damaged in store");
     await user.click(screen.getByRole("button", { name: "Save adjustment" }));
@@ -345,17 +433,24 @@ describe("product detail", () => {
     mockApi(
       {
         "GET /api/products/1": [200, tea],
-        "GET /api/stock/movements": [
+        "GET /api/products/1/timeline": [
           200,
           page([
             {
-              id: 1,
-              product_id: 1,
-              change: 10,
-              type: "purchase",
-              reason: "PO-0001 received",
+              at: "2026-11-10T09:00:00Z",
+              action: "Received",
+              summary: "PO-0001 received",
+              change: "+10 (now 12)",
+              reference: "GRN-0001",
               user_name: "Keith Gachuche",
-              created_at: "2026-11-10T09:00:00Z",
+            },
+            {
+              at: "2026-11-09T09:00:00Z",
+              action: "Updated",
+              summary: "Tea edited",
+              change: "Selling price 100.00 → 120.00",
+              reference: null,
+              user_name: "Keith Gachuche",
             },
           ]),
         ],
@@ -366,6 +461,8 @@ describe("product detail", () => {
 
     expect(await screen.findByRole("heading", { name: "Tea" })).toBeInTheDocument();
     expect(await screen.findByText("PO-0001 received")).toBeInTheDocument();
+    expect(screen.getByText("+10 (now 12)")).toBeInTheDocument();
+    expect(screen.getByText("Selling price 100.00 → 120.00")).toBeInTheDocument();
     expect(screen.getByText("Low stock")).toBeInTheDocument();
   });
 
@@ -374,8 +471,8 @@ describe("product detail", () => {
     renderAt("/products/1", { as: "employee" });
 
     expect(await screen.findByRole("heading", { name: "Tea" })).toBeInTheDocument();
-    expect(screen.queryByText("Stock trace")).toBeNull();
-    expect(called(spy, "GET", "/api/stock/movements")).toBe(false);
+    expect(screen.queryByText("Trace timeline")).toBeNull();
+    expect(called(spy, "GET", "/api/products/1/timeline")).toBe(false);
   });
 });
 
@@ -414,6 +511,7 @@ describe("repairs", () => {
     expect(bodyOf(spy, "POST", "/api/repairs/")).toEqual({
       asset_id: 4,
       description: "Screen flickers",
+      urgency: "normal",
     });
   });
 
@@ -504,6 +602,13 @@ describe("reports", () => {
             sales_count: 8,
             average_sale: "565.00",
             estimated_profit: "1210.00",
+            gross_profit: "1210.00",
+            expenses_total: "400.00",
+            net_profit: "810.00",
+            vat_total: "623.45",
+            voided_count: 1,
+            by_payment: [{ key: "cash", label: "Cash", total: "4520.00", count: 8 }],
+            by_attendant: [],
             purchases_received_total: "3000.00",
             stock_value: "25000.00",
             by_day: [{ day: "2026-11-10", total: "4520.00", count: 8 }],
@@ -520,7 +625,8 @@ describe("reports", () => {
     await user.click(await screen.findByRole("button", { name: "30 days" }));
 
     expect(await screen.findByTestId("kpi-Sales")).toHaveTextContent("KES 4,520.00");
-    expect(screen.getByTestId("kpi-Estimated profit")).toHaveTextContent("KES 1,210.00");
+    expect(screen.getByTestId("kpi-Gross profit")).toHaveTextContent("KES 1,210.00");
+    expect(screen.getByTestId("kpi-Net profit")).toHaveTextContent("KES 810.00");
     expect(screen.getByRole("link", { name: "Sugar" })).toBeInTheDocument();
     const days = spy.mock.calls
       .map(([url]) => new URL(url))
@@ -538,6 +644,49 @@ describe("reports", () => {
 });
 
 describe("settings", () => {
+  const business = {
+    id: 1,
+    name: "Test Shop",
+    timezone: "Africa/Nairobi",
+    currency: "KES",
+    vat_rate: "16.00",
+    phone: null,
+    email: null,
+    address: null,
+    receipt_footer: null,
+    join_code: "K7M2QX9P",
+  };
+
+  it("lets the Administrator invite staff and change the VAT rate", async () => {
+    const spy = mockApi(
+      {
+        "GET /api/business": [200, business],
+        "PUT /api/business": [200, { ...business, vat_rate: "8.00" }],
+      },
+      "admin",
+    );
+    const user = userEvent.setup();
+    renderAt("/settings", { as: "admin" });
+
+    expect(await screen.findByTestId("join-code")).toHaveTextContent("K7M2QX9P");
+    const vat = screen.getByLabelText("VAT included in prices (%)");
+    await user.clear(vat);
+    await user.type(vat, "8");
+    await user.click(screen.getByRole("button", { name: "Save business settings" }));
+
+    expect(await screen.findByText("Business settings saved.")).toBeInTheDocument();
+    expect(bodyOf(spy, "PUT", "/api/business")).toMatchObject({ name: "Test Shop", vat_rate: "8" });
+  });
+
+  it("shows other staff the business, but not the join code", async () => {
+    mockApi({ "GET /api/business": [200, { ...business, join_code: null }] }, "sales");
+    renderAt("/settings", { as: "sales" });
+
+    expect(await screen.findByRole("heading", { name: "Test Shop" })).toBeInTheDocument();
+    expect(screen.queryByTestId("join-code")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save business settings" })).toBeNull();
+  });
+
   it("saves a new name and shows it in the menu", async () => {
     const spy = mockApi(
       {
@@ -557,7 +706,10 @@ describe("settings", () => {
     await user.click(screen.getByRole("button", { name: "Save profile" }));
 
     expect(await screen.findByText("Profile saved.")).toBeInTheDocument();
-    expect(bodyOf(spy, "PUT", "/api/auth/me")).toEqual({ full_name: "David Nyongesa" });
+    expect(bodyOf(spy, "PUT", "/api/auth/me")).toEqual({
+      full_name: "David Nyongesa",
+      phone: null,
+    });
     expect(screen.getAllByText("David Nyongesa").length).toBeGreaterThan(0);
   });
 

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 
+import { api, upload } from "../../api/client";
 import Field from "../../components/Field";
+import PhotoPicker, { checkPhoto } from "../../components/PhotoPicker";
+import { currencyCode } from "../../format";
 import { products } from "../../store";
 
 const EMPTY = {
@@ -39,6 +42,17 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState(null);
+  const [photoError, setPhotoError] = useState("");
+  const [removePhoto, setRemovePhoto] = useState(false);
+  const currency = currencyCode();
+
+  const pickPhoto = (file) => {
+    const problem = checkPhoto(file);
+    setPhotoError(problem);
+    setPhoto(problem ? null : file);
+    if (file && !problem) setRemovePhoto(false);
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -60,11 +74,23 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       quantity: Number(values.quantity),
       reorder_level: Number(values.reorder_level),
     };
+    if (product) delete data.quantity; // stock changes only through adjustments (US-09)
     const result = await dispatch(products.saveItem({ id: product?.id, data }));
-    setSaving(false);
     if (products.saveItem.fulfilled.match(result)) {
-      onSaved(result.payload);
+      let saved = result.payload;
+      try {
+        if (photo) saved = await upload(`/api/products/${saved.id}/photo`, photo);
+        else if (removePhoto && product?.image_url)
+          saved = await api(`/api/products/${saved.id}/photo`, { method: "DELETE" });
+      } catch (error) {
+        setSaving(false);
+        setPhotoError(`The product was saved, but the photo was not: ${error.message}`);
+        return;
+      }
+      setSaving(false);
+      onSaved(saved);
     } else {
+      setSaving(false);
       // Show the backend's per-field errors next to each field.
       const flat = Object.fromEntries(
         Object.entries(result.payload.details).map(([key, list]) => [key, [].concat(list)[0]]),
@@ -116,7 +142,7 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
         )}
       </Field>
       <Field
-        label="Cost price (KES)"
+        label={`Cost price (${currency})`}
         name="cost_price"
         inputMode="decimal"
         value={values.cost_price}
@@ -124,21 +150,31 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
         error={errors.cost_price}
       />
       <Field
-        label="Selling price (KES)"
+        label={`Selling price (${currency})`}
         name="selling_price"
         inputMode="decimal"
         value={values.selling_price}
         onChange={handleChange}
         error={errors.selling_price}
       />
-      <Field
-        label="Quantity in stock"
-        name="quantity"
-        inputMode="numeric"
-        value={values.quantity}
-        onChange={handleChange}
-        error={errors.quantity}
-      />
+      {product ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-ink-2">Quantity in stock</span>
+          <span className="figure text-xl">{product.quantity}</span>
+          <span className="text-xs text-muted">
+            Change stock with an adjustment on the Stock ledger, so every change is recorded.
+          </span>
+        </div>
+      ) : (
+        <Field
+          label="Opening stock"
+          name="quantity"
+          inputMode="numeric"
+          value={values.quantity}
+          onChange={handleChange}
+          error={errors.quantity}
+        />
+      )}
       <Field
         label="Reorder level"
         name="reorder_level"
@@ -147,6 +183,23 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
         onChange={handleChange}
         error={errors.reorder_level}
       />
+      <div className="sm:col-span-2">
+        <PhotoPicker
+          currentUrl={removePhoto ? "" : product?.image_url}
+          file={photo}
+          onPick={pickPhoto}
+          onRemove={() => {
+            setPhoto(null);
+            setRemovePhoto(true);
+          }}
+          error={photoError}
+        />
+      </div>
+      {product && (
+        <p className="text-xs text-muted sm:col-span-2">
+          New prices apply to new sales only; past receipts keep the price they were sold at.
+        </p>
+      )}
       <div className="flex gap-2 sm:col-span-2">
         <button type="submit" disabled={saving} className="btn-primary">
           {saving ? "Saving…" : "Save product"}

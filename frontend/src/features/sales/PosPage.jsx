@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { api } from "../../api/client";
+import { api, mediaUrl, newIdempotencyKey } from "../../api/client";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import { Avatar } from "../../components/ui";
@@ -17,6 +17,8 @@ export default function PosPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [sale, setSale] = useState(null);
+  // One key per sale: a double tap or a retry after a dropped connection saves one sale (US-26).
+  const [saleKey, setSaleKey] = useState(newIdempotencyKey);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +41,7 @@ export default function PosPage() {
 
   const setQuantity = (product, quantity) => {
     setError("");
+    setSaleKey(newIdempotencyKey()); // a different cart is a different sale
     setCart((current) => {
       const capped = Math.min(Math.max(quantity, 0), product.quantity);
       const rest = current.filter((line) => line.product.id !== product.id);
@@ -70,11 +73,13 @@ export default function PosPage() {
         body: {
           payment_method: payment,
           items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+          idempotency_key: saleKey,
         },
       });
       setSale(saved);
       setCart([]);
       setSearch("");
+      setSaleKey(newIdempotencyKey());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -161,7 +166,16 @@ export default function PosPage() {
                     }`}
                   >
                     <span className="flex items-start justify-between gap-2">
-                      <Avatar name={product.name} size={40} className="rounded-xl" />
+                      {product.image_url ? (
+                        <img
+                          src={mediaUrl(product.image_url)}
+                          alt=""
+                          loading="lazy"
+                          className="size-10 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <Avatar name={product.name} size={40} className="rounded-xl" />
+                      )}
                       {inCart && (
                         <span className="grid size-7 place-items-center rounded-full bg-brand text-xs font-bold text-on-brand">
                           {inCart}
@@ -179,7 +193,7 @@ export default function PosPage() {
                       <span
                         className={`text-xs whitespace-nowrap ${out ? "text-danger" : product.is_low_stock ? "text-saffron-ink" : "text-muted"}`}
                       >
-                        {out ? "Out of stock" : `${product.quantity} left`}
+                        {out ? "Out of stock" : `Max ${product.quantity} available`}
                       </span>
                     </span>
                   </button>

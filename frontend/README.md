@@ -29,26 +29,48 @@ The **System status** page shows whether the backend is reachable.
 
 ## Pages and who sees them
 
-| Page               | Address          | Who                                                    |
-| ------------------ | ---------------- | ------------------------------------------------------ |
-| Landing page       | `/`              | visitors (not signed in): what StockPilot does         |
-| Dashboard          | `/`              | everyone signed in (counts differ by role)             |
-| Products           | `/products`      | everyone; Add / Edit / Delete for admin, inventory     |
-| Categories         | `/categories`    | everyone; Add / Rename / Delete for admin, inventory   |
-| Suppliers          | `/suppliers`     | admin, procurement                                     |
-| My requests        | `/requests`      | everyone                                               |
-| Approvals          | `/approvals`     | procurement decides; admin can view                    |
-| Assets / My assets | `/assets`        | admin, inventory manage all; others see what they hold |
-| Product detail     | `/products/:id`  | everyone; the stock trace for admin, inventory         |
-| New sale (till)    | `/sales/new`     | admin, sales                                           |
-| Sales and receipts | `/sales`         | admin (all), sales (own)                               |
-| Purchases          | `/purchases`     | procurement orders · inventory receives · admin all    |
-| Stock ledger       | `/stock`         | admin, inventory (with stock adjustments)              |
-| Repairs            | `/repairs`       | everyone reports; admin, inventory run the board       |
-| Notifications      | `/notifications` | everyone (own); the bell in the top bar shows unread   |
-| Reports            | `/reports`       | admin                                                  |
-| Users and roles    | `/users`         | admin                                                  |
-| Settings           | `/settings`      | everyone: name, password, light / dark mode            |
+| Page               | Address                               | Who                                                                    |
+| ------------------ | ------------------------------------- | ---------------------------------------------------------------------- |
+| Landing page       | `/`                                   | visitors: what StockPilot does, Start your business                    |
+| Sign up            | `/register`, `/register?code=…`       | join a business with its code, or start a new one (`?start=1`)         |
+| Password reset     | `/forgot-password`, `/reset-password` | anyone; the emailed link opens the second page                         |
+| Dashboard          | `/`                                   | everyone: StockPilot Pulse tiles for their role, each opening its list |
+| Products           | `/products`                           | everyone; Add / Edit / Retire / photo for admin, inventory             |
+| Product detail     | `/products/:id`                       | everyone; Trace timeline for admin, inventory                          |
+| Categories         | `/categories`                         | everyone; changes for admin, inventory                                 |
+| Suppliers          | `/suppliers`                          | admin, procurement (codes SUP-001, active / inactive)                  |
+| My requests        | `/requests`                           | everyone: Active / Completed tabs, cancel, timeline                    |
+| Approvals          | `/approvals`                          | procurement decides (Awaiting, Urgent, Decided today); admin views     |
+| Assets             | `/assets`                             | admin, inventory: barcode labels, assign / return, history, overdue    |
+| Assets with me     | `/assets`                             | everyone else: what they hold                                          |
+| New sale (till)    | `/sales/new`                          | admin, sales                                                           |
+| Sales and receipts | `/sales`                              | admin (all, can void today's), sales (own)                             |
+| Purchases          | `/purchases`                          | procurement drafts and orders · inventory receives in parts · admin    |
+| Stock ledger       | `/stock`                              | admin, inventory (adjustments, date filter, CSV export)                |
+| Repairs            | `/repairs`                            | everyone reports; admin, inventory start, complete or reject           |
+| Notifications      | `/notifications`                      | everyone (own); each opens the record it is about                      |
+| Reports            | `/reports`                            | admin: date ranges, gross and net profit, expenses, CSV                |
+| Users              | `/users`                              | admin: roles, deactivate / reactivate                                  |
+| Audit log          | `/audit`                              | admin                                                                  |
+| Settings           | `/settings`                           | everyone; business settings and the join code for admin                |
+
+## Installable app (PWA)
+
+`public/manifest.webmanifest`, the icons and `public/sw.js` make StockPilot installable over
+HTTPS. The service worker caches only the app shell (HTML, JS, CSS, icons); API responses and
+tokens are never cached (the API is on another address, and `/api/` is skipped too). Offline, the
+app shows a banner, and a page that was never loaded shows `offline.html`. The service worker is
+registered only in the built app (`npm run build`), not in `npm run dev`.
+
+## Deploy
+
+- **Netlify**: base directory `frontend`; `netlify.toml` builds `dist/` and sends every address
+  to `index.html`, so refreshing `/products` works. Set `VITE_API_URL` to the API's address.
+- **Vercel**: root directory `frontend`; `vercel.json` does the same.
+- Any other static host: upload `dist/` and add the same "all paths → index.html" rewrite
+  (`public/_redirects` covers hosts that read that file).
+
+Then set the API's `CORS_ORIGINS` and `FRONTEND_URL` to this address.
 
 ## Look and dark mode
 
@@ -72,19 +94,23 @@ The **System status** page shows whether the backend is reachable.
   in, `/` is the dashboard. The logo is `components/Logo.jsx` (swap in your own file there).
 - Every page sits inside `ErrorBoundary`: a crash shows a banner, not a blank screen.
 - Lists show grey placeholder rows while loading (`components/Skeleton.jsx`).
-- Withdrawing a request, approving / rejecting, moving a repair and marking notifications read
+- Money uses the business's currency (`format.js` `money()`), set from the signed-in account.
+- Pickers that used to load "the first 100" records now search the API as you type
+  (`components/SearchPicker.jsx`).
+- Cancelling a request, approving / rejecting, moving a repair and marking notifications read
   change the screen at once and are undone if the server says no (`store/resourceSlice.js`:
   `patchItem`, `removeItem`, `restoreItems`).
 
 ## Commands
 
-| Command          | What it does                   |
-| ---------------- | ------------------------------ |
-| `npm run dev`    | Start the app with live reload |
-| `npm test`       | Run the tests                  |
-| `npm run lint`   | Check the code for mistakes    |
-| `npm run format` | Format the code                |
-| `npm run build`  | Build for deployment           |
+| Command                 | What it does                   |
+| ----------------------- | ------------------------------ |
+| `npm run dev`           | Start the app with live reload |
+| `npm test`              | Run the tests                  |
+| `npm run test:coverage` | Tests with a coverage report   |
+| `npm run lint`          | Check the code for mistakes    |
+| `npm run format`        | Format the code                |
+| `npm run build`         | Build for deployment           |
 
 ## Folders
 
@@ -94,7 +120,9 @@ src/
 ├── auth/                Auth Context, session storage, RequireAuth, role names
 ├── store/               Redux store (one slice per resource)
 ├── theme/               light / dark mode
-├── components/          Layout, ui (shared blocks), Logo, ThemeSwitch, ErrorBoundary, Skeleton, Icon, PageHeader, Field, Pagination, StatusBadge
+├── components/          Layout, ui (shared blocks), Logo, ThemeSwitch, ErrorBoundary, Skeleton, Icon, PageHeader, Field, Pagination, StatusBadge,
+│                        Timeline (Trace Timeline), SearchPicker, PhotoPicker, Barcode (Code 128)
+├── csv.js               CSV export of any report table
 ├── features/dashboard/  home page: counts for the signed-in role (+ the week's sales for admin)
 ├── features/sales/      till (point of sale), sales history, printable receipt
 ├── features/purchases/  purchase orders: place, receive, cancel
@@ -109,6 +137,7 @@ src/
 ├── features/requests/   My requests (everyone) and Approvals (procurement)
 ├── features/assets/     asset register (admin, inventory) / My assets (everyone else)
 ├── features/users/      users and roles (admin)
-├── pages/               Landing page, Sign in, Create account, System status
+├── features/audit/      audit log (admin)
+├── pages/               Landing page, Sign in, Join / start a business, password reset, System status
 └── test/                tests
 ```

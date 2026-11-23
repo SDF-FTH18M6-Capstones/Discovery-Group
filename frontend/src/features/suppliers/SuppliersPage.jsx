@@ -11,13 +11,14 @@ export default function SuppliersPage() {
   const dispatch = useDispatch();
   const list = useSelector((state) => state.suppliers);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
 
   useEffect(() => {
-    dispatch(suppliers.fetchList({ page, per_page: 10 }));
-  }, [dispatch, page]);
+    dispatch(suppliers.fetchList({ page, per_page: 10, search }));
+  }, [dispatch, page, search]);
 
-  const reload = () => dispatch(suppliers.fetchList({ page, per_page: 10 }));
+  const reload = () => dispatch(suppliers.fetchList({ page, per_page: 10, search }));
 
   return (
     <section className="flex flex-col gap-6">
@@ -46,13 +47,32 @@ export default function SuppliersPage() {
         </p>
       )}
 
+      <div>
+        <label htmlFor="supplier-search" className="sr-only">
+          Search suppliers
+        </label>
+        <input
+          id="supplier-search"
+          type="search"
+          placeholder="Name, email or code (SUP-001)"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
+          className="input w-full max-w-sm"
+        />
+      </div>
+
       <div className="panel relative overflow-x-auto">
         <table className="data-table w-full text-left text-sm">
           <thead className="table-head">
             <tr>
+              <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Phone</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -60,7 +80,11 @@ export default function SuppliersPage() {
           </thead>
           <tbody>
             {list.items.map((supplier) => (
-              <tr key={supplier.id} className="border-t border-line">
+              <tr
+                key={supplier.id}
+                className={`border-t border-line ${supplier.is_active === false ? "opacity-70" : ""}`}
+              >
+                <td className="code px-4 py-3 text-muted">{supplier.code}</td>
                 <td className="px-4 py-3 font-semibold">
                   <span className="mr-3 inline-grid size-8 place-items-center rounded-lg bg-surface-2 align-middle text-brand-dark">
                     <Icon name="building" size={16} />
@@ -69,6 +93,13 @@ export default function SuppliersPage() {
                 </td>
                 <td className="px-4 py-3">{supplier.email || "—"}</td>
                 <td className="px-4 py-3">{supplier.phone || "—"}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${supplier.is_active === false ? "bg-surface-2 text-muted" : "bg-mint text-brand-dark"}`}
+                  >
+                    {supplier.is_active === false ? "Inactive" : "Active"}
+                  </span>
+                </td>
                 <td className="flex justify-end gap-2 px-4 py-3">
                   <button
                     type="button"

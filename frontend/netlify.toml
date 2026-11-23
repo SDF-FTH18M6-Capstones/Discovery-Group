@@ -1,0 +1,19 @@
+# Netlify: set "Base directory" to frontend (or connect with this file).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Set VITE_API_URL in Site settings → Environment variables, e.g. https://stockpilot-api.onrender.com
+
+# Single-page app: every address is served by index.html, so refreshing /products works.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

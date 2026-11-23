@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
-import { api } from "../../api/client";
+import { api, mediaUrl } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
@@ -10,7 +10,7 @@ import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
 import { EmptyState, StatStrip, StockMeter } from "../../components/ui";
-import { amount } from "../../format";
+import { amount, currencyCode } from "../../format";
 import { categories, products } from "../../store";
 import ProductForm from "./ProductForm";
 
@@ -20,21 +20,26 @@ export default function ProductsPage() {
   const canEdit = hasRole("admin", "inventory");
   const list = useSelector((state) => state.products);
   const categoryOptions = useSelector((state) => state.categories.items);
+  const [params] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [lowOnly, setLowOnly] = useState(false);
+  // all · low (at or below the reorder level) · retired (kept for history, not sold)
+  const [view, setView] = useState(params.get("low_stock") ? "low" : "all");
+  const lowOnly = view === "low";
+  const [notice, setNotice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, product = edit
   const [totals, setTotals] = useState({});
 
-  const params = {
+  const query = {
     page,
     per_page: 10,
     search,
     low_stock: lowOnly ? "true" : "",
+    status: view === "retired" ? "retired" : "active",
     category_id: categoryId,
   };
-  const load = () => dispatch(products.fetchList(params));
+  const load = () => dispatch(products.fetchList(query));
 
   const loadTotals = () =>
     Promise.allSettled([
@@ -58,11 +63,29 @@ export default function ProductsPage() {
         page,
         per_page: 10,
         search,
-        low_stock: lowOnly ? "true" : "",
+        low_stock: view === "low" ? "true" : "",
+        status: view === "retired" ? "retired" : "active",
         category_id: categoryId,
       }),
     );
-  }, [dispatch, page, search, lowOnly, categoryId]);
+  }, [dispatch, page, search, view, categoryId]);
+
+  // US-12: retired products keep their history and leave the till and new orders.
+  const setRetired = async (product, retire) => {
+    setNotice("");
+    try {
+      await api(`/api/products/${product.id}/${retire ? "retire" : "restore"}`, { method: "POST" });
+      setNotice(
+        retire
+          ? `${product.name} is retired. It no longer appears at the till.`
+          : `${product.name} is back in the catalogue.`,
+      );
+      load();
+      loadTotals();
+    } catch (error) {
+      setNotice(error.message);
+    }
+  };
 
   // On failure (for example a product that has sales) the server's message stays on
   // screen; reload only after a successful delete.
@@ -121,10 +144,18 @@ export default function ProductsPage() {
         />
       )}
 
-      {list.error && (
-        <p role="alert" className="rounded-xl bg-danger-soft p-3 text-sm text-danger">
-          {list.error}
+      {notice && (
+        <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
+          {notice}
         </p>
+      )}
+      {list.error && (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded-xl bg-danger-soft p-3 text-sm text-danger"
+        >
+          {list.error}
+        </div>
       )}
 
       <div className="panel">
@@ -151,26 +182,23 @@ export default function ProductsPage() {
             />
           </div>
           <div role="group" aria-label="Show" className="seg">
-            <button
-              type="button"
-              aria-pressed={!lowOnly}
-              onClick={() => {
-                setLowOnly(false);
-                setPage(1);
-              }}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              aria-pressed={lowOnly}
-              onClick={() => {
-                setLowOnly(true);
-                setPage(1);
-              }}
-            >
-              Running low
-            </button>
+            {[
+              ["all", "All"],
+              ["low", "Running low"],
+              ["retired", "Retired"],
+            ].map(([key, text]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={view === key}
+                onClick={() => {
+                  setView(key);
+                  setPage(1);
+                }}
+              >
+                {text}
+              </button>
+            ))}
           </div>
           <label htmlFor="product-category" className="sr-only">
             Filter by category
@@ -200,7 +228,7 @@ export default function ProductsPage() {
                 <th className="px-5 py-3">Product</th>
                 <th className="px-3 py-3">Category</th>
                 <th className="px-3 py-3">Stock</th>
-                <th className="px-3 py-3 text-right">Price (KES)</th>
+                <th className="px-3 py-3 text-right">Price ({currencyCode()})</th>
                 <th className="px-3 py-3 text-right">Margin</th>
                 <th className="px-5 py-3">
                   <span className="sr-only">Actions</span>
@@ -215,13 +243,29 @@ export default function ProductsPage() {
                   return (
                     <tr key={product.id} className="border-t border-line">
                       <td className="px-5 py-3">
-                        <Link
-                          to={`/products/${product.id}`}
-                          className="font-semibold hover:text-brand-dark hover:underline"
-                        >
-                          {product.name}
-                        </Link>
-                        <span className="code block text-muted">{product.sku}</span>
+                        <span className="flex items-center gap-3">
+                          <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-surface-2 text-muted">
+                            {product.image_url ? (
+                              <img
+                                src={mediaUrl(product.image_url)}
+                                alt=""
+                                loading="lazy"
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <Icon name="box" size={16} />
+                            )}
+                          </span>
+                          <span className="min-w-0">
+                            <Link
+                              to={`/products/${product.id}`}
+                              className="font-semibold hover:text-brand-dark hover:underline"
+                            >
+                              {product.name}
+                            </Link>
+                            <span className="code block text-muted">{product.sku}</span>
+                          </span>
+                        </span>
                       </td>
                       <td className="px-3 py-3">
                         <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-ink-2">
@@ -253,6 +297,13 @@ export default function ProductsPage() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => setRetired(product, product.is_active !== false)}
+                              className="btn-ghost min-h-0 px-2.5 py-1.5"
+                            >
+                              {product.is_active === false ? "Restore" : "Retire"}
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleDelete(product)}
                               className="btn-ghost min-h-0 px-2.5 py-1.5 hover:text-danger"
                             >
@@ -271,12 +322,12 @@ export default function ProductsPage() {
               icon="box"
               title="No products found"
               action={
-                (search || lowOnly || categoryId) && (
+                (search || view !== "all" || categoryId) && (
                   <button
                     type="button"
                     onClick={() => {
                       setSearch("");
-                      setLowOnly(false);
+                      setView("all");
                       setCategoryId("");
                     }}
                     className="btn-secondary"
@@ -286,7 +337,7 @@ export default function ProductsPage() {
                 )
               }
             >
-              {search || lowOnly || categoryId
+              {search || view !== "all" || categoryId
                 ? "Nothing matches these filters."
                 : "Add the first product to start selling."}
             </EmptyState>

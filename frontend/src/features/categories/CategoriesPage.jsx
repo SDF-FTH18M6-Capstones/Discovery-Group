@@ -37,7 +37,10 @@ export default function CategoriesPage() {
       return;
     }
     const result = await dispatch(
-      categories.saveItem({ id: editing.id, data: { name: name.trim() } }),
+      categories.saveItem({
+        id: editing.id,
+        data: { name: name.trim(), is_active: editing.is_active ?? true },
+      }),
     );
     if (categories.saveItem.fulfilled.match(result)) {
       setEditing(null);

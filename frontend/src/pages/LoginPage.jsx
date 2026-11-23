@@ -79,13 +79,20 @@ export default function LoginPage() {
           onChange={handleChange}
           error={errors.password}
         />
+        <Link to="/forgot-password" className="link -mt-2 self-end text-sm">
+          Forgot your password?
+        </Link>
         <button type="submit" disabled={busy} className="btn-primary mt-2 min-h-11">
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="border-t border-line pt-4 text-center text-sm text-muted">
           New here?{" "}
           <Link to="/register" className="link">
-            Create an account
+            Join your team
+          </Link>{" "}
+          or{" "}
+          <Link to="/register?start=1" className="link">
+            start a business
           </Link>
         </p>
       </form>

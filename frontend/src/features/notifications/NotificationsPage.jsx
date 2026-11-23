@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 
 import { api } from "../../api/client";
 import Icon from "../../components/Icon";
@@ -126,9 +127,21 @@ export default function NotificationsPage() {
                 <Icon name={iconFor(note.message)} size={18} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm ${note.is_read ? "text-ink-2" : "font-semibold"}`}>
-                  {note.message}
-                </span>
+                {note.link ? (
+                  <Link
+                    to={note.link}
+                    onClick={() => !note.is_read && markRead(note)}
+                    className={`block text-sm hover:underline ${note.is_read ? "text-ink-2" : "font-semibold"}`}
+                  >
+                    {note.message}
+                  </Link>
+                ) : (
+                  <span
+                    className={`block text-sm ${note.is_read ? "text-ink-2" : "font-semibold"}`}
+                  >
+                    {note.message}
+                  </span>
+                )}
                 <span className="text-xs text-muted">
                   {timeAgo(note.created_at)}, {dateTime(note.created_at)}
                 </span>

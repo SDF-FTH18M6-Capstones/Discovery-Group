@@ -1,7 +1,11 @@
+import { useBusiness } from "../../auth/useBusiness";
 import Icon from "../../components/Icon";
 import { PAYMENT_LABELS, dateTime, money } from "../../format";
 
+// US-27: business name, receipt number, date, attendant, lines, VAT, total and payment.
 export default function Receipt({ sale, onClose, children }) {
+  const business = useBusiness();
+  const voided = sale.status === "voided";
   return (
     <div>
       <article
@@ -9,7 +13,9 @@ export default function Receipt({ sale, onClose, children }) {
         className="print-area perforated mb-2 flex flex-col gap-4 rounded-t-xl bg-surface px-6 pt-6 pb-5 font-mono text-[13px] shadow-[var(--sp-shadow-lg)] ring-1 ring-line"
       >
         <header className="flex flex-col items-center gap-1 text-center">
-          <span className="font-display text-lg font-bold">StockPilot Demo Shop</span>
+          <span className="font-display text-lg font-bold">{business?.name || "StockPilot"}</span>
+          {business?.address && <span className="text-muted">{business.address}</span>}
+          {business?.phone && <span className="text-muted">Tel {business.phone}</span>}
           <span className="text-muted">Receipt {sale.receipt_number}</span>
           <span className="text-muted">{dateTime(sale.created_at)}</span>
         </header>
@@ -37,6 +43,20 @@ export default function Receipt({ sale, onClose, children }) {
             ))}
           </tbody>
           <tfoot>
+            {Number(sale.vat_rate) > 0 && (
+              <>
+                <tr className="border-t border-dashed border-line-strong text-muted">
+                  <td className="pt-2">Before VAT</td>
+                  <td className="pt-2 text-right">{money(sale.net_amount)}</td>
+                </tr>
+                <tr className="text-muted">
+                  <td className="pb-2">VAT {Number(sale.vat_rate)}% (included)</td>
+                  <td className="pb-2 text-right" data-testid="receipt-vat">
+                    {money(sale.vat_amount)}
+                  </td>
+                </tr>
+              </>
+            )}
             <tr className="border-t-2 border-ink text-base font-bold">
               <td className="pt-3">Total</td>
               <td className="pt-3 text-right" data-testid="receipt-total">
@@ -49,7 +69,12 @@ export default function Receipt({ sale, onClose, children }) {
           Paid by {PAYMENT_LABELS[sale.payment_method] || sale.payment_method}. Served by{" "}
           {sale.attendant_name}.
         </p>
-        <p className="text-center">Thank you</p>
+        {voided && (
+          <p className="rounded-lg border-2 border-danger p-2 text-center font-bold text-danger">
+            VOIDED{sale.void_reason ? `: ${sale.void_reason}` : ""}
+          </p>
+        )}
+        <p className="text-center">{business?.receipt_footer || "Thank you"}</p>
         <div className="flex flex-wrap justify-center gap-2 border-t border-dashed border-line-strong pt-4 font-sans print:hidden">
           <button type="button" onClick={() => window.print()} className="btn-secondary">
             <Icon name="printer" size={16} /> Print

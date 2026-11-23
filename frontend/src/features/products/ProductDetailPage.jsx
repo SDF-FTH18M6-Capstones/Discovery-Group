@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { api } from "../../api/client";
+import { api, mediaUrl } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { STOCK_MANAGERS } from "../../auth/roles";
 import Icon from "../../components/Icon";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
-import { EmptyState, Panel } from "../../components/ui";
-import { dateTime, money } from "../../format";
+import Timeline from "../../components/Timeline";
+import { Panel } from "../../components/ui";
+import { money } from "../../format";
 
 function ShelfCard({ product }) {
   const target = Math.max(product.reorder_level * 3, product.quantity, 1);
@@ -55,19 +56,13 @@ export default function ProductDetailPage() {
   const { hasRole } = useAuth();
   const canTrace = hasRole(...STOCK_MANAGERS);
   const [product, setProduct] = useState(null);
-  const [trace, setTrace] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     api(`/api/products/${id}`)
       .then(setProduct)
       .catch((err) => setError(err.status === 404 ? "This product does not exist." : err.message));
-    if (canTrace) {
-      api(`/api/stock/movements?product_id=${id}&per_page=20`)
-        .then((data) => setTrace(data.results))
-        .catch(() => setTrace([]));
-    }
-  }, [id, canTrace]);
+  }, [id]);
 
   if (error) {
     return (
@@ -93,19 +88,29 @@ export default function ProductDetailPage() {
         <Icon name="chevron" size={14} className="rotate-180" />
         Products
       </Link>
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="page-title">{product.name}</h1>
-          {product.quantity === 0 ? (
-            <StatusBadge value="out_of_stock" />
-          ) : (
-            product.is_low_stock && <StatusBadge value="low_stock" />
-          )}
+      <div className="flex flex-wrap items-center gap-5">
+        {product.image_url && (
+          <img
+            src={mediaUrl(product.image_url)}
+            alt={product.name}
+            className="size-24 rounded-2xl border border-line object-cover"
+          />
+        )}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="page-title">{product.name}</h1>
+            {product.is_active === false && <StatusBadge value="retired" />}
+            {product.quantity === 0 ? (
+              <StatusBadge value="out_of_stock" />
+            ) : (
+              product.is_low_stock && <StatusBadge value="low_stock" />
+            )}
+          </div>
+          <p className="flex flex-wrap items-center gap-3 text-muted">
+            <span className="code rounded-md bg-surface-2 px-2 py-0.5">{product.sku}</span>
+            <span>{product.category_name}</span>
+          </p>
         </div>
-        <p className="flex flex-wrap items-center gap-3 text-muted">
-          <span className="code rounded-md bg-surface-2 px-2 py-0.5">{product.sku}</span>
-          <span>{product.category_name}</span>
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -133,34 +138,11 @@ export default function ProductDetailPage() {
       </div>
 
       {canTrace && (
-        <Panel title="Stock trace" subtitle="Every change to this product, newest first">
-          {trace?.length === 0 ? (
-            <EmptyState icon="ledger" title="No stock changes yet" />
-          ) : (
-            <ol className="flex flex-col">
-              {trace?.map((movement) => (
-                <li
-                  key={movement.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-t border-line px-5 py-3 first:border-t-0"
-                >
-                  <span
-                    className={`figure grid size-11 place-items-center rounded-xl text-sm ${
-                      movement.change < 0 ? "bg-danger-soft text-danger" : "bg-mint text-brand-dark"
-                    }`}
-                  >
-                    {movement.change > 0 ? `+${movement.change}` : movement.change}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{movement.reason}</span>
-                    <span className="text-xs text-muted">
-                      {movement.user_name}, {dateTime(movement.created_at)}
-                    </span>
-                  </span>
-                  <StatusBadge value={movement.type} />
-                </li>
-              ))}
-            </ol>
-          )}
+        <Panel
+          title="Trace timeline"
+          subtitle="Created, edits, price changes, receipts, sales and adjustments, newest first"
+        >
+          <Timeline url={`/api/products/${id}/timeline`} empty="No history yet" />
         </Panel>
       )}
     </section>

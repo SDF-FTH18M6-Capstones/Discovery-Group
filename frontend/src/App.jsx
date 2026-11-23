@@ -6,6 +6,7 @@ import RequireAuth from "./auth/RequireAuth";
 import { PROCUREMENT, PURCHASE_VIEWERS, SELLERS, STOCK_MANAGERS } from "./auth/roles";
 import Layout from "./components/Layout";
 import AssetsPage from "./features/assets/AssetsPage";
+import AuditPage from "./features/audit/AuditPage";
 import CategoriesPage from "./features/categories/CategoriesPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import NotificationsPage from "./features/notifications/NotificationsPage";
@@ -22,9 +23,11 @@ import SettingsPage from "./features/settings/SettingsPage";
 import StockPage from "./features/stock/StockPage";
 import SuppliersPage from "./features/suppliers/SuppliersPage";
 import UsersPage from "./features/users/UsersPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import StatusPage from "./pages/StatusPage";
 
 function NotFound() {
@@ -53,6 +56,8 @@ export default function App() {
         {/* Open to everyone */}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route path="status" element={<StatusPage />} />
         <Route index element={<Home />} />
 
@@ -94,6 +99,7 @@ export default function App() {
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="audit" element={<AuditPage />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

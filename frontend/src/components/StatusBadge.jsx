@@ -23,6 +23,15 @@ const STYLES = {
   card: "bg-info-soft text-info",
   low_stock: "bg-warn-soft text-warn",
   out_of_stock: "bg-danger-soft text-danger",
+  fulfilled: "bg-mint text-brand-dark",
+  draft: "bg-surface-2 text-muted",
+  partially_received: "bg-info-soft text-info",
+  completed: "bg-mint text-brand-dark",
+  voided: "bg-danger-soft text-danger",
+  retired: "bg-surface-2 text-muted",
+  sale_void: "bg-saffron-soft text-saffron-ink",
+  overdue: "bg-danger-soft text-danger",
+  active: "bg-mint text-brand-dark",
 };
 
 export const LABELS = {
@@ -31,6 +40,10 @@ export const LABELS = {
   mpesa: "M-Pesa",
   low_stock: "Low stock",
   out_of_stock: "Out of stock",
+  partially_received: "Partly received",
+  done: "Completed",
+  sale_void: "Void",
+  purchase: "Receipt",
 };
 
 export const label = (value) =>

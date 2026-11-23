@@ -1,102 +1,40 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import {
-  PROCUREMENT,
-  PURCHASE_VIEWERS,
-  ROLE_NAMES,
-  SELLERS,
-  STOCK_MANAGERS,
-} from "../../auth/roles";
+import { PROCUREMENT, ROLE_NAMES, SELLERS, STOCK_MANAGERS } from "../../auth/roles";
 import Icon from "../../components/Icon";
 import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../components/ui";
 import { money, shortDate, timeAgo } from "../../format";
 
-// Today on this computer's calendar (YYYY-MM-DD); the API reads days on the shop's clock too.
-const today = () => new Date().toLocaleDateString("en-CA");
+const TILE_ICONS = {
+  low_stock: "box",
+  approvals: "check",
+  awaiting_receipt: "truck",
+  open_repairs: "wrench",
+  overdue_assets: "clock",
+  sales_today: "receipt",
+  my_sales_today: "receipt",
+  my_requests: "inbox",
+  my_assets: "laptop",
+  my_repairs: "wrench",
+};
+const TILE_TONES = { ok: "brand", warn: "saffron", danger: "danger" };
 
-function cardsFor(hasRole) {
-  const seesAllRequests = hasRole(...PROCUREMENT);
-  const managesAssets = hasRole(...STOCK_MANAGERS);
-  const cards = [];
-  if (hasRole(...SELLERS)) {
-    cards.push({
-      key: "sales",
-      label: hasRole("admin") ? "Sales today" : "Your sales today",
-      path: `/api/sales/?day=${today()}&per_page=1`,
-      to: "/sales",
-      icon: "receipt",
-      tone: "brand",
-    });
-  }
-  cards.push(
-    {
-      key: "low",
-      label: "Products low on stock",
-      path: "/api/products/?low_stock=true&per_page=1",
-      to: "/products",
-      icon: "box",
-      tone: "saffron",
-    },
-    seesAllRequests
-      ? {
-          key: "pending",
-          label: "Requests waiting for a decision",
-          path: "/api/requests/?status=pending&per_page=1",
-          to: "/approvals",
-          icon: "check",
-          tone: "info",
-        }
-      : {
-          key: "pending",
-          label: "My requests still pending",
-          path: "/api/requests/?status=pending&mine=true&per_page=1",
-          to: "/requests",
-          icon: "inbox",
-          tone: "info",
-        },
-    {
-      key: "assets",
-      label: managesAssets ? "Assets in the register" : "Assets you hold",
-      path: "/api/assets/?per_page=1",
-      to: "/assets",
-      icon: "laptop",
-      tone: "muted",
-    },
-  );
-  if (hasRole(...PURCHASE_VIEWERS)) {
-    cards.push({
-      key: "orders",
-      label: "Orders waiting for delivery",
-      path: "/api/purchases/?status=ordered&per_page=1",
-      to: "/purchases",
-      icon: "truck",
-      tone: "brand",
-    });
-  }
-  if (managesAssets) {
-    cards.push({
-      key: "repairs",
-      label: "New repair reports",
-      path: "/api/repairs/?status=submitted&per_page=1",
-      to: "/repairs",
-      icon: "wrench",
-      tone: "danger",
-    });
-  }
-  if (seesAllRequests) {
-    cards.push({
-      key: "suppliers",
-      label: "Suppliers",
-      path: "/api/suppliers/?per_page=1",
-      to: "/suppliers",
-      icon: "building",
-      tone: "muted",
-    });
-  }
-  return cards;
+// US-39 StockPilot Pulse: one role-aware call; each tile opens its list already filtered.
+function usePulse() {
+  const [tiles, setTiles] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/dashboard/pulse")
+      .then((data) => !cancelled && setTiles(data?.tiles || []))
+      .catch(() => !cancelled && setTiles([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return tiles;
 }
 
 function WeekSales() {
@@ -139,8 +77,8 @@ function WeekSales() {
               <p className="figure text-2xl">{report.sales_count}</p>
             </div>
             <div>
-              <p className="text-sm text-muted">Estimated profit</p>
-              <p className="figure text-2xl text-brand-dark">{money(report.estimated_profit)}</p>
+              <p className="text-sm text-muted">Gross profit</p>
+              <p className="figure text-2xl text-brand-dark">{money(report.gross_profit)}</p>
             </div>
           </div>
           <BarChart data={days} height={240} label="Sales per day, last 7 days" format={money} />
@@ -228,7 +166,13 @@ function Latest() {
               className={`mt-1.5 size-2 shrink-0 rounded-full ${note.is_read ? "bg-line-strong" : "bg-saffron"}`}
             />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm">{note.message}</span>
+              {note.link ? (
+                <Link to={note.link} className="block text-sm hover:underline">
+                  {note.message}
+                </Link>
+              ) : (
+                <span className="block text-sm">{note.message}</span>
+              )}
               <span className="text-xs text-muted">{timeAgo(note.created_at)}</span>
             </span>
           </li>
@@ -267,24 +211,8 @@ function Shortcuts({ hasRole }) {
 
 export default function DashboardPage() {
   const { user, hasRole } = useAuth();
-  const [counts, setCounts] = useState({});
-  const cards = cardsFor(hasRole);
-  const paths = cards.map((card) => card.path).join("|");
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.allSettled(paths.split("|").map((path) => api(path))).then((results) => {
-      if (cancelled) return;
-      setCounts(
-        Object.fromEntries(
-          results.map((result, i) => [i, result.status === "fulfilled" ? result.value.count : "—"]),
-        ),
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [paths]);
+  const location = useLocation();
+  const tiles = usePulse();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -297,6 +225,7 @@ export default function DashboardPage() {
             {greeting}. You are signed in as {ROLE_NAMES[user.role] || user.role}.
           </p>
           <h1 className="page-title">Welcome, {user.full_name.split(" ")[0]}</h1>
+          {user.business?.name && <p className="text-sm text-muted">{user.business.name}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {hasRole(...SELLERS) && (
@@ -316,16 +245,52 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StatStrip
-        items={cards.map((card, i) => ({
-          label: card.label,
-          value: counts[i],
-          to: card.to,
-          icon: card.icon,
-          tone: card.tone,
-          testId: `count-${card.key}`,
-        }))}
-      />
+      {location.state?.welcome && (
+        <div className="panel flex flex-col gap-3 border-brand/40 bg-mint p-5">
+          <h2 className="text-lg font-bold">Your business is ready</h2>
+          <ol className="list-decimal pl-5 text-sm">
+            <li>
+              Check your name, currency and VAT under{" "}
+              <Link to="/settings" className="link">
+                Settings
+              </Link>
+              , and copy the join code to invite your staff.
+            </li>
+            <li>
+              Add{" "}
+              <Link to="/categories" className="link">
+                categories
+              </Link>{" "}
+              and{" "}
+              <Link to="/products" className="link">
+                products
+              </Link>
+              , then start selling.
+            </li>
+          </ol>
+        </div>
+      )}
+
+      <section aria-label="StockPilot Pulse">
+        {tiles === null ? (
+          <div className="skeleton h-28" />
+        ) : (
+          <StatStrip
+            items={tiles.map((tile) => ({
+              label: tile.label,
+              value: tile.amount != null ? money(tile.amount) : tile.count,
+              hint:
+                tile.amount != null
+                  ? `${tile.count} ${tile.count === 1 ? "sale" : "sales"}`
+                  : tile.detail || undefined,
+              to: tile.link,
+              icon: TILE_ICONS[tile.key] || "pulse",
+              tone: TILE_TONES[tile.tone] || "muted",
+              testId: `count-${tile.key}`,
+            }))}
+          />
+        )}
+      </section>
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-6 xl:col-span-2">

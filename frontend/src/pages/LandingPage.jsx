@@ -456,12 +456,13 @@ export default function LandingPage() {
               Know what is on every shelf, to the last unit.
             </h1>
             <p className="max-w-xl text-lg text-sidebar-ink">
-              StockPilot is the till, the stock ledger, purchase orders and the asset register for a
-              small business. Every sale and delivery updates the count the moment it happens.
+              StockPilot is the till, the stock ledger, purchase orders and the asset register for
+              your business. Set it up in a minute, invite your staff with a join code, and every
+              sale and delivery updates the count the moment it happens.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/register" className="btn-accent px-5 py-3 text-base">
-                Create an account
+              <Link to="/register?start=1" className="btn-accent px-5 py-3 text-base">
+                Start your business
               </Link>
               <Link
                 to="/login"
@@ -496,8 +497,8 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link to="/register" className="btn-primary px-5 py-3 text-base">
-              Create an account
+            <Link to="/register?start=1" className="btn-primary px-5 py-3 text-base">
+              Start your business
             </Link>
             <Link to="/login" className="btn-secondary px-5 py-3 text-base">
               Sign in
@@ -517,7 +518,7 @@ export default function LandingPage() {
               Sign in
             </Link>
             <Link to="/register" className="hover:text-ink">
-              Create an account
+              Join your team
             </Link>
             <Link to="/status" className="hover:text-ink">
               System status

@@ -72,13 +72,13 @@ describe("optimistic requests", () => {
     expect(within(row).getByText("Pending")).toBeInTheDocument();
   });
 
-  it("bring back a request the server would not withdraw", async () => {
+  it("bring back a request the server would not cancel", async () => {
     mockApi(
       {
         "GET /api/requests/": [200, page([{ ...pending, requester_id: 1 }])],
-        "DELETE /api/requests/7": [
+        "POST /api/requests/7/cancel": [
           409,
-          { error: { code: 409, message: "Only pending requests can be withdrawn." } },
+          { error: { code: 409, message: "Only pending requests can be changed." } },
         ],
       },
       "employee",
@@ -87,11 +87,11 @@ describe("optimistic requests", () => {
     renderAt("/requests", { as: "employee" });
 
     await user.click(await screen.findByRole("button", { name: "View request for Printer paper" }));
-    await user.click(screen.getByRole("button", { name: "Withdraw" }));
-    await user.click(screen.getByRole("button", { name: "Yes, withdraw" }));
+    await user.click(screen.getByRole("button", { name: "Cancel request" }));
+    await user.click(screen.getByRole("button", { name: "Yes, cancel it" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Only pending requests can be withdrawn.",
+      "Only pending requests can be changed.",
     );
     expect(screen.getByText("Printer paper × 2")).toBeInTheDocument();
   });
