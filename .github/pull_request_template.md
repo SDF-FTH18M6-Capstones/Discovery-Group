@@ -5,7 +5,7 @@
 
 ## Checklist
 
-- [ ] Branch is `feature/<issue-no>-short-name`, opened against `develop`
+- [ ] Branch is `feature/<issue-no>-short-name`, opened against `development`
 - [ ] Commit messages follow Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`)
 - [ ] CI is green
 - [ ] No `.env` file or passwords committed

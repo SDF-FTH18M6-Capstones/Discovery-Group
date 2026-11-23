@@ -10,9 +10,9 @@
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate      
 pip install -r requirements.txt
-cp .env.example .env             # Windows: copy .env.example .env
+cp .env.example .env       
 ```
 
 Create the database user and two databases (once per computer):
@@ -77,9 +77,9 @@ Sign in as each owner to see that the two businesses never see each other's prod
 ## Test
 
 ```bash
-pytest                 # tests + coverage (fails below 60%)
-ruff check .           # lint
-ruff format .          # format the code
+pytest              
+ruff check .          
+ruff format .          
 ```
 
 API tests in Postman: start the backend on a freshly seeded database (`python seed.py`), import
@@ -146,4 +146,3 @@ flask db migrate -m "describe the change"
 flask db upgrade
 ```
 
-Commit the new file in `migrations/versions/` together with the model change.

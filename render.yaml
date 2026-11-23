@@ -1,0 +1,58 @@
+# Render Blueprint: the API and its PostgreSQL database.
+# On render.com: New → Blueprint → pick this repository. Then fill in the two values marked
+# `sync: false` (the frontend's address) in the service's Environment tab.
+services:
+  - type: web
+    name: stockpilot-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Runs before each new version goes live: brings the database schema up to date.
+    preDeployCommand: flask --app wsgi db upgrade
+    startCommand: gunicorn wsgi:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT --access-logfile -
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stockpilot-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://stockpilot.netlify.app
+      - key: FRONTEND_URL
+        sync: false # the same address; used in emailed links
+      - key: RATELIMIT_STORAGE_URI
+        fromService:
+          type: keyvalue
+          name: stockpilot-limits
+          property: connectionString
+      # Email (optional until you have an SMTP account; without it emails go to the log)
+      - key: MAIL_SERVER
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+  # Shared counter store for the sign-in rate limit, so every gunicorn worker sees the same
+  # count (memory:// would give each worker its own).
+  - type: keyvalue
+    name: stockpilot-limits
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: stockpilot-db
+    plan: free
+    databaseName: stockpilot
+    user: stockpilot
