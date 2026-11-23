@@ -1,5 +1,5 @@
 from app.extensions import bcrypt, db
-from app.models.base import TimestampMixin, in_list
+from app.models.base import TenantMixin, TimestampMixin, in_list
 
 ROLES = ("admin", "procurement", "inventory", "sales", "employee")
 
@@ -9,16 +9,16 @@ def hash_secret(raw: str) -> str:
 
 
 def check_secret(hashed: str | None, raw: str) -> bool:
-    
+
     if not hashed or len(raw.encode("utf-8")) > 72:
         return False
     try:
         return bcrypt.check_password_hash(hashed, raw)
-    except ValueError: 
+    except ValueError:
         return False
 
 
-class User(TimestampMixin, db.Model):
+class User(TenantMixin, TimestampMixin, db.Model):
     __tablename__ = "users"
     __table_args__ = (in_list("role", ROLES, "role_valid"),)
 
@@ -27,6 +27,12 @@ class User(TimestampMixin, db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, index=True)
+    phone = db.Column(db.String(30))
+    is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
+    # Every token carries this number; raising it (password reset) signs out every device.
+    session_version = db.Column(db.Integer, nullable=False, server_default="0", default=0)
+
+    business = db.relationship("Business")
 
     __mapper_args__ = {"polymorphic_on": role, "polymorphic_identity": "user"}
 
@@ -72,7 +78,6 @@ class SalesAttendant(User):
 
 
 class Employee(User):
-    """Default role for every self-registered account."""
 
     __mapper_args__ = {"polymorphic_identity": "employee"}
 

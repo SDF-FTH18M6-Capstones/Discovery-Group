@@ -6,13 +6,12 @@ from flask_jwt_extended import create_access_token, create_refresh_token
 from app.extensions import db
 from app.models import Employee, User
 
-PASSWORD = "Secret123!" 
+PASSWORD = "Secret123!"
 BAD_LOGIN = "Email or password is incorrect."
 
 
 def sign_in(client, email, password=PASSWORD):
     return client.post("/api/auth/login", json={"email": email, "password": password})
-
 
 
 def test_register_creates_an_employee_with_a_hashed_password(client):
@@ -23,21 +22,27 @@ def test_register_creates_an_employee_with_a_hashed_password(client):
             "email": "Barclay@Test.com",
             "password": "Secret123!",
             "role": "admin",
+            "join_code": "testjoin",
         },
     )
 
     assert response.status_code == 201
-    assert response.json == {"message": "Account created. You can now sign in."}
+    assert response.json == {"message": "Account created at Test Shop. You can now sign in."}
     user = db.session.scalar(db.select(User).filter_by(email="barclay@test.com"))
-    assert isinstance(user, Employee) 
-    assert user.password_hash.startswith("$2")  
+    assert isinstance(user, Employee)
+    assert user.password_hash.startswith("$2")
     assert "Secret123!" not in user.password_hash
 
 
 def test_register_never_returns_the_password(client):
     response = client.post(
         "/api/auth/register",
-        json={"full_name": "Barclay Koin", "email": "barclay@test.com", "password": "Secret123!"},
+        json={
+            "full_name": "Barclay Koin",
+            "email": "barclay@test.com",
+            "password": "Secret123!",
+            "join_code": "TESTJOIN",
+        },
     )
 
     assert "Secret123!" not in response.get_data(as_text=True)
@@ -48,7 +53,12 @@ def test_register_twice_with_the_same_email_is_409(client, make_user):
 
     response = client.post(
         "/api/auth/register",
-        json={"full_name": "Someone", "email": "TAKEN@test.com", "password": "Secret123!"},
+        json={
+            "full_name": "Someone",
+            "email": "TAKEN@test.com",
+            "password": "Secret123!",
+            "join_code": "TESTJOIN",
+        },
     )
 
     assert response.status_code == 409
@@ -70,7 +80,7 @@ def test_register_twice_with_the_same_email_is_409(client, make_user):
     ],
 )
 def test_register_rejects_bad_fields_with_422(client, body, field):
-    response = client.post("/api/auth/register", json=body)
+    response = client.post("/api/auth/register", json={"join_code": "TESTJOIN", **body})
 
     assert response.status_code == 422
     assert field in response.json["error"]["details"]
@@ -177,10 +187,14 @@ def test_refresh_without_any_token_is_401(client):
 
 
 def test_full_signup_and_signin_journey(client):
-    """Milestone Gate 3: registration and login work end to end."""
     registered = client.post(
         "/api/auth/register",
-        json={"full_name": "Barclay Koin", "email": "barclay@test.com", "password": "Secret123!"},
+        json={
+            "full_name": "Barclay Koin",
+            "email": "barclay@test.com",
+            "password": "Secret123!",
+            "join_code": "TESTJOIN",
+        },
     )
     assert registered.status_code == 201
 

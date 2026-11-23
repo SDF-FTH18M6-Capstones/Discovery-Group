@@ -36,18 +36,26 @@ def test_a_repair_moves_forward_and_updates_the_asset(as_role):
     db.session.expire_all()
     assert db.session.get(Asset, laptop.id).status == "in_repair"
 
-    done = store.put(f"/api/repairs/{repair_id}/status", json={"status": "done"})
+    no_note = store.put(f"/api/repairs/{repair_id}/status", json={"status": "done"})
+    assert no_note.status_code == 422
+    assert "resolution" in no_note.json["error"]["details"]
+
+    done = store.put(
+        f"/api/repairs/{repair_id}/status",
+        json={"status": "done", "resolution": "Keyboard replaced", "cost": "1500.00"},
+    )
     assert done.json["status"] == "done"
+    assert done.json["cost"] == "1500.00"
     db.session.expire_all()
     assert db.session.get(Asset, laptop.id).status == "assigned"
 
     back = store.put(f"/api/repairs/{repair_id}/status", json={"status": "in_progress"})
     assert back.status_code == 409
-    assert back.json["error"]["message"] == "This repair is already done."
+    assert back.json["error"]["message"] == "This repair is already completed."
 
     assert messages_for(alex.user) == [
         f"Repair REP-{repair_id:03d} (Laptop) is in progress.",
-        f"Repair REP-{repair_id:03d} (Laptop) is done.",
+        f"Repair REP-{repair_id:03d} (Laptop) is completed: Keyboard replaced.",
     ]
     assert messages_for(store.user) == [
         f"Repair REP-{repair_id:03d}: Laptop (AST-9) reported by {alex.user.full_name}."
@@ -71,7 +79,9 @@ def test_one_open_repair_per_asset(as_role):
     laptop = holding(barclay.user)
     barclay.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Keys stick"})
 
-    again = barclay.post("/api/repairs/", json={"asset_id": laptop.id, "description": "Still broken"})
+    again = barclay.post(
+        "/api/repairs/", json={"asset_id": laptop.id, "description": "Still broken"}
+    )
 
     assert again.status_code == 409
 
@@ -111,8 +121,12 @@ def test_requests_notify_procurement_then_the_requester(as_role):
     ).json["id"]
     carlos.post(f"/api/requests/{request_id}/reject", json={"comment": "Use the spare one"})
 
-    assert messages_for(carlos.user) == [f"Urgent request from {barclay.user.full_name}: Laptop × 1."]
-    assert messages_for(barclay.user) == ["Your request for Laptop was rejected: Use the spare one"]
+    assert messages_for(carlos.user) == [
+        f"Urgent request REQ-0001 from {barclay.user.full_name}: Laptop × 1."
+    ]
+    assert messages_for(barclay.user) == [
+        "Your request REQ-0001 for Laptop was rejected: Use the spare one"
+    ]
 
 
 def test_a_role_change_is_announced_to_that_person(admin, employee):
@@ -180,12 +194,21 @@ def test_the_summary_adds_up_sales_and_stock(as_role):
     assert body["sales_total"] == "750.00"
     assert body["sales_count"] == 2
     assert body["average_sale"] == "375.00"
-    assert body["estimated_profit"] == "210.00" 
-    assert body["stock_value"] == "1260.00" 
+    assert body["estimated_profit"] == "210.00"
+    assert body["stock_value"] == "1260.00"
     assert len(body["by_day"]) == 7
     assert body["by_day"][-1]["total"] == "750.00"
+    assert body["gross_profit"] == "210.00"
+    assert body["net_profit"] == "210.00"
     assert body["top_products"] == [
-        {"product_id": water.id, "name": "Water", "quantity": 3, "total": "750.00"}
+        {
+            "product_id": water.id,
+            "name": "Water",
+            "sku": "SP-1",
+            "quantity": 3,
+            "total": "750.00",
+            "profit": "210.00",
+        }
     ]
     assert [p["name"] for p in body["low_stock"]] == ["Water"]
 
@@ -247,4 +270,6 @@ def test_report_days_follow_the_shop_clock(as_role, make_user):
 
     assert body["date_to"] == today.isoformat()
     assert body["sales_total"] == "100.00"
-    assert body["by_day"] == [{"day": today.isoformat(), "total": "100.00", "count": 1}]
+    assert body["by_day"] == [
+        {"day": today.isoformat(), "total": "100.00", "count": 1, "profit": "0.00"}
+    ]

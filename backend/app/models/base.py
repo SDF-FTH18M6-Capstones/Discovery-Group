@@ -1,4 +1,5 @@
 from sqlalchemy import Numeric, func
+from sqlalchemy.orm import declared_attr
 
 from app.extensions import db
 
@@ -15,3 +16,19 @@ class TimestampMixin:
     updated_at = db.Column(
         db.DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class TenantMixin:
+
+    @declared_attr
+    def business_id(cls):
+        return db.Column(
+            db.Integer,
+            db.ForeignKey("businesses.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        )
+
+
+def reference(prefix: str, number: int | None, width: int = 4) -> str | None:
+    return f"{prefix}-{number:0{width}d}" if number else None

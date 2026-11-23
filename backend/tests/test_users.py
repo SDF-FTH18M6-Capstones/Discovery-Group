@@ -53,5 +53,5 @@ def test_choices_list_names_for_asset_assignment_without_emails(as_role, employe
 
     assert response.status_code == 200
     names = {row["full_name"] for row in response.json}
-    assert employee.full_name in names 
+    assert employee.full_name in names
     assert all(set(row) == {"id", "full_name", "role"} for row in response.json)

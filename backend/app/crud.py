@@ -1,5 +1,3 @@
-"""Helpers shared by every resource: pagination, find-or-404, safe save and delete."""
-
 import math
 
 from flask_smorest import abort
@@ -7,18 +5,24 @@ from marshmallow import Schema, fields, validate
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.models.base import TenantMixin
+from app.tenancy import current_business_id, scoped
 
 
 class PageQuery(Schema):
-    """?page=1&per_page=20 on every list endpoint."""
 
     page = fields.Integer(load_default=1, validate=validate.Range(min=1))
     per_page = fields.Integer(load_default=20, validate=validate.Range(min=1, max=100))
 
 
+_page_schemas = {}
+
+
 def page_schema(item_schema):
-    """Response shape for a paginated list."""
-    return Schema.from_dict(
+
+    if item_schema in _page_schemas:
+        return _page_schemas[item_schema]
+    _page_schemas[item_schema] = Schema.from_dict(
         {
             "results": fields.List(fields.Nested(item_schema)),
             "count": fields.Integer(),
@@ -28,9 +32,11 @@ def page_schema(item_schema):
         },
         name=f"{item_schema.__name__.removesuffix('Schema')}Page",
     )
+    return _page_schemas[item_schema]
 
 
 def paginate(query, page, per_page):
+    query = scoped(query)
     count = db.session.scalar(db.select(db.func.count()).select_from(query.subquery()))
     results = db.session.scalars(query.limit(per_page).offset((page - 1) * per_page)).all()
     return {
@@ -42,15 +48,27 @@ def paginate(query, page, per_page):
     }
 
 
-def get_or_404(model, item_id):
+def find(model, item_id):
+    if item_id is None:
+        return None
     item = db.session.get(model, item_id)
     if item is None:
-        abort(404, message=f"{model.__name__} {item_id} not found")
+        return None
+    if isinstance(item, TenantMixin):
+        business_id = current_business_id()
+        if business_id is not None and item.business_id != business_id:
+            return None
+    return item
+
+
+def get_or_404(model, item_id, label=None):
+    item = find(model, item_id)
+    if item is None:
+        abort(404, message=f"{label or model.__name__} {item_id} not found")
     return item
 
 
 def save(item, conflict_message):
-    """Insert or update; a unique or foreign-key clash becomes a 409 instead of a 500."""
     db.session.add(item)
     try:
         db.session.commit()

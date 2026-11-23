@@ -132,41 +132,30 @@ def test_filter_requests_by_status(employee_client, manager):
 
 
 def test_assets_crud_and_holder_rule(admin, employee):
-    created = admin.post("/api/assets/", json={"asset_code": "AST-0001", "name": "Laptop"})
+    created = admin.post("/api/assets/", json={"name": "Laptop", "serial_number": "SN-1"})
     assert created.status_code == 201
+    assert created.json["asset_code"] == "AST-0001"
+    assert created.json["status"] == "available"
     asset_id = created.json["id"]
 
-    missing_holder = admin.put(
-        f"/api/assets/{asset_id}",
-        json={"asset_code": "AST-0001", "name": "Laptop", "status": "assigned"},
-    )
-    assert missing_holder.status_code == 422
+    # The holder cannot be changed by editing: only through assign and return.
+    sneaky = admin.put(f"/api/assets/{asset_id}", json={"name": "Laptop", "status": "assigned"})
+    assert sneaky.status_code == 422
 
-    assigned = admin.put(
-        f"/api/assets/{asset_id}",
-        json={
-            "asset_code": "AST-0001",
-            "name": "Laptop",
-            "status": "assigned",
-            "assigned_to": employee.id,
-        },
+    assigned = admin.post(
+        f"/api/assets/{asset_id}/assign", json={"user_id": employee.id, "condition": "good"}
     )
+    assert assigned.status_code == 200
+    assert assigned.json["status"] == "assigned"
     assert assigned.json["holder_name"] == employee.full_name
 
 
 def test_employees_see_only_the_assets_they_hold(admin, as_role):
     holder = as_role("employee")
     stranger = as_role("employee")
-    admin.post("/api/assets/", json={"asset_code": "AST-1", "name": "Spare chair"})
-    mine = admin.post(
-        "/api/assets/",
-        json={
-            "asset_code": "AST-2",
-            "name": "Laptop",
-            "status": "assigned",
-            "assigned_to": holder.user.id,
-        },
-    ).json
+    admin.post("/api/assets/", json={"name": "Spare chair"})
+    mine = admin.post("/api/assets/", json={"name": "Laptop", "assigned_to": holder.user.id}).json
+    assert mine["status"] == "assigned"
 
     assert [a["id"] for a in holder.get("/api/assets/").json["results"]] == [mine["id"]]
     assert stranger.get("/api/assets/").json["count"] == 0

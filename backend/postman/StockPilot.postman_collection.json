@@ -13,11 +13,15 @@
     {
       "key": "brokenToken",
       "value": "not.a.real.token"
+    },
+    {
+      "key": "joinCode",
+      "value": "DEMO2026"
     }
   ],
   "item": [
     {
-      "name": "0 \u00b7 Health",
+      "name": "0 · Health",
       "item": [
         {
           "name": "Health check (public)",
@@ -53,7 +57,7 @@
       ]
     },
     {
-      "name": "1 \u00b7 Sign-in and accounts",
+      "name": "1 · Sign-in and accounts",
       "item": [
         {
           "name": "No token is 401",
@@ -113,7 +117,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"Postman Tester\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123!\",\n  \"role\": \"admin\"\n}"
+              "raw": "{\n  \"full_name\": \"Postman Tester\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123!\",\n  \"role\": \"admin\",\n  \"join_code\": \"{{joinCode}}\"\n}"
             }
           },
           "event": [
@@ -163,7 +167,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"Postman Tester\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123!\"\n}"
+              "raw": "{\n  \"full_name\": \"Postman Tester\",\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"Secret123!\",\n  \"join_code\": \"{{joinCode}}\"\n}"
             }
           },
           "event": [
@@ -204,7 +208,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"Weak\",\n  \"email\": \"weak@test.com\",\n  \"password\": \"abc\"\n}"
+              "raw": "{\n  \"full_name\": \"Weak\",\n  \"email\": \"weak@test.com\",\n  \"password\": \"abc\",\n  \"join_code\": \"{{joinCode}}\"\n}"
             }
           },
           "event": [
@@ -604,7 +608,7 @@
       ]
     },
     {
-      "name": "2 \u00b7 Categories",
+      "name": "2 · Categories",
       "item": [
         {
           "name": "Create category",
@@ -891,7 +895,7 @@
       ]
     },
     {
-      "name": "3 \u00b7 Products",
+      "name": "3 · Products",
       "item": [
         {
           "name": "Create product (inventory)",
@@ -1265,7 +1269,7 @@
           ]
         },
         {
-          "name": "Delete product",
+          "name": "Delete a product with stock history is 409 (retire it instead)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -1297,26 +1301,28 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 204\", () => pm.response.to.have.status(204));"
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Suggests retiring\", () => pm.expect(pm.response.json().error.message).to.include(\"Retire\"));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Get deleted product is 404",
+          "name": "Retire the product",
           "request": {
-            "method": "GET",
+            "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/products/{{productId}}",
+              "raw": "{{baseUrl}}/api/products/{{productId}}/retire",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "products",
-                "{{productId}}"
+                "{{productId}}",
+                "retire"
               ]
             },
             "auth": {
@@ -1336,7 +1342,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 404\", () => pm.response.to.have.status(404));"
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"No longer active\", () => pm.expect(pm.response.json().is_active).to.eql(false));"
                 ]
               }
             }
@@ -1345,7 +1352,7 @@
       ]
     },
     {
-      "name": "4 \u00b7 Suppliers",
+      "name": "4 · Suppliers",
       "item": [
         {
           "name": "Create supplier (procurement)",
@@ -1570,7 +1577,7 @@
       ]
     },
     {
-      "name": "5 \u00b7 Requests and approvals",
+      "name": "5 · Requests and approvals",
       "item": [
         {
           "name": "Employee creates a request",
@@ -1965,7 +1972,7 @@
       ]
     },
     {
-      "name": "6 \u00b7 Assets",
+      "name": "6 · Assets",
       "item": [
         {
           "name": "Create asset",
@@ -1999,7 +2006,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_code\": \"PM-AST-1\",\n  \"name\": \"Postman Test Laptop\"\n}"
+              "raw": "{\n  \"name\": \"Postman Test Laptop\",\n  \"serial_number\": \"PM-SN-1\"\n}"
             }
           },
           "event": [
@@ -2009,14 +2016,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
-                  "pm.collectionVariables.set(\"assetId\", pm.response.json().id);"
+                  "pm.collectionVariables.set(\"assetId\", pm.response.json().id);",
+                  "pm.test(\"The server made the asset code\", () => pm.expect(pm.response.json().asset_code).to.match(/^AST-\\d{4}$/));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Assign asset without holder is 422",
+          "name": "Changing the holder by editing is 422 (use assign)",
           "request": {
             "method": "PUT",
             "header": [
@@ -2048,7 +2056,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"asset_code\": \"PM-AST-1\",\n  \"name\": \"Postman Test Laptop\",\n  \"status\": \"assigned\"\n}"
+              "raw": "{\n  \"name\": \"Postman Test Laptop\",\n  \"status\": \"assigned\"\n}"
             }
           },
           "event": [
@@ -2144,7 +2152,7 @@
       ]
     },
     {
-      "name": "7 \u00b7 Users (admin)",
+      "name": "7 · Users (admin)",
       "item": [
         {
           "name": "Admin lists users",
@@ -2231,12 +2239,12 @@
       ]
     },
     {
-      "name": "8 \u00b7 Clean up",
+      "name": "8 · Clean up",
       "item": [
         {
-          "name": "Delete test category",
+          "name": "Deactivate test category (it still holds the retired product)",
           "request": {
-            "method": "DELETE",
+            "method": "PUT",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
@@ -2258,6 +2266,15 @@
                   "type": "string"
                 }
               ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Category\",\n  \"is_active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "event": [
@@ -2266,7 +2283,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status is 204\", () => pm.response.to.have.status(204));"
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Inactive\", () => pm.expect(pm.response.json().is_active).to.eql(false));"
                 ]
               }
             }

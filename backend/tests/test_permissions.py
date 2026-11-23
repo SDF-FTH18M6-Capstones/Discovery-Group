@@ -1,4 +1,5 @@
 import re
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -6,7 +7,10 @@ import pytest
 from app.extensions import db
 from app.models import (
     Asset,
+    AssetAssignment,
+    AssetCategory,
     Category,
+    Expense,
     Notification,
     Product,
     Purchase,
@@ -30,7 +34,7 @@ PRODUCT = {
     "cost_price": "10.00",
     "selling_price": "15.00",
 }
-ASSET = {"asset_code": "AST-NEW", "name": "New laptop"}
+ASSET = {"name": "New laptop"}
 REQUEST = {"item": "Printer paper", "quantity": 2, "reason": "Monthly reports"}
 SALE = {"payment_method": "cash", "items": [{"product_id": "{product}", "quantity": 1}]}
 PURCHASE = {
@@ -39,14 +43,26 @@ PURCHASE = {
 }
 REPAIR = {"asset_id": "{spare_asset}", "description": "Screen flickers"}
 ADJUSTMENT = {"product_id": "{product}", "change": -1, "reason": "Damaged in store"}
-
-# method, path, roles allowed, success status, JSON body
+BUSINESS = {"name": "Test Shop", "timezone": "Africa/Nairobi", "currency": "KES", "vat_rate": "16"}
+EXPENSE = {"spent_on": "2026-11-01", "category": "Rent", "amount": "1000.00"}
+ASSIGN = {"user_id": "{other_user}", "condition": "good"}
 ENDPOINTS = [
     ("GET", "/api/auth/me", ALL, 200, None),
     ("GET", "/api/users/", ("admin",), 200, None),
     ("GET", "/api/users/choices", ("admin", "inventory"), 200, None),
     ("GET", "/api/users/{other_user}", ("admin",), 200, None),
     ("PUT", "/api/users/{other_user}/role", ("admin",), 200, {"role": "sales"}),
+    ("POST", "/api/users/{other_user}/deactivate", ("admin",), 200, None),
+    ("POST", "/api/users/{other_user}/reactivate", ("admin",), 200, None),
+    ("GET", "/api/business", ALL, 200, None),
+    ("PUT", "/api/business", ("admin",), 200, BUSINESS),
+    ("POST", "/api/business/join-code", ("admin",), 200, None),
+    ("GET", "/api/audit/", ("admin",), 200, None),
+    ("GET", "/api/dashboard/pulse", ALL, 200, None),
+    ("GET", "/api/expenses/", ("admin",), 200, None),
+    ("POST", "/api/expenses/", ("admin",), 201, EXPENSE),
+    ("PUT", "/api/expenses/{expense}", ("admin",), 200, EXPENSE),
+    ("DELETE", "/api/expenses/{expense}", ("admin",), 204, None),
     ("GET", "/api/categories/", ALL, 200, None),
     ("POST", "/api/categories/", STOCK, 201, {"name": "Snacks"}),
     ("GET", "/api/categories/{category}", ALL, 200, None),
@@ -57,6 +73,11 @@ ENDPOINTS = [
     ("GET", "/api/products/{product}", ALL, 200, None),
     ("PUT", "/api/products/{product}", STOCK, 200, PRODUCT),
     ("DELETE", "/api/products/{spare_product}", STOCK, 204, None),
+    ("POST", "/api/products/{product}/retire", STOCK, 200, None),
+    ("POST", "/api/products/{product}/restore", STOCK, 200, None),
+    ("POST", "/api/products/{product}/photo", STOCK, 400, None),
+    ("DELETE", "/api/products/{product}/photo", STOCK, 200, None),
+    ("GET", "/api/products/{product}/timeline", STOCK, 200, None),
     ("GET", "/api/suppliers/", BUYING, 200, None),
     ("POST", "/api/suppliers/", BUYING, 201, {"name": "Metro"}),
     ("GET", "/api/suppliers/{supplier}", BUYING, 200, None),
@@ -67,6 +88,9 @@ ENDPOINTS = [
     ("GET", "/api/requests/{my_request}", ALL, 200, None),
     ("PUT", "/api/requests/{my_request}", ALL, 200, REQUEST),
     ("DELETE", "/api/requests/{my_request}", ALL, 204, None),
+    ("POST", "/api/requests/{my_request}/cancel", ALL, 200, None),
+    ("GET", "/api/requests/{my_request}/timeline", ALL, 200, None),
+    ("POST", "/api/requests/{approved_request}/fulfil", BUYING, 200, None),
     ("POST", "/api/requests/{others_request}/approve", ("procurement",), 200, {}),
     ("POST", "/api/requests/{others_request}/reject", ("procurement",), 200, {"comment": "No"}),
     ("GET", "/api/assets/", ALL, 200, None),
@@ -74,25 +98,43 @@ ENDPOINTS = [
     ("GET", "/api/assets/{my_asset}", ALL, 200, None),
     ("PUT", "/api/assets/{my_asset}", STOCK, 200, ASSET),
     ("DELETE", "/api/assets/{spare_asset}", STOCK, 204, None),
+    ("GET", "/api/assets/lookup/{asset_code}", STOCK, 200, None),
+    ("POST", "/api/assets/{free_asset}/assign", STOCK, 200, ASSIGN),
+    ("POST", "/api/assets/{my_asset}/return", STOCK, 200, {"condition": "good"}),
+    ("POST", "/api/assets/{free_asset}/retire", STOCK, 200, None),
+    ("GET", "/api/assets/{my_asset}/assignments", ALL, 200, None),
+    ("GET", "/api/assets/{my_asset}/timeline", ALL, 200, None),
+    ("POST", "/api/assets/{my_asset}/photo", STOCK, 400, None),
+    ("DELETE", "/api/assets/{my_asset}/photo", STOCK, 200, None),
+    ("GET", "/api/asset-categories/", ALL, 200, None),
+    ("POST", "/api/asset-categories/", STOCK, 201, {"name": "Furniture"}),
+    ("PUT", "/api/asset-categories/{asset_category}", STOCK, 200, {"name": "Computers"}),
+    ("DELETE", "/api/asset-categories/{asset_category}", STOCK, 204, None),
     ("GET", "/api/sales/", SELLING, 200, None),
     ("POST", "/api/sales/", SELLING, 201, SALE),
     ("GET", "/api/sales/{my_sale}", SELLING, 200, None),
+    ("POST", "/api/sales/{my_sale}/void", ("admin",), 200, {"reason": "Rang up twice"}),
     ("GET", "/api/purchases/", PURCHASE_VIEW, 200, None),
     ("POST", "/api/purchases/", BUYING, 201, PURCHASE),
     ("GET", "/api/purchases/{purchase}", PURCHASE_VIEW, 200, None),
-    ("POST", "/api/purchases/{purchase}/receive", STOCK, 200, None),
-    ("POST", "/api/purchases/{purchase}/cancel", BUYING, 200, None),
+    ("PUT", "/api/purchases/{draft}", BUYING, 200, PURCHASE),
+    ("POST", "/api/purchases/{draft}/confirm", BUYING, 200, None),
+    ("POST", "/api/purchases/{purchase}/receive", STOCK, 200, {}),
+    ("POST", "/api/purchases/{purchase}/cancel", BUYING, 200, {"reason": "Supplier closed"}),
     ("GET", "/api/stock/movements", STOCK, 200, None),
+    ("GET", "/api/stock/movements.csv", STOCK, 200, None),
     ("POST", "/api/stock/adjustments", STOCK, 201, ADJUSTMENT),
     ("GET", "/api/repairs/", ALL, 200, None),
     ("POST", "/api/repairs/", ALL, 201, REPAIR),
     ("GET", "/api/repairs/{my_repair}", ALL, 200, None),
     ("PUT", "/api/repairs/{my_repair}/status", STOCK, 200, {"status": "in_progress"}),
+    ("GET", "/api/repairs/{my_repair}/timeline", ALL, 200, None),
     ("GET", "/api/notifications/", ALL, 200, None),
     ("POST", "/api/notifications/{my_notification}/read", ALL, 200, None),
     ("POST", "/api/notifications/read-all", ALL, 200, None),
     ("GET", "/api/reports/summary", ("admin",), 200, None),
     ("PUT", "/api/auth/me", ALL, 200, {"full_name": "New Name"}),
+    ("POST", "/api/auth/logout", ALL, 200, None),
     (
         "POST",
         "/api/auth/password",
@@ -101,18 +143,19 @@ ENDPOINTS = [
         {"current_password": "Secret123!", "new_password": "NewSecret123"},
     ),
 ]
-
-# Open to everyone, by design. /refresh needs a refresh token and is tested in test_auth.py.
 PUBLIC = [
     ("GET", "/api/health"),
+    ("GET", "/api/images/{}"),
     ("POST", "/api/auth/register"),
+    ("POST", "/api/auth/register-business"),
+    ("POST", "/api/auth/forgot-password"),
+    ("POST", "/api/auth/reset-password"),
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/refresh"),
 ]
 
 
 def build_world(caller, make_user):
-    """Create one of everything the URLs above point at, and return their ids."""
     other = make_user("employee")
     category = Category(name="Beverages")
     empty_category = Category(name="Empty")
@@ -137,8 +180,13 @@ def build_world(caller, make_user):
     )
     my_request = Request(requester_id=caller.id, item="Pens", quantity=1, reason="Out of pens")
     others_request = Request(requester_id=other.id, item="Chair", quantity=1, reason="Broken")
-    my_asset = Asset(asset_code="AST-1", name="Laptop", status="assigned", assigned_to=caller.id)
-    spare_asset = Asset(asset_code="AST-2", name="Phone", status="assigned", assigned_to=caller.id)
+    approved_request = Request(
+        requester_id=other.id, item="Desk", quantity=1, reason="New hire", status="approved"
+    )
+    my_asset = Asset(name="Laptop", status="assigned", assigned_to=caller.id)
+    spare_asset = Asset(name="Phone", status="assigned", assigned_to=caller.id)
+    free_asset = Asset(name="Projector")
+    asset_category = AssetCategory(name="Gadgets")
     db.session.add_all(
         [
             product,
@@ -149,15 +197,30 @@ def build_world(caller, make_user):
             others_request,
             my_asset,
             spare_asset,
+            free_asset,
+            asset_category,
+            approved_request,
         ]
     )
     db.session.flush()
+    db.session.add(
+        AssetAssignment(
+            asset_id=my_asset.id, user_id=caller.id, assigned_by=caller.id, condition_out="good"
+        )
+    )
     my_sale = Sale(attendant_id=caller.id, payment_method="cash", total=Decimal("2"))
-    purchase = Purchase(supplier_id=supplier.id, created_by=caller.id, total=Decimal("5"))
+    purchase = Purchase(
+        supplier_id=supplier.id, created_by=caller.id, total=Decimal("5"), status="ordered"
+    )
     purchase.items.append(PurchaseItem(product_id=product.id, quantity=5, unit_cost=Decimal("1")))
+    draft = Purchase(supplier_id=supplier.id, created_by=caller.id, total=Decimal("5"))
+    draft.items.append(PurchaseItem(product_id=product.id, quantity=5, unit_cost=Decimal("1")))
+    expense = Expense(
+        spent_on=date(2026, 11, 1), category="Rent", amount=Decimal("100"), created_by=caller.id
+    )
     my_repair = Repair(asset_id=my_asset.id, reported_by=caller.id, description="Broken hinge")
     my_notification = Notification(user_id=caller.id, message="Welcome")
-    db.session.add_all([my_sale, purchase, my_repair, my_notification])
+    db.session.add_all([my_sale, purchase, draft, expense, my_repair, my_notification])
     db.session.commit()
     return {
         "other_user": other.id,
@@ -175,6 +238,12 @@ def build_world(caller, make_user):
         "my_notification": my_notification.id,
         "spare_supplier": spare_supplier.id,
         "purchase": purchase.id,
+        "draft": draft.id,
+        "asset_code": my_asset.asset_code,
+        "expense": expense.id,
+        "free_asset": free_asset.id,
+        "asset_category": asset_category.id,
+        "approved_request": approved_request.id,
     }
 
 
@@ -239,7 +308,6 @@ def test_each_role_gets_exactly_its_permissions(as_role, make_user, endpoint, ro
 
 
 def test_every_endpoint_is_listed(app):
-    """Guard: a new endpoint must be added to ENDPOINTS or PUBLIC above."""
 
     def shape(path):
         return re.sub(r"<[^>]+>|\{[^}]+\}", "{}", path)

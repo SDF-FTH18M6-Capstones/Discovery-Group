@@ -1,8 +1,3 @@
-"""Every error is returned as JSON in the same shape:
-
-{"error": {"code": 404, "message": "Product 99 not found", "details": {...}}}
-"""
-
 import logging
 
 from flask import jsonify
@@ -13,10 +8,10 @@ def register_error_handlers(app):
     @app.errorhandler(HTTPException)
     def http_error(exc):
         body = {"code": exc.code, "message": exc.description or exc.name}
-        data = getattr(exc, "data", None) or {}  # flask-smorest puts its details here
+        data = getattr(exc, "data", None) or {} 
         if data.get("message"):
             body["message"] = data["message"]
-        if data.get("messages"):  # Marshmallow field errors
+        if data.get("messages"):  
             body["message"] = "Some fields are invalid."
             messages = data["messages"]
             body["details"] = messages.get("json") or messages.get("query") or messages

@@ -57,12 +57,12 @@ VALID = {
     },
     "/api/suppliers/": {"name": "Metro"},
     "/api/requests/": {"item": "Pens", "quantity": 1, "reason": "Out of pens"},
-    "/api/assets/": {"asset_code": "AST-1", "name": "Laptop"},
+    "/api/assets/": {"name": "Laptop"},
+    "/api/purchases/999999/cancel": {"reason": "Not needed"},
     "/api/users/999999/role": {"role": "sales"},
     "/api/repairs/999999/status": {"status": "in_progress"},
 }
 
-# endpoint, bad body, fields that must be named in the error details
 BAD_BODIES = [
     ("/api/categories/", {}, ["name"]),
     ("/api/categories/", {"name": ""}, ["name"]),
@@ -86,10 +86,15 @@ BAD_BODIES = [
     ("/api/requests/", {**VALID["/api/requests/"], "urgency": "asap"}, ["urgency"]),
     ("/api/requests/", {**VALID["/api/requests/"], "status": "approved"}, ["status"]),
     ("/api/requests/", {**VALID["/api/requests/"], "requester_id": 1}, ["requester_id"]),
-    ("/api/assets/", {}, ["asset_code", "name"]),
-    ("/api/assets/", {**VALID["/api/assets/"], "status": "lost"}, ["status"]),
-    ("/api/assets/", {**VALID["/api/assets/"], "status": "assigned"}, ["assigned_to"]),
-    ("/api/assets/", {**VALID["/api/assets/"], "assigned_to": 1}, ["assigned_to"]),
+    ("/api/assets/", {}, ["name"]),
+    ("/api/assets/", {**VALID["/api/assets/"], "condition": "lost"}, ["condition"]),
+    ("/api/assets/", {**VALID["/api/assets/"], "status": "assigned"}, ["status"]),
+    ("/api/assets/", {**VALID["/api/assets/"], "asset_code": "AST-1"}, ["asset_code"]),
+    ("/api/assets/", {**VALID["/api/assets/"], "purchase_cost": "-1"}, ["purchase_cost"]),
+    ("/api/assets/", {**VALID["/api/assets/"], "assigned_to": "me"}, ["assigned_to"]),
+    ("/api/purchases/", {"supplier_id": 1, "items": []}, ["items"]),
+    ("/api/expenses/", {}, ["spent_on", "category", "amount"]),
+    ("/api/expenses/", {"spent_on": "2026-11-01", "category": "Rent", "amount": "0"}, ["amount"]),
 ]
 
 
@@ -119,7 +124,7 @@ def test_every_list_is_paginated(admin, url):
 
 @pytest.mark.parametrize("method, url", ONE_ITEM, ids=lambda x: str(x))
 def test_missing_record_is_404_on_every_item_endpoint(admin, method, url):
-    body = None
+    body = VALID.get(url)
     if method == "PUT":
         body = VALID.get(url) or VALID[url.rsplit("/", 1)[0] + "/"]
 
@@ -162,12 +167,9 @@ def test_unknown_category_is_400(admin):
 
 
 def test_unknown_asset_holder_is_400(admin):
-    body = {"asset_code": "AST-9", "name": "Laptop", "status": "assigned", "assigned_to": 999}
+    body = {"name": "Laptop", "assigned_to": 999}
 
     assert_error_shape(admin.post("/api/assets/", json=body), 400)
-
-
-# ---------- 409 conflicts ----------
 
 
 def test_duplicate_category_name_is_409(admin):
@@ -183,10 +185,12 @@ def test_duplicate_sku_is_409(admin, category):
     assert_error_shape(admin.post("/api/products/", json=body), 409)
 
 
-def test_duplicate_asset_code_is_409(admin):
-    admin.post("/api/assets/", json=VALID["/api/assets/"])
+def test_asset_codes_are_made_by_the_server_and_never_repeat(admin):
+    first = admin.post("/api/assets/", json=VALID["/api/assets/"]).json
+    second = admin.post("/api/assets/", json=VALID["/api/assets/"]).json
 
-    assert_error_shape(admin.post("/api/assets/", json=VALID["/api/assets/"]), 409)
+    assert (first["asset_code"], second["asset_code"]) == ("AST-0001", "AST-0002")
+    assert first["barcode"] != second["barcode"]
 
 
 def test_renaming_a_category_to_an_existing_name_is_409(admin):
