@@ -94,7 +94,7 @@ def test_opening_stock_is_the_first_ledger_line_and_the_form_cannot_change_stock
     product_id = admin.post("/api/products/", json=product_data(category.id)).json["id"]
     edited = admin.put(f"/api/products/{product_id}", json=product_data(category.id, quantity=7))
 
-    assert edited.json["quantity"] == 10  # US-09: stock changes only through adjustments
+    assert edited.json["quantity"] == 10
     ledger = admin.get(f"/api/stock/movements?product_id={product_id}").json["results"]
     assert [(m["change"], m["quantity_after"], m["reason"]) for m in ledger] == [
         (10, 10, "Opening stock")

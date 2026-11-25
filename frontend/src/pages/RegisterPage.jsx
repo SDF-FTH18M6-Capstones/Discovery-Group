@@ -28,8 +28,6 @@ export function validateRegistration(values, mode = "join") {
 const firstOf = (details = {}) =>
   Object.fromEntries(Object.entries(details).map(([key, list]) => [key, [].concat(list)[0]]));
 
-// Two ways in: start a new business (you become its Administrator), or join your team's
-// business with the code your manager shares (/register?code=ABCD2345 fills it in).
 export default function RegisterPage({ startMode }) {
   const { register, registerBusiness } = useAuth();
   const navigate = useNavigate();
@@ -66,8 +64,14 @@ export default function RegisterPage({ startMode }) {
     const { full_name, email, password } = values;
     try {
       if (mode === "business") {
-        await registerBusiness({ business_name: values.business_name, full_name, email, password });
-        navigate("/", { replace: true, state: { welcome: true } });
+        const result = await registerBusiness({
+          business_name: values.business_name,
+          full_name,
+          email,
+          password,
+        });
+        if (result.message) navigate("/login", { state: { message: result.message, email } });
+        else navigate("/", { replace: true, state: { welcome: true } });
       } else {
         const result = await register({ full_name, email, password, join_code: values.join_code });
         navigate("/login", { state: { message: result.message, email } });

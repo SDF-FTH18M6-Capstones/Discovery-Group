@@ -14,7 +14,6 @@ import { Avatar, EmptyState } from "../../components/ui";
 import { currencyCode, money, shortDate } from "../../format";
 import { repairs } from "../../store";
 
-// US-38: Submitted → In progress → Completed, or Submitted → Rejected (with a reason).
 const COLUMNS = [
   { status: ["submitted"], title: "Submitted", key: "submitted" },
   { status: ["in_progress"], title: "In progress", key: "in_progress" },
@@ -22,7 +21,6 @@ const COLUMNS = [
 ];
 const URGENCIES = ["low", "normal", "high", "urgent"];
 
-// Completing needs what was done (and an optional cost); rejecting needs why not.
 function CloseDialog({ repair, outcome, onClose, onDone }) {
   const [resolution, setResolution] = useState("");
   const [cost, setCost] = useState("");
@@ -306,7 +304,7 @@ export default function RepairsPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
-  const [closing, setClosing] = useState(null); // {repair, outcome}
+  const [closing, setClosing] = useState(null);
 
   const reload = () => dispatch(repairs.fetchList({ per_page: 100 }));
 
@@ -314,7 +312,6 @@ export default function RepairsPage() {
     dispatch(repairs.fetchList({ per_page: 100 }));
   }, [dispatch]);
 
-  // Optimistic: the card moves column at once; it moves back if the server refuses.
   const move = async (repair, status) => {
     const before = { items: list.items, count: list.count };
     dispatch(repairs.actions.patchItem({ id: repair.id, changes: { status } }));

@@ -28,6 +28,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import StatusPage from "./pages/StatusPage";
 
 function NotFound() {
@@ -43,7 +44,6 @@ function NotFound() {
   );
 }
 
-// "/" is the landing page for visitors and the dashboard once signed in.
 function Home() {
   const { user } = useAuth();
   return user ? <DashboardPage /> : <LandingPage />;
@@ -53,15 +53,16 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        {/* Open to everyone */}
+        {}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
+        <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="status" element={<StatusPage />} />
         <Route index element={<Home />} />
 
-        {/* Signed-in users only (the page itself hides what the role cannot do) */}
+        {}
         <Route element={<RequireAuth />}>
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
@@ -73,29 +74,29 @@ export default function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
-        {/* Administrator or Sales Attendant */}
+        {}
         <Route element={<RequireAuth roles={SELLERS} />}>
           <Route path="sales" element={<SalesPage />} />
           <Route path="sales/new" element={<PosPage />} />
         </Route>
 
-        {/* Administrator or Inventory Manager */}
+        {}
         <Route element={<RequireAuth roles={STOCK_MANAGERS} />}>
           <Route path="stock" element={<StockPage />} />
         </Route>
 
-        {/* Administrator, Procurement or Inventory Manager */}
+        {}
         <Route element={<RequireAuth roles={PURCHASE_VIEWERS} />}>
           <Route path="purchases" element={<PurchasesPage />} />
         </Route>
 
-        {/* Administrator or Procurement Manager only */}
+        {}
         <Route element={<RequireAuth roles={PROCUREMENT} />}>
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="approvals" element={<ApprovalsPage />} />
         </Route>
 
-        {/* Administrator only */}
+        {}
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />

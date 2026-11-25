@@ -12,7 +12,6 @@ import { announceNotificationsChanged as announce } from "../../events";
 import { dateTime, timeAgo } from "../../format";
 import { notifications } from "../../store";
 
-// A picture for each kind of message.
 function iconFor(message) {
   if (/stock/i.test(message)) return "box";
   if (/repair/i.test(message)) return "wrench";

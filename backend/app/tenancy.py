@@ -1,4 +1,3 @@
-# Keeps every business's data apart.
 from contextlib import contextmanager
 
 from flask import g, has_app_context

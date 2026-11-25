@@ -138,7 +138,6 @@ def test_assets_crud_and_holder_rule(admin, employee):
     assert created.json["status"] == "available"
     asset_id = created.json["id"]
 
-    # The holder cannot be changed by editing: only through assign and return.
     sneaky = admin.put(f"/api/assets/{asset_id}", json={"name": "Laptop", "status": "assigned"})
     assert sneaky.status_code == 422
 

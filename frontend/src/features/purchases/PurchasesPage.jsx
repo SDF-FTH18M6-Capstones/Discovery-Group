@@ -24,8 +24,6 @@ const TABS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-// US-21/22/23: enter what arrived per line; the same key is sent if the button is pressed
-// twice, so a delivery is never counted twice.
 function ReceiveDialog({ purchase, onClose, onDone }) {
   const key = useMemo(() => newIdempotencyKey(), []);
   const open = purchase.items.filter((line) => line.outstanding > 0);
@@ -214,11 +212,10 @@ export default function PurchasesPage() {
   const [status, setStatus] = useState(searchParams.get("status") || "");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  // null · {mode:"new", requestId} · {mode:"edit", purchase}
   const [form, setForm] = useState(
     searchParams.get("new") ? { mode: "new", requestId: searchParams.get("request") } : null,
   );
-  const [dialog, setDialog] = useState(null); // {kind: "receive"|"cancel", purchase}
+  const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);

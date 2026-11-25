@@ -19,8 +19,6 @@ const describeSupplier = (supplier) => ({
   detail: supplier.code,
 });
 
-// New order, or editing a draft (`purchase`). US-19: a PO starts as a Draft and becomes
-// Ordered when confirmed; it can be linked to an approved request.
 export default function PurchaseForm({ purchase = null, requestId = null, onSaved, onCancel }) {
   const [supplier, setSupplier] = useState(
     purchase
@@ -48,7 +46,6 @@ export default function PurchaseForm({ purchase = null, requestId = null, onSave
     api("/api/requests/?status=approved&per_page=50")
       .then((data) => {
         const list = data.results;
-        // keep the linked request in the list even if it is no longer "approved"
         if (purchase?.request_id && !list.some((r) => r.id === purchase.request_id)) {
           list.push({
             id: purchase.request_id,

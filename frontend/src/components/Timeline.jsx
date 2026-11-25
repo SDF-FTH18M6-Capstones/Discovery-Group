@@ -19,8 +19,6 @@ const TONE = {
   Retired: "bg-danger-soft text-danger",
 };
 
-// US-40 Trace Timeline: everything that happened to a record, newest first.
-// `url` is a paginated timeline endpoint, e.g. /api/products/7/timeline.
 export default function Timeline({ url, empty = "Nothing has happened yet." }) {
   const [entries, setEntries] = useState(null);
   const [page, setPage] = useState(1);

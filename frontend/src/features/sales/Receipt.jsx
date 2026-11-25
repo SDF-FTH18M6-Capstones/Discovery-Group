@@ -2,7 +2,6 @@ import { useBusiness } from "../../auth/useBusiness";
 import Icon from "../../components/Icon";
 import { PAYMENT_LABELS, dateTime, money } from "../../format";
 
-// US-27: business name, receipt number, date, attendant, lines, VAT, total and payment.
 export default function Receipt({ sale, onClose, children }) {
   const business = useBusiness();
   const voided = sale.status === "voided";

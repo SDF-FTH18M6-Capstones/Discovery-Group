@@ -30,7 +30,7 @@ from app.resources.sales import vat_included
 from app.stockledger import move_stock
 from app.tenancy import tenant
 
-DEMO_PASSWORD = "ChangeMe123!" 
+DEMO_PASSWORD = "ChangeMe123!"
 
 DEMO_SHOP = {
     "name": "StockPilot Demo Shop",
@@ -47,7 +47,6 @@ DEMO_SHOP = {
     ],
     "categories": ["Beverages", "Grocery", "Packaging", "Stationery"],
     "products": [
-        # sku, name, category, cost, price, opening stock, reorder level
         ("SP-001", "Water Bottle 1L", "Beverages", "180.00", "250.00", 120, 20),
         ("SP-002", "Coffee Beans 250g", "Grocery", "480.00", "650.00", 30, 15),
         ("SP-003", "Kraft Bag Medium", "Packaging", "20.00", "35.00", 12, 25),
@@ -64,7 +63,6 @@ DEMO_SHOP = {
     ],
     "asset_categories": ["Computers", "Furniture", "Devices"],
     "assets": [
-        # name, category, serial, holder email, condition
         (
             "Dell Latitude 5440 laptop",
             "Computers",
@@ -76,7 +74,6 @@ DEMO_SHOP = {
         ("Office chair", "Furniture", None, "sales@stockpilot.test", "fair"),
         ("Barcode scanner", "Devices", "ZB-DS2208-1", "sales@stockpilot.test", "good"),
     ],
-    # days ago, payment, lines (sku, qty)
     "sales": [
         (6, "cash", [("SP-001", 2), ("SP-005", 4)]),
         (5, "mpesa", [("SP-002", 1), ("SP-008", 2)]),
@@ -141,7 +138,9 @@ def seed_business(spec):
                 raise SystemExit(
                     f"{email} already belongs to another business; use a fresh database."
                 )
-            user = ROLE_CLASSES[role](full_name=name, email=email)
+            user = ROLE_CLASSES[role](
+                full_name=name, email=email, email_verified_at=datetime.now(UTC)
+            )
             user.set_password(DEMO_PASSWORD)
             db.session.add(user)
             users[email] = user
@@ -222,7 +221,6 @@ def add_purchases(spec, products, suppliers, buyer, stock_keeper):
     if not spec["suppliers"] or len(products) < 2:
         return
     skus = list(products)
-    # One order received in full eight days ago (before the sales below), one on its way.
     received = Purchase(
         supplier_id=suppliers[min(1, len(suppliers) - 1)].id,
         created_by=buyer.id,

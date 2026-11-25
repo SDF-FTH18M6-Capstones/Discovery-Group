@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import re
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -15,11 +16,20 @@ from flask_jwt_extended import (
 from flask_smorest import Blueprint, abort
 from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 
+from app import verification as verify
 from app.audit import audit
 from app.auth import roles_required
 from app.extensions import db, limiter
 from app.mail import queue_email
-from app.models import Admin, Business, Employee, PasswordReset, RevokedToken, User
+from app.models import (
+    Admin,
+    Business,
+    Employee,
+    LoginChallenge,
+    PasswordReset,
+    RevokedToken,
+    User,
+)
 from app.models.user import check_secret, hash_secret
 from app.schemas import Schema
 from app.tenancy import tenant
@@ -83,6 +93,7 @@ class AccountSchema(Schema):
     id = fields.Integer()
     full_name = fields.String()
     email = fields.String()
+    email_verified = fields.Boolean()
     phone = fields.String(allow_none=True)
     role = fields.String()
     business = fields.Nested(BusinessBrief)
@@ -96,6 +107,39 @@ class SessionSchema(Schema):
     access_token = fields.String()
     refresh_token = fields.String()
     user = fields.Nested(AccountSchema)
+
+
+class LoginOut(SessionSchema):
+    code_required = fields.Boolean()
+    challenge_id = fields.String()
+    email_hint = fields.String()
+    expires_in = fields.Integer()
+    resend_after = fields.Integer()
+
+
+class SignUpOut(SessionSchema):
+    message = fields.String()
+    verification_required = fields.Boolean()
+
+
+class CodeIn(Schema):
+    challenge_id = fields.String(required=True, validate=validate.Length(min=8, max=64))
+    code = fields.String(
+        required=True,
+        validate=validate.Regexp(r"^\d{6}$", error="Enter the 6-digit code from the email."),
+    )
+
+
+class ChallengeIn(Schema):
+    challenge_id = fields.String(required=True, validate=validate.Length(min=8, max=64))
+
+
+class TokenIn(Schema):
+    token = fields.String(required=True, validate=validate.Length(min=10, max=200))
+
+
+class EmailIn(Schema):
+    email = fields.Email(required=True)
 
 
 class ProfileSchema(Schema):
@@ -166,7 +210,7 @@ def start_session(user):
 @blp.route("/register-business", methods=["POST"])
 @limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(RegisterBusinessSchema)
-@blp.response(201, SessionSchema)
+@blp.response(201, SignUpOut)
 @blp.doc(security=[])
 def register_business(data):
     if find_user(data["email"]):
@@ -186,8 +230,17 @@ def register_business(data):
             f"Business {business.name} created",
             user_id=owner.id,
         )
+        if verify.verification_required():
+            verify.send_verification(owner)
+            db.session.commit()
+            return {
+                "verification_required": True,
+                "message": f"{business.name} is ready. We sent a link to {owner.email}: "
+                "open it to confirm your email, then sign in.",
+            }
+        owner.email_verified_at = verify.now()
         db.session.commit()
-    return start_session(owner)
+    return {**start_session(owner), "verification_required": False}
 
 
 @blp.route("/register", methods=["POST"])
@@ -213,6 +266,14 @@ def register(data):
         db.session.add(user)
         db.session.flush()
         audit("joined", "user", user.id, f"{user.full_name} joined", user_id=user.id)
+        if verify.verification_required():
+            verify.send_verification(user)
+            db.session.commit()
+            return {
+                "message": f"Account created at {business.name}. We sent a link to "
+                f"{user.email}: open it to confirm your email, then sign in."
+            }
+        user.email_verified_at = verify.now()
         db.session.commit()
     return {"message": f"Account created at {business.name}. You can now sign in."}
 
@@ -220,7 +281,7 @@ def register(data):
 @blp.route("/login", methods=["POST"])
 @limiter.limit(rate_limit, error_message=TOO_MANY)
 @blp.arguments(LoginSchema)
-@blp.response(200, SessionSchema)
+@blp.response(200, LoginOut)
 @blp.doc(security=[])
 def login(data):
     user = find_user(data["email"])
@@ -233,7 +294,122 @@ def login(data):
         abort(403, message="This account has been deactivated. Ask your administrator.")
     if not user.business.is_active:
         abort(403, message="This business is suspended. Contact StockPilot support.")
+    if verify.verification_required() and not user.email_verified:
+        abort(
+            403,
+            message="Confirm your email first: open the link we sent you, or ask for a new one.",
+            reason="email_unverified",
+        )
+    if verify.code_required_for(user):
+        challenge = verify.start_challenge(user)
+        db.session.commit()
+        return verify.challenge_answer(challenge, user)
     return start_session(user)
+
+
+def open_challenge(challenge_id):
+    challenge = db.session.scalar(
+        db.select(LoginChallenge).filter_by(id=challenge_id).with_for_update()
+    )
+    if challenge is None or challenge.used_at or challenge.cancelled_at:
+        db.session.rollback()
+        abort(401, message="This sign-in has ended. Enter your email and password again.")
+    if challenge.expires_at < verify.now():
+        db.session.rollback()
+        abort(401, message="This code has expired. Enter your email and password again.")
+    return challenge
+
+
+@blp.route("/login/verify", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
+@blp.arguments(CodeIn)
+@blp.response(200, SessionSchema)
+@blp.doc(security=[])
+def login_verify(data):
+    challenge = open_challenge(data["challenge_id"])
+    if not hmac.compare_digest(challenge.code_hash, verify.code_hash(challenge.id, data["code"])):
+        challenge.attempts += 1
+        left = verify.CODE_ATTEMPTS - challenge.attempts
+        if left <= 0:
+            challenge.cancelled_at = verify.now()
+            db.session.commit()
+            abort(401, message="Too many wrong codes. Enter your email and password again.")
+        db.session.commit()
+        abort(
+            401,
+            message=f"That code is not right. {left} {'try' if left == 1 else 'tries'} left.",
+            reason="wrong_code",
+        )
+    challenge.used_at = verify.now()
+    user = db.session.get(User, challenge.user_id)
+    if not user.is_active:
+        db.session.commit()
+        abort(403, message="This account has been deactivated. Ask your administrator.")
+    db.session.commit()
+    return start_session(user)
+
+
+@blp.route("/login/resend", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
+@blp.arguments(ChallengeIn)
+@blp.response(200, LoginOut)
+@blp.doc(security=[])
+def login_resend(data):
+    challenge = open_challenge(data["challenge_id"])
+    wait = verify.RESEND_SECONDS - int((verify.now() - challenge.sent_at).total_seconds())
+    if wait > 0:
+        db.session.rollback()
+        abort(429, message=f"Wait {wait} seconds before asking for a new code.")
+    if challenge.sends >= verify.MAX_SENDS:
+        challenge.cancelled_at = verify.now()
+        db.session.commit()
+        abort(401, message="Too many codes sent. Enter your email and password again.")
+    code = verify.new_code()
+    challenge.code_hash = verify.code_hash(challenge.id, code)
+    challenge.sent_at = verify.now()
+    challenge.expires_at = verify.now() + timedelta(minutes=verify.CODE_MINUTES)
+    challenge.sends += 1
+    user = db.session.get(User, challenge.user_id)
+    verify.email_code(user, code)
+    db.session.commit()
+    return verify.challenge_answer(challenge, user)
+
+
+@blp.route("/verify-email", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
+@blp.arguments(TokenIn)
+@blp.response(200, MessageSchema)
+@blp.doc(security=[])
+def verify_email(data):
+    row = verify.use_verification(data["token"])
+    if row is None:
+        db.session.rollback()
+        abort(
+            400,
+            message="This link has expired or was already used. Ask for a new one.",
+            reason="link_invalid",
+        )
+    user = db.session.get(User, row.user_id)
+    if user.email_verified_at is None:
+        user.email_verified_at = verify.now()
+    db.session.commit()
+    return {"message": "Your email is confirmed. You can now sign in."}
+
+
+VERIFY_SENT = "If that email has an account waiting to be confirmed, we sent a new link."
+
+
+@blp.route("/resend-verification", methods=["POST"])
+@limiter.limit(rate_limit, error_message=TOO_MANY)
+@blp.arguments(EmailIn)
+@blp.response(200, MessageSchema)
+@blp.doc(security=[])
+def resend_verification(data):
+    user = find_user(data["email"])
+    if user is not None and user.is_active and not user.email_verified:
+        verify.send_verification(user)
+        db.session.commit()
+    return {"message": VERIFY_SENT}
 
 
 @blp.route("/refresh", methods=["POST"])
@@ -348,6 +524,8 @@ def reset_password(data):
     user = db.session.get(User, reset.user_id)
     user.set_password(data["password"])
     user.session_version += 1
+    if user.email_verified_at is None:
+        user.email_verified_at = now
     reset.used_at = now
     db.session.commit()
     return {"message": "Password changed. You can now sign in."}

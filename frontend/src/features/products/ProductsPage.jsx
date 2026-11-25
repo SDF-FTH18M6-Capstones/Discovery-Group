@@ -22,13 +22,12 @@ export default function ProductsPage() {
   const categoryOptions = useSelector((state) => state.categories.items);
   const [params] = useSearchParams();
   const [search, setSearch] = useState("");
-  // all · low (at or below the reorder level) · retired (kept for history, not sold)
   const [view, setView] = useState(params.get("low_stock") ? "low" : "all");
   const lowOnly = view === "low";
   const [notice, setNotice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); // null = closed, {} = new, product = edit
+  const [editing, setEditing] = useState(null);
   const [totals, setTotals] = useState({});
 
   const query = {
@@ -70,7 +69,6 @@ export default function ProductsPage() {
     );
   }, [dispatch, page, search, view, categoryId]);
 
-  // US-12: retired products keep their history and leave the till and new orders.
   const setRetired = async (product, retire) => {
     setNotice("");
     try {
@@ -87,8 +85,6 @@ export default function ProductsPage() {
     }
   };
 
-  // On failure (for example a product that has sales) the server's message stays on
-  // screen; reload only after a successful delete.
   const handleDelete = async (product) => {
     const result = await dispatch(products.deleteItem(product.id));
     if (products.deleteItem.fulfilled.match(result)) {

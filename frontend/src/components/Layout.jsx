@@ -11,7 +11,6 @@ import Logo from "./Logo";
 import ThemeSwitch from "./ThemeSwitch";
 import { Avatar } from "./ui";
 
-// `roles` = who sees the link. No `roles` = every signed-in user.
 const groups = [
   { title: "Overview", links: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }] },
   {
@@ -68,7 +67,6 @@ const groups = [
   },
 ];
 
-// Which section and page the address belongs to, for the top bar.
 function whereAmI(pathname) {
   let best = null;
   for (const group of groups) {
@@ -84,7 +82,6 @@ function whereAmI(pathname) {
   return best ? { section: best.group.title, page: best.link.label } : null;
 }
 
-// A clear message instead of a browser error when the connection drops (US-43).
 function OfflineBanner() {
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine !== false,
@@ -147,7 +144,6 @@ function Bell() {
   );
 }
 
-// A small picture of the product for the sign-in screens: the ledger doing its job.
 function LedgerPreview() {
   const rows = [
     ["Sale S-0041", "Water Bottle 1L", "−2", "118"],

@@ -37,7 +37,6 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    // Empty optional fields are sent as null, not "".
     const data = {
       name: values.name,
       email: values.email || null,

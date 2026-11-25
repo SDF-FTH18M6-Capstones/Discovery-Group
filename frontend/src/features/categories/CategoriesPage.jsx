@@ -14,7 +14,7 @@ export default function CategoriesPage() {
   const canEdit = hasRole(...STOCK_MANAGERS);
   const list = useSelector((state) => state.categories);
   const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState(null); // null = closed, {} = new, category = rename
+  const [editing, setEditing] = useState(null);
   const [name, setName] = useState("");
   const [fieldError, setFieldError] = useState("");
 
@@ -50,8 +50,6 @@ export default function CategoriesPage() {
     }
   };
 
-  // On failure (for example a category still used by products) the server's message
-  // stays on screen; reload only after a successful delete.
   const handleDelete = async (category) => {
     const result = await dispatch(categories.deleteItem(category.id));
     if (categories.deleteItem.fulfilled.match(result)) reload();

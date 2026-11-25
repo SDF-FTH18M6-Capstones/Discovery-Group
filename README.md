@@ -27,9 +27,10 @@ for review only; all demo accounts are in the backend README), or start your own
 
 ## Deploy
 
-- **API**: Render Blueprint in [`render.yaml`](render.yaml) (web service + PostgreSQL + Redis).
-  Migrations run before each release; `gunicorn wsgi:app` serves it. `backend/Procfile` for
-  Heroku-style hosts.
+- **API**: Render Blueprint in [`render.yaml`](render.yaml) on the free plan (web service +
+  PostgreSQL + Key Value). `backend/start.sh` runs migrations (and the demo seed when
+  `SEED_DEMO=true`) on each start, then `gunicorn wsgi:app`. Email goes through Brevo's API
+  (`BREVO_API_KEY`), because Render's free plan blocks SMTP. See `backend/README.md`.
 - **Frontend**: Netlify ([`frontend/netlify.toml`](frontend/netlify.toml)) or Vercel
   ([`frontend/vercel.json`](frontend/vercel.json)); both rewrite every path to `index.html`.
 - Set the API's `CORS_ORIGINS` and `FRONTEND_URL` to the frontend's HTTPS address, and the

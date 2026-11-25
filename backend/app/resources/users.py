@@ -29,6 +29,7 @@ class UserSchema(Schema):
     phone = fields.String(dump_only=True)
     role = fields.String(dump_only=True)
     is_active = fields.Boolean(dump_only=True)
+    email_verified = fields.Boolean(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 
 

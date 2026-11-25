@@ -11,15 +11,11 @@ export function loadSession() {
 export function saveSession(session) {
   try {
     localStorage.setItem(KEY, JSON.stringify(session));
-  } catch {
-    // Storage blocked (private window): the session lasts until the tab closes.
-  }
+  } catch {}
 }
 
 export function clearSession() {
   try {
     localStorage.removeItem(KEY);
-  } catch {
-    // nothing stored
-  }
+  } catch {}
 }

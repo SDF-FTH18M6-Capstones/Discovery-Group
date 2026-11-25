@@ -89,7 +89,7 @@ class SaleQuery(PageQuery):
     date_from = fields.Date(load_default=None)
     date_to = fields.Date(load_default=None)
     attendant_id = fields.Integer(load_default=None)
-    search = fields.String(load_default=None)  # receipt number, e.g. S-0012
+    search = fields.String(load_default=None)
 
 
 def with_lines(query):

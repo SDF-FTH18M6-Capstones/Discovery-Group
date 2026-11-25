@@ -26,7 +26,6 @@ class TimelineEntry(Schema):
 
 
 def describe_change(changes):
-    """'+30', 'Pending → Approved', 'Selling price 250.00 → 270.00'…"""
     if not changes:
         return None
     if "status" in changes:

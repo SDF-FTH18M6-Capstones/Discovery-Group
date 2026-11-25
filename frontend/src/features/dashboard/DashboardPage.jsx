@@ -22,7 +22,6 @@ const TILE_ICONS = {
 };
 const TILE_TONES = { ok: "brand", warn: "saffron", danger: "danger" };
 
-// US-39 StockPilot Pulse: one role-aware call; each tile opens its list already filtered.
 function usePulse() {
   const [tiles, setTiles] = useState(null);
   useEffect(() => {

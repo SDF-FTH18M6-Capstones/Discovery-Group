@@ -11,7 +11,6 @@ const TONES = {
   muted: "bg-surface-2 text-muted",
 };
 
-// One panel split into figures: "how things stand" at the top of a page.
 export function StatStrip({ items, className = "" }) {
   return (
     <dl
@@ -40,7 +39,6 @@ export function StatStrip({ items, className = "" }) {
             {item.hint && <dd className="text-xs text-muted">{item.hint}</dd>}
           </>
         );
-        // hairlines between cells that also work when the last row is not full
         const cell =
           "flex min-w-0 flex-col gap-2 p-4 shadow-[1px_0_0_var(--sp-line),0_1px_0_var(--sp-line)] sm:px-5";
         return item.to ? (
@@ -91,7 +89,6 @@ export function EmptyState({ icon = "inbox", title, children, action }) {
   );
 }
 
-// How full a shelf is compared with its reorder level.
 export function StockMeter({ quantity, reorder }) {
   const target = Math.max(reorder * 3, 1);
   const share = Math.min(quantity / target, 1);
@@ -165,8 +162,6 @@ const niceMax = (value) => {
   return [1, 2, 4, 8, 10].map((f) => f * power).find((n) => n >= value);
 };
 
-// Bars over time with a recessive grid, a tooltip on hover/focus and a table for screen readers.
-// Short numbers for an axis: 500, 1k, 1.5k, 20k, 1.2M.
 export const compact = (value) =>
   value >= 1e6
     ? `${+(value / 1e6).toFixed(1)}M`

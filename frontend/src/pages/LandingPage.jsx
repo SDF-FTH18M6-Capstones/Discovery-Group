@@ -11,7 +11,7 @@ function TillScene() {
       className="relative mx-auto flex w-full max-w-[34rem] flex-col gap-4 pb-12 sm:block sm:h-[35rem] sm:pb-0"
       aria-hidden="true"
     >
-      {/* the till */}
+      {}
       <div className="relative z-10 rounded-[22px] border border-white/10 bg-[#f8faf7] p-5 text-[#12201c] shadow-[0_40px_80px_-30px_rgb(0_0_0/0.6)] sm:absolute sm:top-0 sm:left-0 sm:w-[21rem]">
         <div className="flex items-center justify-between text-xs text-[#5f6f69]">
           <span className="font-semibold text-[#12201c]">New sale</span>
@@ -45,7 +45,7 @@ function TillScene() {
         </div>
       </div>
 
-      {/* the receipt that prints out of it */}
+      {}
       <div className="hidden sm:absolute sm:top-68 sm:left-6 sm:z-0 sm:block sm:w-48">
         <div className="animate-print perforated rounded-t-sm bg-white px-4 pt-8 pb-4 font-mono text-[11px] leading-5 text-[#2c3b36] shadow-xl">
           <p className="text-center font-semibold">StockPilot Shop</p>
@@ -61,7 +61,7 @@ function TillScene() {
         </div>
       </div>
 
-      {/* the stock card it updates */}
+      {}
       <div className="relative z-20 ml-auto w-[92%] rounded-[22px] border border-white/10 bg-[#10231f] p-5 text-white shadow-[0_40px_80px_-30px_rgb(0_0_0/0.7)] sm:absolute sm:top-[19.5rem] sm:right-0 sm:w-[19.5rem]">
         <div className="flex items-start justify-between gap-3">
           <div>

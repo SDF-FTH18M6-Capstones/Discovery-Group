@@ -317,7 +317,6 @@ describe("purchases", () => {
     await user.click(screen.getByRole("button", { name: "Place order" }));
     expect(screen.getByText("Choose a supplier.")).toBeInTheDocument();
 
-    // Search pickers: no more "first 100" dropdowns.
     await user.type(screen.getByLabelText("Supplier"), "Met");
     await user.click(await screen.findByRole("option", { name: /Metro Wholesale/ }));
     await user.type(screen.getByLabelText("Product 1"), "Tea");

@@ -21,7 +21,6 @@ export function validateAsset(values) {
   return errors;
 }
 
-// US-32: the server gives every asset its code (AST-0001) and barcode.
 export default function AssetForm({ asset, categories, onSaved, onCancel }) {
   const dispatch = useDispatch();
   const [people, setPeople] = useState([]);

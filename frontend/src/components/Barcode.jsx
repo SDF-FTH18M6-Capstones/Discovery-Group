@@ -12,7 +12,6 @@ const PATTERNS = (
 const STOP = "2331112";
 const START_B = 104;
 
-// The 0/1 modules for `text` (printable ASCII only), quiet zones not included.
 export function code128Modules(text) {
   const values = [...text].map((char) => {
     const code = char.charCodeAt(0);

@@ -38,7 +38,6 @@ function ConditionSelect({ id, value, onChange }) {
   );
 }
 
-// US-34: only Available assets; one holder at a time; condition and due date recorded.
 function AssignDialog({ asset, onClose, onDone }) {
   const [people, setPeople] = useState([]);
   const [values, setValues] = useState({
@@ -133,7 +132,6 @@ function AssignDialog({ asset, onClose, onDone }) {
   );
 }
 
-// US-35: record the return and its condition; the assignment closes, history is kept.
 function ReturnDialog({ asset, onClose, onDone }) {
   const [condition, setCondition] = useState(asset.condition || "good");
   const [notes, setNotes] = useState("");
@@ -312,7 +310,6 @@ function AssetDetails({ asset, manager, onClose }) {
   );
 }
 
-// Asset categories are kept apart from product categories (US-32).
 function CategoriesDialog({ categories, onClose, onChanged }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -391,7 +388,7 @@ export default function AssetsPage() {
   const [status, setStatus] = useState(params.get("overdue") ? "overdue" : "");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);
-  const [dialog, setDialog] = useState(null); // {kind, asset}
+  const [dialog, setDialog] = useState(null);
   const [categories, setCategories] = useState([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");

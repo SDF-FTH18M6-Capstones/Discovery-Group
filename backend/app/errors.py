@@ -11,6 +11,8 @@ def register_error_handlers(app):
         data = getattr(exc, "data", None) or {}
         if data.get("message"):
             body["message"] = data["message"]
+        if data.get("reason"):
+            body["reason"] = data["reason"]
         if data.get("messages"):
             body["message"] = "Some fields are invalid."
             messages = data["messages"]

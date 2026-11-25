@@ -3,10 +3,11 @@ import { clearSession, loadSession, saveSession } from "../auth/session";
 export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(status, message, details = {}) {
+  constructor(status, message, details = {}, reason = "") {
     super(message);
     this.status = status;
     this.details = details;
+    this.reason = reason;
   }
 }
 
@@ -50,7 +51,6 @@ async function refreshAccessToken() {
   return refreshing;
 }
 
-// Sends the request with the access token; renews it once on a 401. Returns the raw response.
 async function authorised(path, { method, body, auth }) {
   const token = auth ? loadSession()?.accessToken : undefined;
   let response = await send(path, { method, body, token });
@@ -74,19 +74,22 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     const error = data?.error || {};
-    throw new ApiError(response.status, error.message || "Request failed", error.details);
+    throw new ApiError(
+      response.status,
+      error.message || "Request failed",
+      error.details,
+      error.reason || "",
+    );
   }
   return data;
 }
 
-// Upload a file (multipart form). `field` is the form field name the API expects.
 export function upload(path, file, field = "photo") {
   const form = new FormData();
   form.append(field, file);
   return api(path, { method: "POST", body: form });
 }
 
-// Download a file the API makes (CSV exports) and hand it to the browser as a download.
 export async function download(path, filename) {
   const response = await authorised(path, { method: "GET", auth: true });
   if (!response.ok) {
@@ -103,10 +106,8 @@ export async function download(path, filename) {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
-// Photos are served by the API at /api/images/<id>; anything else is used as it is.
 export const mediaUrl = (url) => (url && url.startsWith("/api/") ? `${API_URL}${url}` : url || "");
 
-// A random key so a repeated click or a retry is recognised by the server (sales, receiving).
 export const newIdempotencyKey = () =>
   globalThis.crypto?.randomUUID?.() ||
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;

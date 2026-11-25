@@ -9,7 +9,6 @@ import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../compon
 import { saveCsv } from "../../csv";
 import { currencyCode, isoToday, money, shortDate } from "../../format";
 
-// US-41: today, last 7 days, this month, or any dates.
 const RANGES = [
   { key: "today", label: "Today" },
   { key: "7", label: "7 days" },
@@ -39,7 +38,6 @@ function CsvButton({ name, columns, rows }) {
   );
 }
 
-// Running costs for the same range; subtracted from gross profit to give net profit.
 function Expenses({ from, to, onChanged }) {
   const [list, setList] = useState(null);
   const [values, setValues] = useState({

@@ -76,7 +76,7 @@ def test_another_business_records_are_not_found(as_role, make_user, other_busine
     caller = as_role(allowed[0])
     mine = build_world(caller.user, make_user)
     if "{asset_code}" in path:
-        path = path.replace("{asset_code}", "SP9999000001")  # a barcode that is not ours
+        path = path.replace("{asset_code}", "SP9999000001")
 
     response = caller.open(method, fill(path, theirs), json=fill(body, mine))
 

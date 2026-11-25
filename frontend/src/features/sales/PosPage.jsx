@@ -12,12 +12,11 @@ export default function PosPage() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState(null);
   const [loadError, setLoadError] = useState("");
-  const [cart, setCart] = useState([]); // [{ product, quantity }]
+  const [cart, setCart] = useState([]);
   const [payment, setPayment] = useState("cash");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [sale, setSale] = useState(null);
-  // One key per sale: a double tap or a retry after a dropped connection saves one sale (US-26).
   const [saleKey, setSaleKey] = useState(newIdempotencyKey);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export default function PosPage() {
 
   const setQuantity = (product, quantity) => {
     setError("");
-    setSaleKey(newIdempotencyKey()); // a different cart is a different sale
+    setSaleKey(newIdempotencyKey());
     setCart((current) => {
       const capped = Math.min(Math.max(quantity, 0), product.quantity);
       const rest = current.filter((line) => line.product.id !== product.id);

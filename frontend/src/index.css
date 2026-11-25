@@ -1,15 +1,5 @@
 @import "tailwindcss";
 
-/*
-  StockPilot theme.
-  Palette: pine (the shell), jade (actions, money in), saffron (attention, highlights),
-  brick (money out, errors), on a cool paper background. Every colour is a variable with a
-  light and a dark value, so classes like bg-surface or text-muted are right in both themes.
-  Dark mode = the "dark" class on <html> (src/theme/ThemeContext.jsx, and a tiny script in
-  index.html that sets it before the first paint).
-  Type: Bricolage Grotesque for headings and figures, Geist for everything else, Geist Mono
-  for codes (SKUs, receipt and order numbers). Self-hosted from npm, see main.jsx.
-*/
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -78,7 +68,6 @@
   color-scheme: dark;
 }
 
-/* bg-surface, text-muted, border-line, bg-brand, text-brand-dark, bg-mint, bg-saffron … */
 @theme inline {
   --color-canvas: var(--sp-canvas);
   --color-surface: var(--sp-surface);
@@ -139,7 +128,6 @@
     outline-offset: 2px;
     border-radius: 6px;
   }
-  /* figures line up in tables and stats */
   table,
   .tabular {
     font-variant-numeric: tabular-nums;
@@ -147,7 +135,6 @@
 }
 
 @layer components {
-  /* ---------- surfaces ---------- */
   .card {
     background: var(--sp-surface);
     border: 1px solid var(--sp-line);
@@ -182,7 +169,6 @@
     border-radius: 12px;
   }
 
-  /* ---------- type ---------- */
   .page-title {
     font-family: var(--font-display);
     font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem);
@@ -210,7 +196,6 @@
     text-decoration: underline;
   }
 
-  /* ---------- buttons ---------- */
   .btn-primary,
   .btn-secondary,
   .btn-danger,
@@ -293,7 +278,6 @@
     transform: none;
   }
 
-  /* ---------- form controls ---------- */
   .input {
     min-height: 2.6rem;
     border: 1px solid var(--sp-line-strong);
@@ -318,7 +302,6 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--sp-brand) 18%, transparent);
   }
 
-  /* segmented control / filter chips */
   .chip {
     display: inline-flex;
     align-items: center;
@@ -364,7 +347,6 @@
     background: var(--sp-raised);
   }
 
-  /* ---------- tables ---------- */
   .table-head {
     background: var(--sp-surface-2);
     color: var(--sp-muted);
@@ -382,7 +364,6 @@
     background: color-mix(in srgb, var(--sp-brand-soft) 55%, transparent);
   }
 
-  /* ---------- small parts ---------- */
   .meter {
     height: 6px;
     border-radius: 999px;
@@ -412,7 +393,6 @@
     color: var(--sp-muted);
   }
 
-  /* the dotted paper of a till receipt */
   .receipt-paper {
     background: var(--sp-surface);
     background-image: radial-gradient(circle at 8px 0, transparent 7px, var(--sp-surface) 7.5px);
@@ -491,7 +471,6 @@
   }
 }
 
-/* pop-up windows (components/Modal.jsx) */
 .animate-fade {
   animation: fade-in 0.18s ease-out both;
 }
@@ -517,7 +496,6 @@
   }
 }
 
-/* Printing a receipt: only the receipt, 80 mm wide like a till printer. */
 @media print {
   body * {
     visibility: hidden;
