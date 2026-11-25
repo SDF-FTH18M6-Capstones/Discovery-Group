@@ -8,10 +8,10 @@ def register_error_handlers(app):
     @app.errorhandler(HTTPException)
     def http_error(exc):
         body = {"code": exc.code, "message": exc.description or exc.name}
-        data = getattr(exc, "data", None) or {} 
+        data = getattr(exc, "data", None) or {}
         if data.get("message"):
             body["message"] = data["message"]
-        if data.get("messages"):  
+        if data.get("messages"):
             body["message"] = "Some fields are invalid."
             messages = data["messages"]
             body["details"] = messages.get("json") or messages.get("query") or messages

@@ -88,7 +88,7 @@ def create_product(data):
         db.session.rollback()
         abort(409, message=f"SKU '{data['sku']}' is already used")
     audit("created", "product", product.id, f"Product {product.sku} {product.name} created")
-    if opening: 
+    if opening:
         move_stock(product, opening, "adjustment", current_user.id, reason="Opening stock")
     db.session.commit()
     return product

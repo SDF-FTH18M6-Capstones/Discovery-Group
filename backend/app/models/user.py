@@ -78,7 +78,6 @@ class SalesAttendant(User):
 
 
 class Employee(User):
-
     __mapper_args__ = {"polymorphic_identity": "employee"}
 
 

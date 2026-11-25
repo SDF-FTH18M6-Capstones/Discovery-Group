@@ -106,6 +106,7 @@ class ProfileSchema(Schema):
         validate=validate.Regexp(r"^\+?[0-9 ]{7,20}$", error="Enter a valid phone number."),
     )
 
+
 class PasswordSchema(Schema):
     current_password = fields.String(required=True, load_only=True)
     new_password = fields.String(required=True, load_only=True)

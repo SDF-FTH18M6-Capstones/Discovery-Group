@@ -28,7 +28,7 @@ def create_app(config_class=None):
     limiter.init_app(app)
     add_security_headers(app)
 
-    from app import auth, mail, models, resources, tenancy  
+    from app import auth, mail, models, resources, tenancy  # noqa: F401  (imported to register hooks)
 
     @app.before_request
     def start_outside_any_business():

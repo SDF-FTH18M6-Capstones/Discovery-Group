@@ -4,7 +4,7 @@ import uuid
 from app.extensions import db
 from app.models.base import Money, TenantMixin, TimestampMixin
 
-JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" 
+JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def new_join_code() -> str:
@@ -31,7 +31,6 @@ class Business(TimestampMixin, db.Model):
 
 
 class DocumentCounter(db.Model):
-
     __tablename__ = "document_counters"
 
     business_id = db.Column(
@@ -42,7 +41,6 @@ class DocumentCounter(db.Model):
 
 
 class RevokedToken(db.Model):
-
     __tablename__ = "revoked_tokens"
 
     jti = db.Column(db.String(64), primary_key=True)
@@ -50,7 +48,6 @@ class RevokedToken(db.Model):
 
 
 class PasswordReset(db.Model):
-
     __tablename__ = "password_resets"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -64,7 +61,6 @@ class PasswordReset(db.Model):
 
 
 class AuditLog(TenantMixin, db.Model):
-
     __tablename__ = "audit_logs"
     __table_args__ = (db.Index("ix_audit_logs_entity", "entity_type", "entity_id"),)
 
@@ -83,7 +79,6 @@ class AuditLog(TenantMixin, db.Model):
 
 
 class Image(TenantMixin, db.Model):
-
     __tablename__ = "images"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -95,7 +90,6 @@ class Image(TenantMixin, db.Model):
 
 
 class Expense(TenantMixin, TimestampMixin, db.Model):
-
     __tablename__ = "expenses"
     __table_args__ = (db.CheckConstraint("amount > 0", name="amount_positive"),)
 

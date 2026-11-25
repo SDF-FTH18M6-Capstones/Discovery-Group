@@ -161,10 +161,7 @@ def create_sale(data):
     products = {
         p.id: p
         for p in db.session.scalars(
-            db.select(Product)
-            .where(Product.id.in_(wanted))
-            .order_by(Product.id) 
-            .with_for_update()
+            db.select(Product).where(Product.id.in_(wanted)).order_by(Product.id).with_for_update()
         )
     }
     missing = sorted(set(wanted) - set(products))
@@ -190,7 +187,7 @@ def create_sale(data):
         idempotency_key=key,
     )
     db.session.add(sale)
-    db.session.flush()  
+    db.session.flush()
     total = Decimal("0")
     for product_id, quantity in wanted.items():
         product = products[product_id]

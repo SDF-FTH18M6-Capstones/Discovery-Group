@@ -30,7 +30,6 @@ class Config:
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
-
     MAIL_SERVER = os.getenv("MAIL_SERVER", "")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
@@ -41,13 +40,13 @@ class Config:
     MAX_UPLOAD_BYTES = 5 * 1024 * 1024
     IMAGE_MAX_SIDE = 1200
 
-    BCRYPT_LOG_ROUNDS = 12  
+    BCRYPT_LOG_ROUNDS = 12
 
-    MAX_CONTENT_LENGTH = 1024 * 1024 
+    MAX_CONTENT_LENGTH = 1024 * 1024
     RATELIMIT_ENABLED = True
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     LOGIN_RATE_LIMIT = os.getenv("LOGIN_RATE_LIMIT", "10 per minute")
-    BEHIND_PROXY = False  
+    BEHIND_PROXY = False
 
     API_TITLE = "StockPilot API"
     API_VERSION = "v1"
@@ -72,7 +71,6 @@ DEV_KEYS = {
 
 
 class ProductionConfig(Config):
-
     DEBUG = False
     BEHIND_PROXY = True
     PREFERRED_URL_SCHEME = "https"
@@ -95,9 +93,9 @@ def config_for_environment():
 
 class TestConfig(Config):
     TESTING = True
-    RATELIMIT_ENABLED = False 
+    RATELIMIT_ENABLED = False
     SQLALCHEMY_DATABASE_URI = database_url(
         "TEST_DATABASE_URL",
         "postgresql+psycopg://stockpilot:stockpilot@localhost:5432/stockpilot_test",
     )
-    BCRYPT_LOG_ROUNDS = 4 
+    BCRYPT_LOG_ROUNDS = 4

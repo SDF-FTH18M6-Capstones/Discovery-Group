@@ -106,7 +106,7 @@ def test_overdue_assignments(as_role):
 
     assert [a["id"] for a in overdue] == [late]
     assert overdue[0]["current_assignment"]["is_overdue"] is True
-    assert past.status_code == 409 
+    assert past.status_code == 409
 
 
 def test_retire_only_available_assets(as_role):

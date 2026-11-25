@@ -175,7 +175,7 @@ def test_a_linked_request_is_fulfilled_when_the_order_arrives(as_role, shop, out
     ).json["id"]
 
     pending_link = make(buyer, shop, request_id=request_id)
-    assert pending_link.status_code == 409 
+    assert pending_link.status_code == 409
 
     buyer.post(f"/api/requests/{request_id}/approve", json={})
     order = make(buyer, shop, request_id=request_id, confirm=True).json

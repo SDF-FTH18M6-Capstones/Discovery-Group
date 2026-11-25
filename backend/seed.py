@@ -1,10 +1,3 @@
-"""Demo data: two separate businesses, so you can see that neither sees the other.
-
-    python seed.py            add the demo businesses (safe to run again: skips what exists)
-
-Every demo user's password is DEMO_PASSWORD below. For local review only.
-"""
-
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
@@ -37,7 +30,7 @@ from app.resources.sales import vat_included
 from app.stockledger import move_stock
 from app.tenancy import tenant
 
-DEMO_PASSWORD = "ChangeMe123!"  # local demo data only
+DEMO_PASSWORD = "ChangeMe123!" 
 
 DEMO_SHOP = {
     "name": "StockPilot Demo Shop",

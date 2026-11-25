@@ -77,7 +77,7 @@ def test_profit_uses_the_cost_at_the_time_of_sale(as_role, water):
 
     report = admin.get("/api/reports/summary?days=1").json
 
-    assert report["gross_profit"] == "140.00" 
+    assert report["gross_profit"] == "140.00"
     assert report["cost_of_sales"] == "360.00"
 
 
@@ -152,11 +152,11 @@ def test_low_stock_alerts_fire_once_when_crossing(as_role, water, outbox):
     as_role("inventory")
     seller = as_role("sales")
 
-    sell(seller, water.id, 4) 
+    sell(seller, water.id, 4)
     assert low_stock_alerts() == []
-    sell(seller, water.id, 2)  
-    sell(seller, water.id, 1)  
-    sell(seller, water.id, 3)  
+    sell(seller, water.id, 2)
+    sell(seller, water.id, 1)
+    sell(seller, water.id, 3)
 
     assert low_stock_alerts() == ["Water is low on stock (4 left).", "Water is out of stock."]
     assert [e["subject"] for e in outbox] == ["Low stock: Water", "Low stock: Water"]

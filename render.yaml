@@ -8,7 +8,6 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    # Runs before each new version goes live: brings the database schema up to date.
     preDeployCommand: flask --app wsgi db upgrade
     startCommand: gunicorn wsgi:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT --access-logfile -
     healthCheckPath: /api/health
@@ -34,7 +33,6 @@ services:
           type: keyvalue
           name: stockpilot-limits
           property: connectionString
-      # Email (optional until you have an SMTP account; without it emails go to the log)
       - key: MAIL_SERVER
         sync: false
       - key: MAIL_USERNAME

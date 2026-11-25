@@ -177,4 +177,4 @@ def test_the_ledger_filters_by_date_and_exports_csv(as_role, category):
     rows = list(csv.reader(io.StringIO(exported.get_data(as_text=True))))
     assert rows[0][:5] == ["Date", "Product", "SKU", "Type", "Change"]
     assert len(rows) == 3
-    assert rows[2][7] == "'=HYPERLINK(evil)" 
+    assert rows[2][7] == "'=HYPERLINK(evil)"
