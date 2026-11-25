@@ -171,7 +171,7 @@ def test_photos_are_resized_served_and_replaced(as_role, water, client):
     )
     assert first.status_code == 200
     url = first.json["image_url"]
-    served = client.get(url) 
+    served = client.get(url)
     assert served.mimetype == "image/webp"
     assert PILImage.open(io.BytesIO(served.data)).size == (1200, 600)
 
@@ -181,7 +181,7 @@ def test_photos_are_resized_served_and_replaced(as_role, water, client):
         content_type="multipart/form-data",
     )
     assert second.json["image_url"] != url
-    assert client.get(url).status_code == 404 
+    assert client.get(url).status_code == 404
     assert db.session.scalar(db.select(db.func.count(Image.id))) == 1
 
 

@@ -70,7 +70,6 @@ class SaleItem(TenantMixin, db.Model):
 
 
 class StockMovement(TenantMixin, db.Model):
-
     __tablename__ = "stock_movements"
     __table_args__ = (
         db.CheckConstraint("change <> 0", name="change_not_zero"),

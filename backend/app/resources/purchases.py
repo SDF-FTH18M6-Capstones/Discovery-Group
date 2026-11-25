@@ -66,7 +66,6 @@ class ReceiveLineIn(Schema):
 
 
 class ReceiveIn(Schema):
-
     lines = fields.List(fields.Nested(ReceiveLineIn), load_default=None)
     idempotency_key = fields.String(load_default=None, validate=validate.Length(min=8, max=64))
     note = fields.String(allow_none=True, load_default=None, validate=validate.Length(max=500))
@@ -350,7 +349,7 @@ def existing_receipt(key):
 @blp.arguments(ReceiveIn)
 @blp.response(200, PurchaseOut)
 @roles_required(*RECEIVERS)
-def receive_purchase(data, purchase_id): 
+def receive_purchase(data, purchase_id):
     previous = existing_receipt(data["idempotency_key"])
     if previous is not None:
         if previous.purchase_id != purchase_id:
@@ -446,6 +445,6 @@ def receive_purchase(data, purchase_id):
     except IntegrityError:
         db.session.rollback()
         if existing_receipt(data["idempotency_key"]) is not None:
-            return load(purchase_id) 
+            return load(purchase_id)
         raise
     return load(purchase_id)

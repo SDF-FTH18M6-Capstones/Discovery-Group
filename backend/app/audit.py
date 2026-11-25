@@ -34,6 +34,7 @@ def diff(item, data, fields=None):
             changes[key] = [jsonable(old), jsonable(new)]
     return changes
 
+
 def jsonable(value):
     if value is None or isinstance(value, bool | int | float | str):
         return value

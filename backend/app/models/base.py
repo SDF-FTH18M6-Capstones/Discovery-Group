@@ -19,7 +19,6 @@ class TimestampMixin:
 
 
 class TenantMixin:
-
     @declared_attr
     def business_id(cls):
         return db.Column(

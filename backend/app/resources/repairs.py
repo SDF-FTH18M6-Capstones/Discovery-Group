@@ -52,6 +52,7 @@ class StatusIn(Schema):
             word = "what was done" if data["status"] == "done" else "why it is rejected"
             raise ValidationError(f"Say {word}.", "resolution")
 
+
 class RepairOut(Schema):
     id = fields.Integer()
     reference = fields.String()

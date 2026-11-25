@@ -15,6 +15,7 @@ class AssetCategory(TenantMixin, TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
 
+
 class Asset(TenantMixin, TimestampMixin, db.Model):
     __tablename__ = "assets"
     __number_kind__ = "asset"
@@ -70,7 +71,6 @@ class Asset(TenantMixin, TimestampMixin, db.Model):
 
 
 class AssetAssignment(TenantMixin, db.Model):
-
     __tablename__ = "asset_assignments"
     __table_args__ = (
         in_list("condition_out", CONDITIONS, "condition_out_valid"),

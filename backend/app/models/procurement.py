@@ -122,7 +122,6 @@ class PurchaseItem(TenantMixin, db.Model):
 
 
 class GoodsReceipt(TenantMixin, db.Model):
-
     __tablename__ = "goods_receipts"
     __number_kind__ = "grn"
     __table_args__ = (

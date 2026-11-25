@@ -166,14 +166,14 @@ def test_reports_and_pulse_count_only_this_business(as_role, make_user, other_bu
 def test_document_numbers_start_at_one_in_every_business(as_role, make_user, other_business):
     admin = as_role("admin")
     created = admin.post("/api/suppliers/", json={"name": "Metro"}).json
-    assert created["code"] == "SUP-001" 
+    assert created["code"] == "SUP-001"
 
 
 def test_the_same_sku_and_email_rules(as_role, make_user, other_business, client):
     admin = as_role("admin")
     category = admin.post("/api/categories/", json={"name": "Beverages"}).json["id"]
     body = {
-        "sku": "SP-001", 
+        "sku": "SP-001",
         "name": "Water",
         "category_id": category,
         "cost_price": "1",

@@ -9,12 +9,12 @@ from app.extensions import db
 from app.models import Image
 
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
-PIL_MAX_PIXELS = 50_000_000 
+PIL_MAX_PIXELS = 50_000_000
 
 
 def read_upload(field="photo"):
     limit = current_app.config["MAX_UPLOAD_BYTES"]
-    request.max_content_length = limit + 64 * 1024 
+    request.max_content_length = limit + 64 * 1024
     upload = request.files.get(field)
     if upload is None or not upload.filename:
         abort(400, message="Choose a photo to upload (JPEG, PNG or WebP, up to 5 MB).")
@@ -36,7 +36,7 @@ def store_image(raw):
         abort(400, message="Only JPEG, PNG and WebP photos are accepted.")
 
     with PILImage.open(io.BytesIO(raw)) as picture:
-        picture = ImageOps.exif_transpose(picture)  
+        picture = ImageOps.exif_transpose(picture)
         side = current_app.config["IMAGE_MAX_SIDE"]
         picture.thumbnail((side, side))
         if picture.mode not in ("RGB", "RGBA"):
