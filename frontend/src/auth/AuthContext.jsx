@@ -11,14 +11,10 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => loadSession()?.user || null);
   const [sessionExpired, setSessionExpired] = useState(false);
-  // True after "Sign out": the next person should not be sent back to this person's page.
   const [signedOut, setSignedOut] = useState(false);
 
-  // Money is shown in the business's own currency.
   useEffect(() => setCurrency(user?.business?.currency), [user]);
 
-  // When a request finds the session has expired, forget the user. <RequireAuth> then
-  // sends them to /login, which shows "Your session has expired".
   useEffect(() => {
     setSessionExpiredHandler(() => {
       setSessionExpired(true);
@@ -26,7 +22,6 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  // On page load, confirm the stored session is still valid and refresh the user's details.
   useEffect(() => {
     if (!loadSession()?.accessToken) return;
     api("/api/auth/me")
@@ -49,31 +44,59 @@ export function AuthProvider({ children }) {
     return session.user;
   }, []);
 
-  // Email + password. The backend answers with the tokens, which are kept for the next visit.
   const signIn = useCallback(
-    async (email, password) =>
+    async (email, password) => {
+      const answer = await api("/api/auth/login", {
+        method: "POST",
+        body: { email, password },
+        auth: false,
+      });
+      if (answer.code_required) return { challenge: answer };
+      return { user: startSession(answer) };
+    },
+    [startSession],
+  );
+
+  const verifyCode = useCallback(
+    async (challengeId, code) =>
       startSession(
-        await api("/api/auth/login", { method: "POST", body: { email, password }, auth: false }),
+        await api("/api/auth/login/verify", {
+          method: "POST",
+          body: { challenge_id: challengeId, code },
+          auth: false,
+        }),
       ),
     [startSession],
   );
 
-  // Join an existing business with its join code (the person then signs in).
+  const resendCode = useCallback(
+    (challengeId) =>
+      api("/api/auth/login/resend", {
+        method: "POST",
+        body: { challenge_id: challengeId },
+        auth: false,
+      }),
+    [],
+  );
+
   const register = useCallback(
     (fields) => api("/api/auth/register", { method: "POST", body: fields, auth: false }),
     [],
   );
 
-  // Start a new business: its owner becomes the Administrator and is signed in at once.
   const registerBusiness = useCallback(
-    async (fields) =>
-      startSession(
-        await api("/api/auth/register-business", { method: "POST", body: fields, auth: false }),
-      ),
+    async (fields) => {
+      const answer = await api("/api/auth/register-business", {
+        method: "POST",
+        body: fields,
+        auth: false,
+      });
+      if (answer.verification_required) return { message: answer.message };
+      return { user: startSession(answer) };
+    },
     [startSession],
   );
 
-  // Ends the session on the server too, so a copied token stops working (US-04).
   const signOut = useCallback(() => {
     const hadSession = Boolean(loadSession()?.accessToken);
     const done = () => {
@@ -88,7 +111,6 @@ export function AuthProvider({ children }) {
       .finally(done);
   }, [navigate]);
 
-  // Fetch the account again (after the business settings change, for example).
   const reloadUser = useCallback(async () => {
     const me = await api("/api/auth/me");
     saveSession({ ...loadSession(), user: me });
@@ -96,7 +118,6 @@ export function AuthProvider({ children }) {
     return me;
   }, []);
 
-  // After the person edits their profile: keep the new details for this visit and the next.
   const updateUser = useCallback((fresh) => {
     saveSession({ ...loadSession(), user: fresh });
     setUser(fresh);
@@ -110,6 +131,8 @@ export function AuthProvider({ children }) {
       sessionExpired,
       signedOut,
       signIn,
+      verifyCode,
+      resendCode,
       register,
       registerBusiness,
       signOut,
@@ -122,6 +145,8 @@ export function AuthProvider({ children }) {
       sessionExpired,
       signedOut,
       signIn,
+      verifyCode,
+      resendCode,
       register,
       registerBusiness,
       signOut,

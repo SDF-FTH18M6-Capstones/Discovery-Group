@@ -3,14 +3,11 @@ import { Link, Navigate, Outlet, useLocation } from "react-router-dom";
 import Icon from "../components/Icon";
 import { useAuth } from "./AuthContext";
 
-// Wrap routes that need a signed-in user. With `roles`, only those roles get in.
 export default function RequireAuth({ roles }) {
   const { user, signedOut } = useAuth();
   const location = useLocation();
 
   if (!user) {
-    // After an expired session, come back to this page once signed in again (US-04);
-    // after a deliberate sign-out, start the next person on the dashboard.
     return (
       <Navigate
         to="/login"

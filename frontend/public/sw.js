@@ -28,10 +28,9 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== "GET") return;
-  if (url.origin !== self.location.origin) return; // the API lives elsewhere: never cached
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
-  // Pages: try the network first so a new version shows at once; offline, use the shell.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -45,7 +44,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Built files have a hash in their name, so a cached copy is always the right one.
   if (url.pathname.startsWith("/assets/") || SHELL.includes(url.pathname)) {
     event.respondWith(
       caches.match(request).then(

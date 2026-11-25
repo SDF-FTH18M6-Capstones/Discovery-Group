@@ -202,7 +202,6 @@ const THEMES = [
   { value: "system", label: "Same as my device", icon: "settings" },
 ];
 
-// A tiny picture of the app in each theme.
 function Preview({ value }) {
   const half = (bg, card, line) => (
     <span className="flex flex-1 gap-1 p-1.5" style={{ background: bg }}>

@@ -14,7 +14,6 @@ import { PAYMENT_LABELS, dateTime, isoToday, money } from "../../format";
 import { sales } from "../../store";
 import Receipt from "./Receipt";
 
-// US-29: the Administrator voids a same-day sale made in error; stock goes back.
 function VoidButton({ sale, onVoided }) {
   const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState("");

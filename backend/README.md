@@ -51,19 +51,33 @@ the API filters every query to the signed-in user's business (`app/tenancy.py`),
 never see or change another's data, even by guessing ids.
 
 1. **Start a business:** `POST /api/auth/register-business` with
-   `{"business_name", "full_name", "email", "password"}`. The person becomes its Administrator
-   and is signed in (tokens in the answer).
+   `{"business_name", "full_name", "email", "password"}`. The person becomes its Administrator.
+   The answer is `{"verification_required": true, "message"}` and a confirmation link is emailed.
 2. **Join a business:** the Administrator shares the join code from `GET /api/business` (or the
    invite link `/register?code=…` from Settings). Staff call `POST /api/auth/register` with
    `{"full_name", "email", "password", "join_code"}` and start as Employee.
-3. `POST /api/auth/login` with `{"email", "password"}` gives `access_token` (15 minutes) and
-   `refresh_token` (7 days). Send `Authorization: Bearer <access_token>`; in Swagger click
+3. **Confirm the email (US-02):** the link opens `/verify-email?token=…` in the app, which calls
+   `POST /api/auth/verify-email` with `{"token"}`. Links work once and last 24 hours;
+   `POST /api/auth/resend-verification` with `{"email"}` sends a new one. Until then, sign-in
+   answers 403 with `"reason": "email_unverified"`. Accounts that existed before this change
+   count as confirmed.
+4. **Sign in (US-03):** `POST /api/auth/login` with `{"email", "password"}`. When the password is
+   right the server emails a 6-digit code and answers `{"code_required": true, "challenge_id",
+   "email_hint", "expires_in": 300, "resend_after": 60}`. `POST /api/auth/login/verify` with
+   `{"challenge_id", "code"}` gives the tokens. A code works once, lasts 5 minutes and allows 5
+   tries; `POST /api/auth/login/resend` with `{"challenge_id"}` sends a new one (after 60 seconds,
+   at most 5 times). Emails in `LOGIN_CODE_EXEMPT_DOMAINS` (the demo accounts) skip the code.
+   The tokens: `access_token` (15 minutes) and `refresh_token` (7 days). Send `Authorization: Bearer <access_token>`; in Swagger click
    **Authorize**. `POST /api/auth/refresh` with the refresh token gives a new access token.
-4. `POST /api/auth/logout` (either token) ends that session on the server: the refresh token and
+5. `POST /api/auth/logout` (either token) ends that session on the server: the refresh token and
    every access token made from it stop working.
-5. Forgotten password: `POST /api/auth/forgot-password` emails a one-time link (1 hour);
+6. Forgotten password: `POST /api/auth/forgot-password` emails a one-time link (1 hour);
    `POST /api/auth/reset-password` with `{"token", "password"}` sets it and signs the person out
-   everywhere. Without `MAIL_SERVER`, emails are printed in the terminal.
+   everywhere (it also confirms the email, since the link proved the person reads it).
+   Without `BREVO_API_KEY` or `MAIL_SERVER`, emails are printed in the terminal.
+
+Switches (all on by default, off in the test config): `EMAIL_VERIFICATION_REQUIRED=false` and
+`LOGIN_CODE_REQUIRED=false` turn the two checks off, for example on a laptop with no email.
 
 Demo data (`python seed.py`), password `ChangeMe123!` for everyone (review only):
 
@@ -119,7 +133,7 @@ Everything below is limited to the caller's own business. Lists take `?page=1&pe
 | `GET /api/reports/summary?days=7` or `?date_from=&date_to=` | admin: sales, VAT, gross profit (cost at time of sale), expenses, net profit, by day / payment / attendant, best sellers, low stock |
 | `/api/expenses/` (filters `date_from`, `date_to`, `category`) | admin |
 | `/api/notifications/` · `POST /<id>/read` · `POST /read-all` | everyone, their own (each has a `link` to open the record) |
-| `/api/auth/register-business`, `/register`, `/login`, `/refresh`, `/forgot-password`, `/reset-password`, `GET /api/images/<id>`, `/api/health` | public |
+| `/api/auth/register-business`, `/register`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password`, `GET /api/images/<id>`, `/api/health` | public |
 
 Error responses always look like `{"error": {"code": 422, "message": "...", "details": {...}}}`:
 422 invalid fields · 400 unknown linked record or bad JSON · 401 not signed in · 403 wrong role ·
@@ -129,15 +143,23 @@ The database design is in [`../docs/ERD.md`](../docs/ERD.md).
 
 ## Deploy
 
-The repository has a Render Blueprint (`../render.yaml`): the API, a PostgreSQL database and a
-small Redis for the rate limit. On render.com choose **New → Blueprint**, pick the repository, then
-set `CORS_ORIGINS` and `FRONTEND_URL` to the frontend's address (and the `MAIL_*` values when you
-have an SMTP account). Each deploy runs `flask db upgrade` before the new version goes live and
-starts `gunicorn wsgi:app`. `Procfile` does the same on Heroku-style hosts (Railway, Dokku…).
+The repository has a Render Blueprint (`../render.yaml`) set to Render's **free** plan: the API,
+a PostgreSQL database and a small Key Value (Redis) for the rate limit. The free plan has no shell
+and no pre-deploy step, so `start.sh` does everything on each start: `flask db upgrade`, then
+`python seed.py` when `SEED_DEMO=true` (the seed skips data that is already there), then
+`gunicorn wsgi:app`. `Procfile` runs the same script on Heroku-style hosts.
+
+Render's free services cannot send email over SMTP (ports 25, 465 and 587 are blocked), so
+production email goes through Brevo's HTTPS API: set `BREVO_API_KEY` and `MAIL_FROM` (a sender
+address you verified in Brevo). Without `BREVO_API_KEY`, `MAIL_SERVER` (SMTP) is used if set.
+
+Limits of the free plan: the API sleeps after 15 minutes without traffic (the next request takes
+up to a minute), and the free database expires 30 days after it is created. Upgrade the database
+before then, or export it with `pg_dump` and make a new one.
 
 With `APP_ENV=production` the API refuses to start without real `SECRET_KEY`, `JWT_SECRET_KEY`,
 `DATABASE_URL`, `CORS_ORIGINS` and `FRONTEND_URL`, sends HSTS and trusts the proxy's client IP.
-Load the demo data once with `python seed.py` from the host's shell if reviewers need it.
+Set `SEED_DEMO=false` once real businesses use it.
 
 ## Changed a model?
 

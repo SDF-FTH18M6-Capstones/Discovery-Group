@@ -1,7 +1,10 @@
+import json
 import logging
 import smtplib
 import threading
+import urllib.request
 from email.message import EmailMessage
+from email.utils import parseaddr
 
 from flask import current_app, has_app_context
 from sqlalchemy import event
@@ -42,14 +45,48 @@ def build_message(app, to, subject, body):
     return message
 
 
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+
+
 def send_now(app, to, subject, body):
-    if not app.config.get("MAIL_SERVER"):
+    config = app.config
+    if config.get("BREVO_API_KEY"):
+        target, args = _brevo_send, (config.copy(), to, subject, body)
+    elif config.get("MAIL_SERVER"):
+        target, args = _smtp_send, (config.copy(), build_message(app, to, subject, body))
+    else:
         app.extensions.setdefault("outbox", []).append({"to": to, "subject": subject, "body": body})
         log.info("Email to %s: %s\n%s", to, subject, body)
         return
-    message = build_message(app, to, subject, body)
-    thread = threading.Thread(target=_smtp_send, args=(app.config.copy(), message), daemon=True)
-    thread.start()
+    threading.Thread(target=target, args=args, daemon=True).start()
+
+
+def brevo_payload(config, to, subject, body):
+    name, address = parseaddr(config["MAIL_FROM"])
+    return {
+        "sender": {"name": name or "StockPilot", "email": address},
+        "to": [{"email": to}],
+        "subject": subject,
+        "textContent": body,
+    }
+
+
+def _brevo_send(config, to, subject, body):
+    request = urllib.request.Request(
+        BREVO_URL,
+        data=json.dumps(brevo_payload(config, to, subject, body)).encode(),
+        headers={
+            "api-key": config["BREVO_API_KEY"],
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            response.read()
+    except Exception:  # an email failing must never break the app
+        log.exception("Could not send email to %s through Brevo", to)
 
 
 def _smtp_send(config, message):

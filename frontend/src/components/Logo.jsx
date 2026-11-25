@@ -1,4 +1,4 @@
-const LOGO_SRC = "/stockpilot1.png"; // file lives in public/stockpilot1.png
+const LOGO_SRC = "/stockpilot1.png";
 
 export function LogoMark({ size = 36 }) {
   return (

@@ -29,8 +29,8 @@ class User(TenantMixin, TimestampMixin, db.Model):
     role = db.Column(db.String(20), nullable=False, index=True)
     phone = db.Column(db.String(30))
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
-    # Every token carries this number; raising it (password reset) signs out every device.
     session_version = db.Column(db.Integer, nullable=False, server_default="0", default=0)
+    email_verified_at = db.Column(db.DateTime(timezone=True))
 
     business = db.relationship("Business")
 
@@ -48,6 +48,10 @@ class User(TenantMixin, TimestampMixin, db.Model):
 
     def check_password(self, raw_password: str) -> bool:
         return check_secret(self.password_hash, raw_password)
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.email}>"

@@ -219,7 +219,17 @@ export default function UsersPage() {
                   {person.full_name}
                   {person.id === user.id && <span className="font-normal text-muted"> (you)</span>}
                 </td>
-                <td className="px-4 py-3">{person.email}</td>
+                <td className="px-4 py-3">
+                  {person.email}
+                  {person.email_verified === false && (
+                    <span
+                      className="ml-2 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn"
+                      title="This person has not opened the confirmation link yet, so they cannot sign in."
+                    >
+                      Unconfirmed
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <RoleCell person={person} isYou={person.id === user.id} onChanged={changed} />
                 </td>

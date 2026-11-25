@@ -87,7 +87,7 @@ def test_not_enough_stock_refuses_the_whole_sale(as_role, shop):
 
     assert response.status_code == 409
     assert response.json["error"]["message"] == "Not enough stock: Tea (2 left)."
-    assert stock(shop["water"]) == 10  # nothing was sold, not even the water
+    assert stock(shop["water"]) == 10
     assert db.session.scalar(db.select(db.func.count()).select_from(StockMovement)) == 0
 
 
@@ -228,7 +228,7 @@ def test_adjustments_change_stock_with_a_reason(as_role, shop):
     )
 
     assert response.status_code == 201
-    assert response.json["reason"] == "Damaged in transit"  # trimmed
+    assert response.json["reason"] == "Damaged in transit"
     assert response.json["balance_now"] == 8
     assert stock(shop["water"]) == 8
 

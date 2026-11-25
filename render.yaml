@@ -1,6 +1,3 @@
-# Render Blueprint: the API and its PostgreSQL database.
-# On render.com: New → Blueprint → pick this repository. Then fill in the two values marked
-# `sync: false` (the frontend's address) in the service's Environment tab.
 services:
   - type: web
     name: stockpilot-api
@@ -8,8 +5,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    preDeployCommand: flask --app wsgi db upgrade
-    startCommand: gunicorn wsgi:app --workers 2 --threads 4 --bind 0.0.0.0:$PORT --access-logfile -
+    startCommand: bash start.sh
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
@@ -25,25 +21,23 @@ services:
           name: stockpilot-db
           property: connectionString
       - key: CORS_ORIGINS
-        sync: false # e.g. https://stockpilot.netlify.app
+        sync: false
       - key: FRONTEND_URL
-        sync: false # the same address; used in emailed links
+        sync: false
       - key: RATELIMIT_STORAGE_URI
         fromService:
           type: keyvalue
           name: stockpilot-limits
           property: connectionString
-      - key: MAIL_SERVER
-        sync: false
-      - key: MAIL_USERNAME
-        sync: false
-      - key: MAIL_PASSWORD
+      - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: SEED_DEMO
+        value: "true"
+      - key: LOGIN_CODE_EXEMPT_DOMAINS
+        value: stockpilot.test,highlandcafe.test
 
-  # Shared counter store for the sign-in rate limit, so every gunicorn worker sees the same
-  # count (memory:// would give each worker its own).
   - type: keyvalue
     name: stockpilot-limits
     plan: free

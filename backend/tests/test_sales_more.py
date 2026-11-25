@@ -44,7 +44,7 @@ def test_receipt_numbers_and_vat_included_in_prices(as_role, water):
     assert sale["receipt_number"] == "S-0001"
     assert sale["total"] == "500.00"
     assert sale["vat_rate"] == "16.00"
-    assert sale["vat_amount"] == "68.97"  # 500 × 16 / 116
+    assert sale["vat_amount"] == "68.97"
     assert sale["net_amount"] == "431.03"
 
 

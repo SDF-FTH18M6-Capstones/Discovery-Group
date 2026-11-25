@@ -24,7 +24,6 @@ export default function RequestForm({ request, onSaved, onCancel, bare = false }
     urgency: request?.urgency || "normal",
     reason: request?.reason || "",
   });
-  // Optional (US-14): point at a product from the catalogue instead of describing it.
   const [product, setProduct] = useState(
     request?.product_id
       ? { id: request.product_id, name: request.item, sku: request.product_sku, quantity: "?" }

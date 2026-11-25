@@ -1,5 +1,7 @@
+import json
+
 from app.extensions import db
-from app.mail import _smtp_send, build_message, queue_email
+from app.mail import _brevo_send, _smtp_send, build_message, queue_email
 
 
 class FakeSMTP:
@@ -72,3 +74,47 @@ def test_with_a_mail_server_the_send_runs_in_the_background(app, monkeypatch):
         app.config["MAIL_SERVER"] = ""
 
     assert started[0][1]["Subject"] == "Hi"
+
+
+def test_brevo_is_used_when_its_key_is_set(app, monkeypatch):
+    sent = []
+
+    class Answer:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return b"{}"
+
+    def fake_urlopen(request, timeout):
+        sent.append(request)
+        return Answer()
+
+    monkeypatch.setattr("app.mail.urllib.request.urlopen", fake_urlopen)
+    config = {**app.config, "BREVO_API_KEY": "key-123", "MAIL_FROM": "Shop <shop@test.com>"}
+
+    _brevo_send(config, "to@test.com", "Hello", "Body")
+
+    body = json.loads(sent[0].data)
+    assert sent[0].full_url == "https://api.brevo.com/v3/smtp/email"
+    assert sent[0].headers["Api-key"] == "key-123"
+    assert body == {
+        "sender": {"name": "Shop", "email": "shop@test.com"},
+        "to": [{"email": "to@test.com"}],
+        "subject": "Hello",
+        "textContent": "Body",
+    }
+
+
+def test_a_brevo_failure_is_logged_not_raised(app, monkeypatch, caplog):
+    def broken(*args, **kwargs):
+        raise OSError("network down")
+
+    monkeypatch.setattr("app.mail.urllib.request.urlopen", broken)
+
+    _brevo_send({**app.config, "BREVO_API_KEY": "k"}, "x@test.com", "S", "B")
+
+    assert "through Brevo" in caplog.text

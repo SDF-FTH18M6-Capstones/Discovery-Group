@@ -62,8 +62,8 @@ class SaleItem(TenantMixin, db.Model):
         db.Integer, db.ForeignKey("products.id", ondelete="RESTRICT"), nullable=False
     )
     quantity = db.Column(db.Integer, nullable=False)
-    unit_price = db.Column(Money, nullable=False)  # copied at sale time
-    unit_cost = db.Column(Money, nullable=False)  # copied at sale time, for profit reports
+    unit_price = db.Column(Money, nullable=False)
+    unit_cost = db.Column(Money, nullable=False)
 
     sale = db.relationship("Sale", back_populates="items")
     product = db.relationship("Product")
@@ -84,7 +84,7 @@ class StockMovement(TenantMixin, db.Model):
     change = db.Column(db.Integer, nullable=False)
     quantity_after = db.Column(db.Integer, nullable=False)
     type = db.Column(db.String(12), nullable=False, index=True)
-    reference = db.Column(db.String(30))  # S-0012, GRN-0003, ADJ-0004…
+    reference = db.Column(db.String(30))
     reason = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     created_at = db.Column(

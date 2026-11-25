@@ -14,7 +14,6 @@ import { timeAgo } from "../../format";
 import { requests } from "../../store";
 import { reference, shortDate } from "./RequestsPage";
 
-// US-17: the queue's filters. Awaiting and Urgent are sorted most urgent first, then oldest.
 const QUEUES = [
   { key: "awaiting", label: "Awaiting", params: { status: "pending", sort: "urgency" } },
   {
@@ -201,9 +200,8 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     dispatch(requests.fetchList({ ...params, page, per_page: 10 }));
-  }, [dispatch, queue, page]); // params follow `queue`
+  }, [dispatch, queue, page]);
 
-  // Opened from a notification: /approvals?open=12
   useEffect(() => {
     const id = searchParams.get("open");
     if (id)
@@ -327,7 +325,6 @@ export default function ApprovalsPage() {
             request={selected}
             onClose={() => setSelected(null)}
             onStart={(newStatus) => {
-              // Optimistic: the row shows the decision straight away; undone if the server says no.
               const before = { items: list.items, count: list.count };
               dispatch(
                 requests.actions.patchItem({ id: selected.id, changes: { status: newStatus } }),

@@ -6,7 +6,6 @@ import Icon from "./Icon";
 export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 
-// US-10: refuse the wrong file before it is uploaded, and say why.
 export function checkPhoto(file) {
   if (!file) return "";
   if (!PHOTO_TYPES.includes(file.type)) return "Choose a JPEG, PNG or WebP photo.";
@@ -14,7 +13,6 @@ export function checkPhoto(file) {
   return "";
 }
 
-// Shows the current photo (or the one just picked) and lets the person pick another.
 export default function PhotoPicker({
   currentUrl,
   file,

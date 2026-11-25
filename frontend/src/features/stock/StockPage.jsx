@@ -160,7 +160,6 @@ export default function StockPage() {
     );
   }, [dispatch, type, productId, dateFrom, dateTo, page]);
 
-  // US-31: the same filters, every page, as a CSV file.
   const exportCsv = async () => {
     setExporting("Preparing…");
     const query = new URLSearchParams(

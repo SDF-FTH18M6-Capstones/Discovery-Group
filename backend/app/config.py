@@ -15,7 +15,7 @@ def database_url(name: str, default: str) -> str:
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-key-change-me-before-deploying")
+    SECRET_KEY = os.getenv("SECRET_KEY") or "dev-only-secret-key-change-me-before-deploying"
     SQLALCHEMY_DATABASE_URI = database_url(
         "DATABASE_URL", "postgresql+psycopg://stockpilot:stockpilot@localhost:5432/stockpilot_dev"
     )
@@ -24,7 +24,7 @@ class Config:
         o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
     ]
 
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-only-jwt-key-change-me-before-deploying")
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or "dev-only-jwt-key-change-me-before-deploying"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)
 
@@ -36,6 +36,15 @@ class Config:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
     MAIL_FROM = os.getenv("MAIL_FROM", "StockPilot <no-reply@stockpilot.local>")
+    BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+
+    EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "true").lower() == "true"
+    LOGIN_CODE_REQUIRED = os.getenv("LOGIN_CODE_REQUIRED", "true").lower() == "true"
+    LOGIN_CODE_EXEMPT_DOMAINS = [
+        d.strip().lower()
+        for d in os.getenv("LOGIN_CODE_EXEMPT_DOMAINS", "").split(",")
+        if d.strip()
+    ]
 
     MAX_UPLOAD_BYTES = 5 * 1024 * 1024
     IMAGE_MAX_SIDE = 1200
@@ -99,3 +108,6 @@ class TestConfig(Config):
         "postgresql+psycopg://stockpilot:stockpilot@localhost:5432/stockpilot_test",
     )
     BCRYPT_LOG_ROUNDS = 4
+    EMAIL_VERIFICATION_REQUIRED = False
+    LOGIN_CODE_REQUIRED = False
+    LOGIN_CODE_EXEMPT_DOMAINS = []

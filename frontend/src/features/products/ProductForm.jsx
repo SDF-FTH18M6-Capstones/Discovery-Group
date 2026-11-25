@@ -17,7 +17,6 @@ const EMPTY = {
   reorder_level: "0",
 };
 
-// Checks the form in the browser before anything is sent.
 export function validateProduct(values) {
   const errors = {};
   if (!values.sku.trim()) errors.sku = "SKU is required.";
@@ -33,7 +32,6 @@ export function validateProduct(values) {
 
 export default function ProductForm({ product, categoryOptions, onSaved, onCancel }) {
   const dispatch = useDispatch();
-  // Every input reads from and writes to this one state object.
   const [values, setValues] = useState(
     product
       ? Object.fromEntries(Object.keys(EMPTY).map((key) => [key, String(product[key] ?? "")]))
@@ -74,7 +72,7 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       quantity: Number(values.quantity),
       reorder_level: Number(values.reorder_level),
     };
-    if (product) delete data.quantity; // stock changes only through adjustments (US-09)
+    if (product) delete data.quantity;
     const result = await dispatch(products.saveItem({ id: product?.id, data }));
     if (products.saveItem.fulfilled.match(result)) {
       let saved = result.payload;
@@ -91,7 +89,6 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       onSaved(saved);
     } else {
       setSaving(false);
-      // Show the backend's per-field errors next to each field.
       const flat = Object.fromEntries(
         Object.entries(result.payload.details).map(([key, list]) => [key, [].concat(list)[0]]),
       );

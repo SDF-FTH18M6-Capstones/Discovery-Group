@@ -1,5 +1,3 @@
-// Build a CSV file in the browser from rows already on screen (US-41: any report table
-// exports to CSV). Cells that a spreadsheet would run as a formula are made safe.
 const cell = (value) => {
   let text = value == null ? "" : String(value);
   if (/^[=+\-@]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text)) text = `'${text}`;

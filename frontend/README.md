@@ -29,30 +29,31 @@ The **System status** page shows whether the backend is reachable.
 
 ## Pages and who sees them
 
-| Page               | Address                               | Who                                                                    |
-| ------------------ | ------------------------------------- | ---------------------------------------------------------------------- |
-| Landing page       | `/`                                   | visitors: what StockPilot does, Start your business                    |
-| Sign up            | `/register`, `/register?code=…`       | join a business with its code, or start a new one (`?start=1`)         |
-| Password reset     | `/forgot-password`, `/reset-password` | anyone; the emailed link opens the second page                         |
-| Dashboard          | `/`                                   | everyone: StockPilot Pulse tiles for their role, each opening its list |
-| Products           | `/products`                           | everyone; Add / Edit / Retire / photo for admin, inventory             |
-| Product detail     | `/products/:id`                       | everyone; Trace timeline for admin, inventory                          |
-| Categories         | `/categories`                         | everyone; changes for admin, inventory                                 |
-| Suppliers          | `/suppliers`                          | admin, procurement (codes SUP-001, active / inactive)                  |
-| My requests        | `/requests`                           | everyone: Active / Completed tabs, cancel, timeline                    |
-| Approvals          | `/approvals`                          | procurement decides (Awaiting, Urgent, Decided today); admin views     |
-| Assets             | `/assets`                             | admin, inventory: barcode labels, assign / return, history, overdue    |
-| Assets with me     | `/assets`                             | everyone else: what they hold                                          |
-| New sale (till)    | `/sales/new`                          | admin, sales                                                           |
-| Sales and receipts | `/sales`                              | admin (all, can void today's), sales (own)                             |
-| Purchases          | `/purchases`                          | procurement drafts and orders · inventory receives in parts · admin    |
-| Stock ledger       | `/stock`                              | admin, inventory (adjustments, date filter, CSV export)                |
-| Repairs            | `/repairs`                            | everyone reports; admin, inventory start, complete or reject           |
-| Notifications      | `/notifications`                      | everyone (own); each opens the record it is about                      |
-| Reports            | `/reports`                            | admin: date ranges, gross and net profit, expenses, CSV                |
-| Users              | `/users`                              | admin: roles, deactivate / reactivate                                  |
-| Audit log          | `/audit`                              | admin                                                                  |
-| Settings           | `/settings`                           | everyone; business settings and the join code for admin                |
+| Page               | Address                               | Who                                                                     |
+| ------------------ | ------------------------------------- | ----------------------------------------------------------------------- |
+| Landing page       | `/`                                   | visitors: what StockPilot does, Start your business                     |
+| Sign up            | `/register`, `/register?code=…`       | join a business with its code, or start a new one (`?start=1`)          |
+| Password reset     | `/forgot-password`, `/reset-password` | anyone; the emailed link opens the second page                          |
+| Confirm email      | `/verify-email`                       | anyone; the emailed link opens it, and it offers a new link if it fails |
+| Dashboard          | `/`                                   | everyone: StockPilot Pulse tiles for their role, each opening its list  |
+| Products           | `/products`                           | everyone; Add / Edit / Retire / photo for admin, inventory              |
+| Product detail     | `/products/:id`                       | everyone; Trace timeline for admin, inventory                           |
+| Categories         | `/categories`                         | everyone; changes for admin, inventory                                  |
+| Suppliers          | `/suppliers`                          | admin, procurement (codes SUP-001, active / inactive)                   |
+| My requests        | `/requests`                           | everyone: Active / Completed tabs, cancel, timeline                     |
+| Approvals          | `/approvals`                          | procurement decides (Awaiting, Urgent, Decided today); admin views      |
+| Assets             | `/assets`                             | admin, inventory: barcode labels, assign / return, history, overdue     |
+| Assets with me     | `/assets`                             | everyone else: what they hold                                           |
+| New sale (till)    | `/sales/new`                          | admin, sales                                                            |
+| Sales and receipts | `/sales`                              | admin (all, can void today's), sales (own)                              |
+| Purchases          | `/purchases`                          | procurement drafts and orders · inventory receives in parts · admin     |
+| Stock ledger       | `/stock`                              | admin, inventory (adjustments, date filter, CSV export)                 |
+| Repairs            | `/repairs`                            | everyone reports; admin, inventory start, complete or reject            |
+| Notifications      | `/notifications`                      | everyone (own); each opens the record it is about                       |
+| Reports            | `/reports`                            | admin: date ranges, gross and net profit, expenses, CSV                 |
+| Users              | `/users`                              | admin: roles, deactivate / reactivate                                   |
+| Audit log          | `/audit`                              | admin                                                                   |
+| Settings           | `/settings`                           | everyone; business settings and the join code for admin                 |
 
 ## Installable app (PWA)
 

@@ -5,7 +5,6 @@ import { useAuth } from "./AuthContext";
 
 let cached = null;
 
-// The signed-in user's business (name, address, receipt footer…), fetched once per visit.
 export function useBusiness() {
   const { user } = useAuth();
   const [business, setBusiness] = useState(

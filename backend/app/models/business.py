@@ -60,6 +60,38 @@ class PasswordReset(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
 
 
+class EmailVerification(db.Model):
+    __tablename__ = "email_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
+
+
+class LoginChallenge(db.Model):
+    __tablename__ = "login_challenges"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    code_hash = db.Column(db.String(64), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    sent_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, server_default="0", default=0)
+    sends = db.Column(db.Integer, nullable=False, server_default="1", default=1)
+    used_at = db.Column(db.DateTime(timezone=True))
+    cancelled_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
+
+    user = db.relationship("User")
+
+
 class AuditLog(TenantMixin, db.Model):
     __tablename__ = "audit_logs"
     __table_args__ = (db.Index("ix_audit_logs_entity", "entity_type", "entity_id"),)

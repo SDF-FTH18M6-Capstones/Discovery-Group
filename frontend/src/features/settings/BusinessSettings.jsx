@@ -13,7 +13,6 @@ const ZONES =
     ? Intl.supportedValuesOf("timeZone")
     : ["Africa/Nairobi", "Africa/Kampala", "Africa/Dar_es_Salaam", "Africa/Kigali", "UTC"];
 
-// Invite staff: the join code and a link that fills it in for them.
 function JoinCode({ code, onNewCode }) {
   const [copied, setCopied] = useState("");
   const [busy, setBusy] = useState(false);

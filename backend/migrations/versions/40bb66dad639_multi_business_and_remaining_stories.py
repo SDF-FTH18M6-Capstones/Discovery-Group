@@ -1,16 +1,3 @@
-"""Several businesses in one database, plus the remaining user stories.
-
-Existing data is kept: everything already in the database is moved into one business
-("My Business", rename it in Settings), and new columns are filled in from what is known:
-document numbers from ids, cost at time of sale from the product's current cost, quantity
-after each stock movement from the ledger, one goods-received note per received order, and
-an open assignment for every asset that has a holder.
-
-Revision ID: 40bb66dad639
-Revises: 9752b64b2612
-Create Date: 2026-11-23 08:07:49.192949
-"""
-
 import secrets
 
 import sqlalchemy as sa
@@ -83,7 +70,6 @@ def replace_check(table, name, condition):
 
 
 def upgrade():
-    # ---- 1. New tables ----------------------------------------------------------------
     op.create_table(
         "businesses",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -462,7 +448,6 @@ def upgrade():
             batch_op.f("ix_goods_receipt_items_receipt_id"), ["receipt_id"], unique=False
         )
 
-    # ---- 2. One business for everything already here ----------------------------------
     bind = op.get_bind()
     has_data = bind.execute(sa.text("SELECT EXISTS (SELECT 1 FROM users)")).scalar()
     business_id = 0
@@ -479,12 +464,10 @@ def upgrade():
     for table, kind in NUMBERED.items():
         add_number(table, kind, business_id)
 
-    # ---- 3. Uniqueness is now per business --------------------------------------------
     for table, column in [("categories", "name"), ("products", "sku"), ("assets", "asset_code")]:
         op.drop_constraint(f"uq_{table}_{column}", table, type_="unique")
         op.create_unique_constraint(f"uq_{table}_{column}", table, ["business_id", column])
 
-    # ---- 4. Users ---------------------------------------------------------------------
     op.add_column("users", sa.Column("phone", sa.String(30), nullable=True))
     op.add_column(
         "users",
@@ -494,7 +477,6 @@ def upgrade():
         "users", sa.Column("session_version", sa.Integer(), server_default="0", nullable=False)
     )
 
-    # ---- 5. Catalogue -----------------------------------------------------------------
     op.add_column(
         "categories",
         sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
@@ -519,7 +501,6 @@ def upgrade():
         sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
     )
 
-    # ---- 6. Requests ------------------------------------------------------------------
     op.add_column("requests", sa.Column("product_id", sa.Integer(), nullable=True))
     op.add_column("requests", sa.Column("fulfilled_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("requests", sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True))
@@ -537,7 +518,6 @@ def upgrade():
         "status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')",
     )
 
-    # ---- 7. Purchases and deliveries --------------------------------------------------
     op.alter_column("purchases", "status", type_=sa.String(20), server_default="draft")
     for column in ("ordered_at", "received_at", "cancelled_at"):
         op.add_column("purchases", sa.Column(column, sa.DateTime(timezone=True), nullable=True))
@@ -574,7 +554,6 @@ def upgrade():
         "purchase_items",
         "received_quantity >= 0 AND received_quantity <= quantity",
     )
-    # One goods-received note for each order that was already received.
     op.execute(
         """INSERT INTO goods_receipts (business_id, number, purchase_id, received_by, created_at)
            SELECT business_id,
@@ -593,9 +572,7 @@ def upgrade():
            SELECT business_id, 'grn', MAX(number) FROM goods_receipts GROUP BY business_id"""
     )
 
-    # ---- 8. Sales ---------------------------------------------------------------------
     op.add_column("sale_items", sa.Column("unit_cost", sa.Numeric(12, 2), nullable=True))
-    # Best available: the product's cost today. From now on the cost is saved at sale time.
     op.execute(
         "UPDATE sale_items si SET unit_cost = p.cost_price FROM products p WHERE p.id = si.product_id"
     )
@@ -629,10 +606,8 @@ def upgrade():
         "fk_sales_voided_by_users", "sales", "users", ["voided_by"], ["id"], ondelete="RESTRICT"
     )
 
-    # ---- 9. Stock ledger --------------------------------------------------------------
     op.add_column("stock_movements", sa.Column("quantity_after", sa.Integer(), nullable=True))
     op.add_column("stock_movements", sa.Column("reference", sa.String(30), nullable=True))
-    # Quantity after each line = today's quantity minus every later change.
     op.execute(
         """UPDATE stock_movements m SET quantity_after = GREATEST(x.after, 0)
            FROM (SELECT sm.id,
@@ -658,7 +633,6 @@ def upgrade():
     op.create_index("ix_stock_movements_created_at", "stock_movements", ["created_at"])
     op.create_index("ix_stock_movements_type", "stock_movements", ["type"])
 
-    # ---- 10. Assets and repairs -------------------------------------------------------
     op.add_column("assets", sa.Column("barcode", sa.String(40), nullable=True))
     op.execute(
         """UPDATE assets SET barcode = 'SP' || LPAD(business_id::text, 4, '0')
@@ -695,7 +669,6 @@ def upgrade():
         "assets",
         "condition IN ('new', 'good', 'fair', 'poor', 'damaged')",
     )
-    # Every asset that has a holder gets its (open) assignment record.
     op.execute(
         """INSERT INTO asset_assignments
                (business_id, asset_id, user_id, assigned_by, assigned_at, condition_out)
@@ -742,7 +715,6 @@ def upgrade():
         op.f("ck_repairs_cost_not_negative"), "repairs", "cost IS NULL OR cost >= 0"
     )
 
-    # ---- 11. Notifications ------------------------------------------------------------
     op.add_column("notifications", sa.Column("link", sa.String(200), nullable=True))
 
 

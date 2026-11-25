@@ -56,7 +56,7 @@ class RequestSchema(Schema):
 
 class RequestQuery(PageQuery):
     status = fields.String(load_default=None, validate=validate.OneOf(REQUEST_STATUSES))
-    mine = fields.Boolean(load_default=False)  # true: only the signed-in user's own requests
+    mine = fields.Boolean(load_default=False)
     tab = fields.String(load_default=None, validate=validate.OneOf(("active", "completed")))
     urgency = fields.String(load_default=None, validate=validate.OneOf(URGENCIES))
     decided_today = fields.Boolean(load_default=False)

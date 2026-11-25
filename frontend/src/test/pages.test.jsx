@@ -67,7 +67,6 @@ describe("dashboard", () => {
       "href",
       "/assets",
     );
-    // One role-aware call, not one call per tile (US-39).
     expect(urlsFor(spy, "/api/dashboard/pulse")).toHaveLength(1);
     expect(urlsFor(spy, "/api/assets/")).toHaveLength(0);
   });

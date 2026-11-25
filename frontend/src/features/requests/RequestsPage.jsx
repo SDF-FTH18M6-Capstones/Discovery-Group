@@ -20,7 +20,6 @@ export const STATUS_TABS = [
   { value: "rejected", label: "Rejected" },
 ];
 
-// US-15: Active (Pending, Approved) and Completed (Fulfilled, Rejected, Cancelled).
 const MY_TABS = [
   { value: "active", label: "Active" },
   { value: "completed", label: "Completed" },
@@ -128,7 +127,6 @@ export default function RequestsPage() {
     if (searchParams.get("new")) setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // Opened from a notification: /requests?open=12
   useEffect(() => {
     const id = searchParams.get("open");
     if (!id) return;
@@ -149,7 +147,6 @@ export default function RequestsPage() {
     dispatch(requests.fetchList({ mine: true, tab, page, per_page: 10 }));
   }, [dispatch, tab, page]);
 
-  // US-16: cancelling keeps the request on record as Cancelled.
   const withdraw = async (request) => {
     setPopup(null);
     setNotice("");

@@ -81,7 +81,7 @@ class AssetSchema(Schema):
 
 
 class AssetQuery(PageQuery):
-    search = fields.String(load_default=None)  # name, code, serial number or barcode
+    search = fields.String(load_default=None)
     status = fields.String(load_default=None, validate=validate.OneOf(ASSET_STATUSES))
     category_id = fields.Integer(load_default=None)
     overdue = fields.Boolean(load_default=False)

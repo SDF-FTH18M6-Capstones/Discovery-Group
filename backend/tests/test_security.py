@@ -31,7 +31,7 @@ def test_html_is_stored_and_returned_as_plain_text(admin):
 
     assert created.status_code == 201
     assert created.headers["Content-Type"].startswith("application/json")
-    assert created.json["name"] == "<script>alert(1)</script>"  # data, never run by the API
+    assert created.json["name"] == "<script>alert(1)</script>"
 
 
 def test_text_is_trimmed_and_spaces_alone_count_as_empty(admin):

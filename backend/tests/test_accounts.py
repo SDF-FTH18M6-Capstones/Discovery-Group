@@ -153,7 +153,6 @@ def test_password_reset_by_email(client, make_user, outbox):
     assert done.status_code == 200
     assert sign_in(client, "barclay@test.com").status_code == 401
     assert sign_in(client, "barclay@test.com", NEW_PASSWORD).status_code == 200
-    # Every other device is signed out.
     assert (
         client.get("/api/auth/me", headers=bearer(old_session["access_token"])).status_code == 401
     )

@@ -144,7 +144,7 @@ def test_partial_deliveries_get_their_own_grn_and_complete_the_order(as_role, sh
     assert "only 4 outstanding" in too_many.json["error"]["message"]
     assert stock(shop["sugar"]) == 6
 
-    rest = store.post(f"/api/purchases/{order['id']}/receive", json={}).json  # all outstanding
+    rest = store.post(f"/api/purchases/{order['id']}/receive", json={}).json
     assert rest["status"] == "received"
     assert [r["reference"] for r in rest["receipts"]] == ["GRN-0001", "GRN-0002"]
     assert (stock(shop["sugar"]), stock(shop["rice"])) == (10, 9)
@@ -164,7 +164,7 @@ def test_a_repeated_receive_with_the_same_key_adds_nothing(as_role, shop):
     second = store.post(f"/api/purchases/{order['id']}/receive", json=body)
 
     assert first.status_code == second.status_code == 200
-    assert stock(shop["sugar"]) == 10  # +10 once, not +20
+    assert stock(shop["sugar"]) == 10
     assert len(second.json["receipts"]) == 1
 
 
@@ -213,7 +213,7 @@ def test_cancelling_needs_a_reason_and_only_before_anything_arrives(as_role, sho
 
 def test_awaiting_filter_lists_ordered_and_partly_received(as_role, shop):
     buyer, store = as_role("procurement"), as_role("inventory")
-    make(buyer, shop)  # draft
+    make(buyer, shop)
     make(buyer, shop, confirm=True)
     partly = make(buyer, shop, confirm=True).json
     store.post(
