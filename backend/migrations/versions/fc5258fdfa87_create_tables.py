@@ -1,0 +1,284 @@
+from alembic import op
+import sqlalchemy as sa
+
+
+revision = 'fc5258fdfa87'
+down_revision = None
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    op.create_table('categories',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_categories')),
+    sa.UniqueConstraint('name', name=op.f('uq_categories_name'))
+    )
+    op.create_table('suppliers',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=150), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=True),
+    sa.Column('phone', sa.String(length=30), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_suppliers'))
+    )
+    with op.batch_alter_table('suppliers', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_suppliers_name'), ['name'], unique=False)
+
+    op.create_table('users',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('full_name', sa.String(length=120), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('password_hash', sa.String(length=255), nullable=False),
+    sa.Column('role', sa.String(length=20), nullable=False),
+    sa.Column('is_verified', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('otp_hash', sa.String(length=255), nullable=True),
+    sa.Column('otp_expires_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("role IN ('admin', 'procurement', 'inventory', 'sales', 'employee')", name=op.f('ck_users_role_valid')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
+    )
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
+        batch_op.create_index(batch_op.f('ix_users_role'), ['role'], unique=False)
+
+    op.create_table('assets',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('asset_code', sa.String(length=30), nullable=False),
+    sa.Column('name', sa.String(length=150), nullable=False),
+    sa.Column('image_url', sa.String(length=500), nullable=True),
+    sa.Column('status', sa.String(length=12), server_default='available', nullable=False),
+    sa.Column('assigned_to', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("status IN ('available', 'assigned', 'in_repair')", name=op.f('ck_assets_status_valid')),
+    sa.ForeignKeyConstraint(['assigned_to'], ['users.id'], name=op.f('fk_assets_assigned_to_users'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_assets')),
+    sa.UniqueConstraint('asset_code', name=op.f('uq_assets_asset_code'))
+    )
+    with op.batch_alter_table('assets', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_assets_assigned_to'), ['assigned_to'], unique=False)
+        batch_op.create_index(batch_op.f('ix_assets_name'), ['name'], unique=False)
+        batch_op.create_index(batch_op.f('ix_assets_status'), ['status'], unique=False)
+
+    op.create_table('notifications',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('message', sa.Text(), nullable=False),
+    sa.Column('is_read', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_notifications_user_id_users'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_notifications'))
+    )
+    with op.batch_alter_table('notifications', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_notifications_user_id'), ['user_id'], unique=False)
+
+    op.create_table('products',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('sku', sa.String(length=40), nullable=False),
+    sa.Column('name', sa.String(length=150), nullable=False),
+    sa.Column('category_id', sa.Integer(), nullable=False),
+    sa.Column('image_url', sa.String(length=500), nullable=True),
+    sa.Column('cost_price', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('selling_price', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('quantity', sa.Integer(), server_default='0', nullable=False),
+    sa.Column('reorder_level', sa.Integer(), server_default='0', nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint('cost_price >= 0', name=op.f('ck_products_cost_price_not_negative')),
+    sa.CheckConstraint('quantity >= 0', name=op.f('ck_products_quantity_not_negative')),
+    sa.CheckConstraint('reorder_level >= 0', name=op.f('ck_products_reorder_level_not_negative')),
+    sa.CheckConstraint('selling_price >= 0', name=op.f('ck_products_selling_price_not_negative')),
+    sa.ForeignKeyConstraint(['category_id'], ['categories.id'], name=op.f('fk_products_category_id_categories'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_products')),
+    sa.UniqueConstraint('sku', name=op.f('uq_products_sku'))
+    )
+    with op.batch_alter_table('products', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_products_category_id'), ['category_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_products_name'), ['name'], unique=False)
+
+    op.create_table('purchases',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('supplier_id', sa.Integer(), nullable=False),
+    sa.Column('created_by', sa.Integer(), nullable=False),
+    sa.Column('status', sa.String(length=10), server_default='ordered', nullable=False),
+    sa.Column('total', sa.Numeric(precision=12, scale=2), server_default='0', nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("status IN ('ordered', 'received', 'cancelled')", name=op.f('ck_purchases_status_valid')),
+    sa.CheckConstraint('total >= 0', name=op.f('ck_purchases_total_not_negative')),
+    sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_purchases_created_by_users'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['supplier_id'], ['suppliers.id'], name=op.f('fk_purchases_supplier_id_suppliers'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_purchases'))
+    )
+    with op.batch_alter_table('purchases', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_purchases_status'), ['status'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchases_supplier_id'), ['supplier_id'], unique=False)
+
+    op.create_table('requests',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('requester_id', sa.Integer(), nullable=False),
+    sa.Column('item', sa.String(length=200), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('urgency', sa.String(length=10), server_default='normal', nullable=False),
+    sa.Column('reason', sa.Text(), nullable=False),
+    sa.Column('status', sa.String(length=10), server_default='pending', nullable=False),
+    sa.Column('reviewed_by', sa.Integer(), nullable=True),
+    sa.Column('review_comment', sa.Text(), nullable=True),
+    sa.Column('reviewed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("status IN ('pending', 'approved', 'rejected')", name=op.f('ck_requests_status_valid')),
+    sa.CheckConstraint("urgency IN ('low', 'normal', 'high', 'urgent')", name=op.f('ck_requests_urgency_valid')),
+    sa.CheckConstraint('quantity > 0', name=op.f('ck_requests_quantity_positive')),
+    sa.ForeignKeyConstraint(['requester_id'], ['users.id'], name=op.f('fk_requests_requester_id_users'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['reviewed_by'], ['users.id'], name=op.f('fk_requests_reviewed_by_users'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_requests'))
+    )
+    with op.batch_alter_table('requests', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_requests_requester_id'), ['requester_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_requests_status'), ['status'], unique=False)
+
+    op.create_table('sales',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('attendant_id', sa.Integer(), nullable=False),
+    sa.Column('total', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('payment_method', sa.String(length=10), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("payment_method IN ('cash', 'mpesa', 'card')", name=op.f('ck_sales_payment_method_valid')),
+    sa.CheckConstraint('total >= 0', name=op.f('ck_sales_total_not_negative')),
+    sa.ForeignKeyConstraint(['attendant_id'], ['users.id'], name=op.f('fk_sales_attendant_id_users'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_sales'))
+    )
+    with op.batch_alter_table('sales', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_sales_attendant_id'), ['attendant_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_sales_created_at'), ['created_at'], unique=False)
+
+    op.create_table('purchase_items',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('purchase_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('unit_cost', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.CheckConstraint('quantity > 0', name=op.f('ck_purchase_items_quantity_positive')),
+    sa.CheckConstraint('unit_cost >= 0', name=op.f('ck_purchase_items_unit_cost_not_negative')),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], name=op.f('fk_purchase_items_product_id_products'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['purchase_id'], ['purchases.id'], name=op.f('fk_purchase_items_purchase_id_purchases'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_purchase_items'))
+    )
+    with op.batch_alter_table('purchase_items', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_purchase_items_purchase_id'), ['purchase_id'], unique=False)
+
+    op.create_table('repairs',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('asset_id', sa.Integer(), nullable=False),
+    sa.Column('reported_by', sa.Integer(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=False),
+    sa.Column('status', sa.String(length=12), server_default='submitted', nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("status IN ('submitted', 'in_progress', 'done')", name=op.f('ck_repairs_status_valid')),
+    sa.ForeignKeyConstraint(['asset_id'], ['assets.id'], name=op.f('fk_repairs_asset_id_assets'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['reported_by'], ['users.id'], name=op.f('fk_repairs_reported_by_users'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_repairs'))
+    )
+    with op.batch_alter_table('repairs', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_repairs_asset_id'), ['asset_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_repairs_status'), ['status'], unique=False)
+
+    op.create_table('sale_items',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('sale_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('unit_price', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.CheckConstraint('quantity > 0', name=op.f('ck_sale_items_quantity_positive')),
+    sa.CheckConstraint('unit_price >= 0', name=op.f('ck_sale_items_unit_price_not_negative')),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], name=op.f('fk_sale_items_product_id_products'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['sale_id'], ['sales.id'], name=op.f('fk_sale_items_sale_id_sales'), ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_sale_items'))
+    )
+    with op.batch_alter_table('sale_items', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_sale_items_sale_id'), ['sale_id'], unique=False)
+
+    op.create_table('stock_movements',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('change', sa.Integer(), nullable=False),
+    sa.Column('type', sa.String(length=12), nullable=False),
+    sa.Column('reason', sa.Text(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.CheckConstraint("type IN ('purchase', 'sale', 'adjustment')", name=op.f('ck_stock_movements_type_valid')),
+    sa.CheckConstraint('change <> 0', name=op.f('ck_stock_movements_change_not_zero')),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], name=op.f('fk_stock_movements_product_id_products'), ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_stock_movements_user_id_users'), ondelete='RESTRICT'),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_stock_movements'))
+    )
+    with op.batch_alter_table('stock_movements', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_stock_movements_product_id'), ['product_id'], unique=False)
+
+
+def downgrade():
+    with op.batch_alter_table('stock_movements', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_stock_movements_product_id'))
+
+    op.drop_table('stock_movements')
+    with op.batch_alter_table('sale_items', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_sale_items_sale_id'))
+
+    op.drop_table('sale_items')
+    with op.batch_alter_table('repairs', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_repairs_status'))
+        batch_op.drop_index(batch_op.f('ix_repairs_asset_id'))
+
+    op.drop_table('repairs')
+    with op.batch_alter_table('purchase_items', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_purchase_items_purchase_id'))
+
+    op.drop_table('purchase_items')
+    with op.batch_alter_table('sales', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_sales_created_at'))
+        batch_op.drop_index(batch_op.f('ix_sales_attendant_id'))
+
+    op.drop_table('sales')
+    with op.batch_alter_table('requests', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_requests_status'))
+        batch_op.drop_index(batch_op.f('ix_requests_requester_id'))
+
+    op.drop_table('requests')
+    with op.batch_alter_table('purchases', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_purchases_supplier_id'))
+        batch_op.drop_index(batch_op.f('ix_purchases_status'))
+
+    op.drop_table('purchases')
+    with op.batch_alter_table('products', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_products_name'))
+        batch_op.drop_index(batch_op.f('ix_products_category_id'))
+
+    op.drop_table('products')
+    with op.batch_alter_table('notifications', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_notifications_user_id'))
+
+    op.drop_table('notifications')
+    with op.batch_alter_table('assets', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_assets_status'))
+        batch_op.drop_index(batch_op.f('ix_assets_name'))
+        batch_op.drop_index(batch_op.f('ix_assets_assigned_to'))
+
+    op.drop_table('assets')
+    with op.batch_alter_table('users', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_users_role'))
+        batch_op.drop_index(batch_op.f('ix_users_email'))
+
+    op.drop_table('users')
+    with op.batch_alter_table('suppliers', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_suppliers_name'))
+
+    op.drop_table('suppliers')
+    op.drop_table('categories')

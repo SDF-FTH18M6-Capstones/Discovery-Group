@@ -1,24 +1,7 @@
-# Python
-__pycache__/
-*.py[cod]
-venv/
 .env
+__pycache__/
+*.pyc
+.venv/
+venv/
 .pytest_cache/
-.coverage
-htmlcov/
-
-# Node
-node_modules/
-dist/
-.env.local
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+.mypy_cache/

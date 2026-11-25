@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: stockpilot-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stockpilot-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: RATELIMIT_STORAGE_URI
+        fromService:
+          type: keyvalue
+          name: stockpilot-limits
+          property: connectionString
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: SEED_DEMO
+        value: "true"
+      - key: LOGIN_CODE_EXEMPT_DOMAINS
+        value: stockpilot.test,highlandcafe.test
+
+  - type: keyvalue
+    name: stockpilot-limits
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: stockpilot-db
+    plan: free
+    databaseName: stockpilot
+    user: stockpilot

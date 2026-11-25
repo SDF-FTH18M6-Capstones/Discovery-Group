@@ -1,0 +1,345 @@
+StockPilot User Stories
+
+StockPilot has 48 user stories across 8 epics, written for five roles. Each story names the backlog card that delivers it.
+
+Persona,	Role in StockPilot,	Main goal
+David, Administrator,	Runs the system	Keep users, roles, settings and records correct and auditable
+Carlos, Procurement Manager,	Decides what gets bought	Clear the approval queue quickly and order from the right supplier
+Keith, Inventory Manager,	Owns stock and assets	Stock counts and asset records that match reality
+Vincent, Sales Attendant,	Serves customers at the counter	Fast, correct sales with a receipt every time
+Barclay, Employee	Needs, items and equipment to work	Ask for things, track the answer, report broken equipment
+
+
+Format. 
+Each story reads As a [role], I want [action], so that [benefit], followed by acceptance criteria. A story is done only when every criterion passes in an automated test or a recorded manual check.
+IDs and priority. Stories are numbered US-01 to US-48.  Must for anything the brief or a core workflow requires, Should for strong value that can slip one sprint, Could for polish. The card column points to the backlog sheet (SP-xx).
+Rules that apply to every story. Permissions are checked by the API, not only hidden in the UI. Lists are paginated. Dates show in Africa/Nairobi time. Money is shown in KES with two decimals. Errors explain what went wrong and what to do.
+
+
+
+Epic 1 · Accounts and sign-in
+Every account is verified by email and every sign-in needs a one-time code, so only real staff reach company data.
+
+US-01 · Register an account · Must · As a new employee, I want to create an account with my work email, so that I can submit requests without waiting for IT.
+•The account is created with the Employee role, whatever role the form or request body sends.
+•A verification email arrives within 1 minute; the link works once and expires after 24 hours.
+•An email already registered shows "An account with this email already exists" (409).
+•Weak passwords (under 8 characters, or no letter and number) are refused with field-level messages.
+
+US-02 · Verify my email · Must · As a new employee, I want to confirm my email from a link, so that my account becomes active.
+•Opening a valid link marks the account verified and shows a sign-in button.
+•A used or expired link explains the problem and offers to send a new one.
+•An unverified account that tries to sign in is told to verify first, and cannot reach any page.
+
+US-03 · Sign in with a one-time code · Must ·  As any user, I want to sign in with my password and a code sent to my email, so that a stolen password alone cannot open my account.
+•A correct password sends a 6-digit code; the code expires after 5 minutes and works once.
+•After 5 wrong codes the challenge is cancelled and I start again from the password step.
+•I can resend the code after 60 seconds; the screen shows the countdown.
+•A correct code signs me in and opens my role's dashboard.
+•Wrong email and wrong password show the same message, so attackers cannot tell which accounts exist.
+
+US-04 · Stay signed in safely · Must ·  As any user, I want my session to renew while I work and end when I sign out, so that I am not logged out mid-sale and nobody can reuse my session.
+•The access token renews in the background before it expires.
+•Signing out revokes the refresh token; reusing it returns 401.
+•Any 401 from the API sends me to the sign-in page and keeps the page I was on for after sign-in.
+
+US-05 · Reset a forgotten password · Must ·  As any user, I want to reset my password by email, so that I can get back in without the admin.
+•The reset page always says "If that email exists, we sent a link", whether it exists or not.
+•The link works once and expires after 1 hour; the new password follows US-01's rules.
+•Resetting signs me out of every other device.
+
+US-06 · Manage users and roles · Must ·  As the Administrator, I want to change a user's role or deactivate them, so that access matches each person's job.
+•Only the Administrator sees the Users page; any other role gets 403 from the API.
+•The list is paginated and searchable by name or email, with role and verified status.
+•A role change takes effect on the user's next request and is written to the audit log.
+•A deactivated user cannot sign in; their past sales, requests and approvals stay intact.
+
+US-07 · Edit my profile · Should ·  As any user, I want to update my name, phone and password, so that my details stay correct.
+•Changing the password requires the current password.
+•My email and role are shown but cannot be edited here.
+
+
+
+Epic 2 · Products and suppliers
+The catalogue is the single list of what the business sells and buys; every other workflow reads from it.
+
+US-08 · Organise products into categories · Must ·  As the Inventory Manager, I want to create and rename product categories, so that products are easy to find and report on.
+•Category names are unique within products; asset categories are kept separate.
+•A category that still has products cannot be deleted, only deactivated.
+
+US-09 · Add a product · Must ·  As the Inventory Manager, I want to add a product with SKU, prices, reorder level and photo, so that it can be bought, sold and tracked.
+•SKU must be unique; a duplicate shows "SKU SP-001 is already used" (409).
+•Cost and selling price are zero or more, saved with exactly two decimals.
+•Opening stock is entered only through a stock adjustment, never by editing the quantity field.
+•The new product appears in the list and its Trace Timeline starts with "Created".
+
+US-10 · Upload a product photo · Must ·  As the Inventory Manager, I want to attach a photo to a product, so that attendants pick the right item.
+•JPEG, PNG and WebP up to 5 MB are accepted; anything else is refused before upload, with the reason.
+•The server resizes the image to at most 1200 px on the long side before saving it.
+•Replacing a photo removes the old one.
+
+US-11 · Find products quickly · Must ·  As any user who can see stock, I want to search, filter and page through products, so that I find an item among thousands in seconds.
+•Search matches name or SKU; filters cover category and "low stock only".
+•Results come 20 per page by default (up to 100), with page numbers, Previous and Next.
+•Low-stock products carry a visible badge; loading, empty and error states are designed.
+
+US-12 · Edit or retire a product · Must ·  As the Inventory Manager, I want to change a product's details or retire it, so that the catalogue stays accurate without losing history.
+•A product with sales or purchases is deactivated, never deleted, and disappears from the POS.
+•Price changes affect new sales only; past receipts keep their original prices.
+
+US-13 · Keep supplier records · Must · As the Procurement Manager, I want to add and edit suppliers with contact details, so that I can raise purchase orders against them.
+•Each supplier gets a unique code (SUP-001); email and phone are validated.
+•Inactive suppliers cannot receive new purchase orders but keep their history.
+•Only the Procurement Manager and Administrator can change supplier records.
+
+
+
+Epic 3 · Requests and approvals
+Employees ask for what they need, and only the Procurement Manager decides; every decision is recorded with who, when and why.
+
+US-14 · Submit a request · Must ·  As an employee, I want to request an item with a quantity, urgency and reason, so that procurement knows what I need and how soon.
+•Item, quantity (1 or more), urgency (Low, Normal, High, Urgent) and reason are all required.
+•I can pick an existing product or describe a new item in words.
+•The request gets a reference (REQ-0102), status Pending, and appears at the top of my list.
+•Procurement Managers get an in-app notification; Urgent requests also send an email.
+
+US-15 · Track my requests · Must · As an employee, I want to see my active and completed requests with their status and comments, so that I know what is happening without asking.
+•I see only my own requests; opening another person's request by ID returns 404.
+•Tabs separate Active (Pending, Approved) from Completed (Fulfilled, Rejected, Cancelled).
+•Each request shows its Trace Timeline: submitted, decided (with comment), fulfilled.
+
+US-16 · Cancel a pending request · Should ·  As an employee, I want to cancel a request I no longer need, so that procurement does not waste time on it.
+•Only Pending requests can be cancelled, and only by the person who made them.
+•Cancelled requests leave the approval queue at once.
+
+US-17 · Review the approval queue · Must ·  As the Procurement Manager, I want a queue of pending requests sorted by urgency and age, so that urgent needs are handled first.
+•The queue shows reference, requester, item, quantity, urgency and age, paginated.
+•Filters: Awaiting, Urgent, Decided today.
+•Selecting a request opens its details and reason beside the queue.
+
+US-18 · Approve or reject a request · Must ·  As the Procurement Manager, I want to approve or reject each request with a comment, so that the requester knows the outcome and the decision is on record.
+•Only a Procurement Manager can decide; the Administrator, Inventory Manager, Sales Attendant and Employee all get 403.
+•I cannot decide on my own request; another Procurement Manager must.
+•Rejecting requires a comment; approving allows one.
+•Each request gets exactly one decision; deciding twice returns 409.
+•The requester is emailed and notified; reviewer, decision, comment and time are stored and shown in the timeline.
+
+
+
+Epic 4 · Purchasing and receiving
+Purchase orders say what was ordered; receiving is the only way bought stock enters the system, and it can never count the same delivery twice.
+
+US-19 · Raise a purchase order · Must ·  As the Procurement Manager, I want to create a purchase order for a supplier with product lines and unit costs, so that the supplier and the store know exactly what is coming.
+•A PO needs an active supplier and at least one line with quantity 1 or more and unit cost 0 or more.
+•The total is calculated by the server from the lines; a total sent by the browser is ignored.
+•I can link the PO to an approved request; that request then shows the PO in its timeline.
+•A new PO starts as Draft with a number (PO-0010) and moves to Ordered when I confirm it.
+
+US-20 · Cancel a purchase order · Should ·  As the Procurement Manager, I want to cancel an order that will not arrive, so that it stops showing as awaiting receipt.
+•Only Draft or Ordered POs with nothing received can be cancelled; the reason is recorded.
+
+US-21 · Receive a delivery · Must ·  As the Inventory Manager, I want to confirm what arrived against a purchase order, so that stock goes up by exactly what was delivered.
+•Only the Inventory Manager can receive; other roles get 403.
+•For each line I enter the quantity received; it cannot exceed what is still outstanding.
+•Stock rises and one stock movement per line is written in the same transaction, with reference PO-0010 and my name.
+•If anything fails, nothing changes: no partial stock update.
+•A receipt number (GRN-0001) is issued; when all lines are complete the PO becomes Received and the linked request Fulfilled.
+
+US-22 · Receive in parts · Must · As the Inventory Manager, I want to record a partial delivery, so that stock reflects what is actually on the shelf.
+•Receiving some lines, or part of a line, sets the PO to Partially received.
+•The remaining quantity per line is shown for the next delivery.
+
+US-23 · Never double-count a delivery · Must ·  As the Inventory Manager, I want a repeated or double-clicked Receive to have no extra effect, so that stock is never inflated by mistake.
+•Each Receive carries an idempotency key; the same key returns the original receipt and adds no stock.
+•An automated test sends the same receive twice and asserts stock rose once.
+•Demo check: receive 10 units, press again, stock still shows +10.
+
+
+
+Epic 5 · Sales and stock
+A sale either completes in full, with stock deducted and a receipt issued, or changes nothing; every stock change leaves a ledger line.
+
+US-24 · Ring up a sale · Must ·  As a Sales Attendant, I want to add products to a cart, choose the payment method and complete the sale, so that the customer is served quickly.
+•I can search or scan by name or SKU; out-of-stock and inactive products cannot be added.
+•Quantity cannot exceed the stock shown; the cart warns "Max 8 available".
+•Payment method is Cash, M-Pesa or Card; payment is recorded, not processed.
+•Completing the sale issues a receipt number (S-0012) and clears the cart.
+
+US-25 · Trust the totals · Must ·  As the business owner, I want prices and totals worked out by the server, so that nobody can change a price in the browser.
+•The server ignores prices and totals sent by the browser and uses current database prices.
+•VAT (16%, included in prices) is shown on the receipt; all amounts use exact decimals.
+•Each sale line stores the unit cost at the time of sale, for profit reports.
+
+US-26 · Never oversell · Must ·  As the Inventory Manager, I want sales that exceed stock to be refused, so that stock is never negative.
+•Selling 99 units of a product with 8 in stock is refused with the available quantity; no sale, line or movement is saved.
+•Two attendants selling the last units at the same moment cannot both succeed (row lock, tested in CI).
+•A double-tapped Complete sale saves one sale (idempotency key; the button locks after one tap).
+
+US-27 · Print or show a receipt · Must ·  As a Sales Attendant, I want a printable receipt after each sale, so that the customer has proof of purchase.
+•The receipt shows business name, receipt number, date and time, attendant, lines, VAT, total and payment method.
+•The receipt page has a print layout without the sidebar.
+
+US-28 · Look up sales history · Must ·  As a Sales Attendant, I want to see my past sales and reopen any receipt, so that I can answer customer questions.
+•Attendants see their own sales; the Administrator sees all, filterable by date, attendant and payment method.
+•The list is paginated, newest first.
+
+US-29 · Void a sale · Could ·  As the Administrator, I want to void a same-day sale made in error, so that stock and totals are corrected.
+•Voiding returns stock through sale_void movements and keeps the original sale marked Voided.
+•Only same-day sales can be voided, and a reason is required.
+
+US-30 · Adjust stock with a reason · Must ·  As the Inventory Manager, I want to correct stock after a count or breakage, so that the system matches the shelf.
+•An adjustment needs a non-zero quantity and a reason; it cannot take stock below zero.
+•It writes one ledger movement (ADJ-003) with my name.
+
+US-31 · Read the stock ledger · Must ·  As the Inventory Manager, I want a ledger of every stock change, so that I can explain any count.
+•Each line shows date, product, type (receipt, sale, adjustment, void), change, quantity after, reference and person.
+•The ledger is append-only, paginated and filterable by product, type and date; it exports to CSV.
+
+
+
+Epic 6 · Assets and repairs
+Every physical asset has one barcode, one holder at a time and a full history of who had it and what was fixed.
+
+US-32 · Register an asset · Must ·  As the Inventory Manager, I want to register an asset with category, serial number, photo and purchase details, so that the company knows what it owns.
+•Each asset gets a unique code (AST-0001) and a unique barcode value, generated by the server.
+•Asset categories are separate from product categories.
+•Photos follow the same rules as product photos (US-10).
+
+US-33 · Print an asset barcode label · Must ·  As the Inventory Manager, I want to show and print the asset's barcode, so that I can label the item and look it up later.
+•The asset page shows a Code128 barcode and the asset code in text beneath it.
+•Searching by barcode value or asset code opens that asset.
+
+US-34 · Allocate an asset to an employee · Must ·  As the Inventory Manager, I want to assign an available asset to an employee with an expected return date, so that everyone knows who holds it.
+•Only Available assets can be allocated; an asset can have one open assignment at a time (enforced by the database).
+•Condition at hand-over is recorded; the asset becomes Assigned.
+•The employee is notified and sees it under Assets with me.
+
+US-35 · Return an asset · Must ·  As the Inventory Manager, I want to record a return and its condition, so that the asset can go to the next person.
+•Return time, receiver and condition are recorded; the assignment closes and the asset becomes Available.
+•Past assignments stay in the asset's history and are never overwritten.
+•Assignments past their expected return date count as Overdue on the allocation page.
+
+US-36 · See the assets I hold · Must ·  As an employee, I want to see the assets assigned to me, so that I know what I am responsible for.
+•The list shows asset, code, assigned date, condition and any open repair.
+•I see only my own assets.
+
+US-37 · Report a repair · Must ·  As an employee, I want to report a fault on an asset I hold, with urgency and a description, so that it gets fixed.
+•I can only report repairs for assets assigned to me; staff roles can report for any asset.
+•The repair gets a reference (REP-021) and status Submitted; Inventory Managers are notified.
+
+US-38 · Work a repair through to done · Must ·  As the Inventory Manager, I want to accept, progress and close repairs, so that equipment returns to use and the requester stays informed.
+•Statuses move Submitted → In progress → Completed, or Submitted → Rejected with a reason.
+•Accepting a repair sets the asset to Under repair; completing it restores the previous status.
+•Completion records the resolution and optional cost; each status change is timed and notifies the requester.
+
+
+
+Epic 7 · Dashboard, reports and notifications
+Each role opens on what needs its attention today, can trace any record's history, and hears about decisions without checking.
+
+US-39 · See what needs attention (StockPilot Pulse) · Must ·  As a manager, I want a dashboard strip of low stock, pending approvals, orders awaiting receipt and open repairs, so that I act on problems before they grow.
+•Each tile shows a count and a short detail ("3 urgent"); tapping it opens that queue already filtered.
+•Tiles follow the role: the Procurement Manager sees approvals and orders, the Inventory Manager sees stock and repairs, the Administrator sees all four.
+•Sales Attendants see today's own sales; Employees see their requests and assets.
+•Counts come from one role-aware API call and match the filtered lists exactly.
+
+US-40 · Trace a record's history (Trace Timeline) · Must · As a manager, I want a timeline of everything that happened to a product, request or asset, so that I can answer "who did what, when" without digging.
+•Product timelines merge stock movements (receipts, sales, adjustments) with edits, newest first.
+•Each entry shows the action, the change (+30, Pending → Approved), the reference and the person.
+•Dates read as "10 min ago" for recent events and "07 Nov 2026, 09:30" for older ones.
+
+US-41 · Run reports · Must ·  As the Administrator, I want sales, purchases, gross profit and low-stock reports for a date range, so that I can see how the business is doing.
+•Ranges: today, last 7 days, this month, or custom dates.
+•Gross profit uses the unit cost saved on each sale line, so later price changes do not alter past profit.
+•Net profit subtracts recorded expenses for the same range.
+•Any report table exports to CSV.
+
+US-42 · Get notified · Must ·  As any user, I want in-app and email notifications for events that concern me, so that I do not have to keep checking.
+•Events: my request decided, a repair status change, an asset assigned to me; for managers, new urgent requests and low stock.
+•Low-stock alerts fire once when a product crosses its reorder level, not on every sale below it.
+•The bell shows the unread count; I can open the item from the notification and mark all as read.
+•The notifications list is paginated.
+
+
+
+Epic 8 · Platform and quality
+These stories cover the brief's technical requirements; their "users" include the reviewers and the team, because those are who the requirements serve.
+
+US-43 · Install StockPilot on my phone · Must ·  As an employee on the move, I want to install StockPilot like an app, so that I can open it from my home screen.
+•The browser offers Install over HTTPS; the app opens full screen with the StockPilot icon and theme colour.
+•With no connection, a clear offline message appears instead of a browser error.
+•The service worker caches only the app shell; no API response or token is ever cached (checked in DevTools).
+
+US-44 · Use every screen on a phone · Must ·  As any user, I want every page to work at phone width, so that I am not tied to a desk.
+•At 390 px wide the sidebar becomes a menu button; tables scroll inside their box, never the whole page.
+•Buttons and inputs are at least 44 px tall; text stays readable without zooming.
+
+US-45 · Read clear errors and dates · Must ·  As any user, I want plain error messages and human-readable dates, so that I always know what happened and when.
+•The API answers with one JSON error shape: 400 with field details, 401, 403, 404, 409, 500 with a safe message.
+•Opening a protected page without signing in redirects to sign-in; an unknown page shows a 404 screen.
+•Dates are stored in UTC and shown in Africa/Nairobi time ("11 Nov 2026, 09:30", "5 minutes ago").
+
+US-46 · Explore the API in Swagger · Must · As a reviewer or frontend developer, I want interactive documentation of every endpoint, so that I can test the API without reading the code.
+•Swagger UI at /api/docs lists every endpoint with request and response schemas, auth needs, status codes and error shapes.
+•Every list endpoint documents page and page_size and the {count, next, previous, results} response.
+
+US-47 · Trust every merge · Must ·  As the Scrum Master, I want each pull request checked automatically, so that broken or untested code never reaches develop or main.
+•Both repositories run lint, format check, tests with coverage, and build on every PR.
+•Backend coverage below 60% fails the build; the coverage report is attached to each run.
+•Branch protection blocks merging until checks pass and the Scrum Master approves.
+
+US-48 · Run and deploy from the README · Must ·  As a reviewer, I want to clone each repository and run it by following its README, and to open the live app, so that I can assess the project myself.
+•Following only the README, a new machine runs the backend, database, migrations, seed data and frontend.
+•Frontend and backend are live on different platforms over HTTPS, with CORS limited to the frontend's address.
+•Demo accounts for each role are listed in the README, with the warning that they are for review only.
+Traceability
+
+Story	Title	Priority
+US-01	Register an account	Must
+US-02	Verify my email	Must
+US-03	Sign in with a one-time code	Must
+US-04	Stay signed in safely	Must
+US-05	Reset a forgotten password	Must
+US-06	Manage users and roles	Must
+US-07	Edit my profile	Should
+US-08	Organise products into categories	Must
+US-09	Add a product	Must
+US-10	Upload a product photo	Must
+US-11	Find products quickly	Must
+US-12	Edit or retire a product	Must
+US-13	Keep supplier records	Must
+US-14	Submit a request	Must
+US-15	Track my requests	Must
+US-16	Cancel a pending request	Should
+US-17	Review the approval queue	Must
+US-18	Approve or reject a request	Must
+US-19	Raise a purchase order	Must
+US-20	Cancel a purchase order	Should
+US-21	Receive a delivery	Must
+US-22	Receive in parts	Must
+US-23	Never double-count a delivery	Must
+US-24	Ring up a sale	Must
+US-25	Trust the totals	Must
+US-26	Never oversell	Must
+US-27	Print or show a receipt	Must
+US-28	Look up sales history	Must
+US-29	Void a sale	Could
+US-30	Adjust stock with a reason	Must
+US-31	Read the stock ledger	Must
+US-32	Register an asset	Must
+US-33	Print an asset barcode label	Must
+US-34	Allocate an asset to an employee	Must
+US-35	Return an asset	Must
+US-36	See the assets I hold	Must
+US-37	Report a repair	Must
+US-38	Work a repair through to done	Must
+US-39	See what needs attention (Pulse)	Must
+US-40	Trace a record's history	Must
+US-41	Run reports	Must
+US-42	Get notified	Must
+US-43	Install StockPilot on my phone	Must
+US-44	Use every screen on a phone	Must
+US-45	Read clear errors and dates	Must
+US-46	Explore the API in Swagger	Must
+US-47	Trust every merge	Must
+US-48	Run and deploy from the README	Must

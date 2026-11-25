@@ -1,0 +1,156 @@
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
+import { useAuth } from "../../auth/AuthContext";
+import { STOCK_MANAGERS } from "../../auth/roles";
+import Field from "../../components/Field";
+import Pagination from "../../components/Pagination";
+import { SkeletonRows } from "../../components/Skeleton";
+import { categories } from "../../store";
+
+export default function CategoriesPage() {
+  const dispatch = useDispatch();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole(...STOCK_MANAGERS);
+  const list = useSelector((state) => state.categories);
+  const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState(null);
+  const [name, setName] = useState("");
+  const [fieldError, setFieldError] = useState("");
+
+  useEffect(() => {
+    dispatch(categories.fetchList({ page, per_page: 20 }));
+  }, [dispatch, page]);
+
+  const reload = () => dispatch(categories.fetchList({ page, per_page: 20 }));
+
+  const open = (category) => {
+    setEditing(category);
+    setName(category.name || "");
+    setFieldError("");
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (!name.trim()) {
+      setFieldError("Name is required.");
+      return;
+    }
+    const result = await dispatch(
+      categories.saveItem({
+        id: editing.id,
+        data: { name: name.trim(), is_active: editing.is_active ?? true },
+      }),
+    );
+    if (categories.saveItem.fulfilled.match(result)) {
+      setEditing(null);
+      reload();
+    } else {
+      setFieldError(result.payload.details?.name?.[0] || result.payload.message);
+    }
+  };
+
+  const handleDelete = async (category) => {
+    const result = await dispatch(categories.deleteItem(category.id));
+    if (categories.deleteItem.fulfilled.match(result)) reload();
+  };
+
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="page-title">Categories</h1>
+          <p className="text-muted">Groups of products, such as Beverages or Packaging.</p>
+        </div>
+        {canEdit && (
+          <button type="button" onClick={() => open({})} className="btn-primary">
+            Add category
+          </button>
+        )}
+      </div>
+
+      {editing && (
+        <form
+          onSubmit={handleSave}
+          noValidate
+          aria-label={editing.id ? "Rename category" : "Add category"}
+          className="card flex flex-wrap items-end gap-4 p-6"
+        >
+          <div className="min-w-0 flex-1">
+            <Field
+              label="Category name"
+              name="name"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setFieldError("");
+              }}
+              error={fieldError}
+            />
+          </div>
+          <button type="submit" className="btn-primary">
+            Save category
+          </button>
+          <button type="button" onClick={() => setEditing(null)} className="btn-secondary">
+            Cancel
+          </button>
+        </form>
+      )}
+
+      {list.error && (
+        <p role="alert" className="text-danger">
+          {list.error}
+        </p>
+      )}
+
+      <div className="panel relative overflow-x-auto">
+        <table className="data-table w-full text-left text-sm">
+          <thead className="table-head">
+            <tr>
+              <th className="px-4 py-3">Name</th>
+              <th className="px-4 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.status === "loading" && <SkeletonRows cols={2} />}
+            {list.status === "ready" && list.items.length === 0 && (
+              <tr>
+                <td colSpan="2" className="px-4 py-3 text-muted">
+                  No categories yet.
+                </td>
+              </tr>
+            )}
+            {list.items.map((category) => (
+              <tr key={category.id} className="border-t border-line">
+                <td className="px-4 py-3 font-semibold">{category.name}</td>
+                <td className="px-4 py-3">
+                  {canEdit && (
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => open(category)}
+                        className="text-brand-dark"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(category)}
+                        className="text-danger"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination page={list.page} pages={list.pages} count={list.count} onChange={setPage} />
+      </div>
+    </section>
+  );
+}
