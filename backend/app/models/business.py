@@ -28,6 +28,8 @@ class Business(TimestampMixin, db.Model):
     address = db.Column(db.String(300))
     receipt_footer = db.Column(db.String(300))
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
+    daily_summary = db.Column(db.Boolean, nullable=False, server_default=db.true(), default=True)
+    summary_sent_on = db.Column(db.Date)
 
 
 class DocumentCounter(db.Model):

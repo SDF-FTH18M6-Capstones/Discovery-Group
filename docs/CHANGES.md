@@ -1,5 +1,40 @@
 # Changes in this round
 
+## M-Pesa at the till
+
+- Choose M-Pesa, type the customer's number and press **Send M-Pesa request**. The customer gets
+  the prompt on their phone; once Safaricom confirms, the sale completes by itself with the M-Pesa
+  code on the receipt. No "mark as paid" click.
+- A cancelled prompt, a low balance, a wrong PIN or no answer is explained at the till and the cart
+  is kept to try again or take cash.
+- If Safaricom's confirmation is lost, the till asks Safaricom after 20 seconds.
+- If money arrives for stock that has just run out, the payment is kept and the Administrator and
+  sales staff are told to sell again or refund.
+- Test mode (`MPESA_MODE=simulate`) shows "Customer pays" and "Customer cancels" buttons instead of
+  sending a real prompt, so the flow can be shown without Safaricom keys.
+
+## Evening summary
+
+- Every Administrator gets one email a day: sales and how they were paid, best sellers, voids, low
+  stock, draft orders and staff waiting for approval. On by default; Settings can turn it off.
+- Sent by a scheduled GitHub Action at 20:00 Nairobi time, or `flask send-daily-summary`.
+
+## Files
+
+Backend: `app/mpesa.py`, `app/summary.py`, `app/models/payments.py`, `app/resources/payments.py`,
+`app/resources/tasks.py` (all new), `app/resources/sales.py` (sale creation shared with M-Pesa),
+migration `124577034daa_mpesa_payments_and_daily_summary.py`. Tests: `tests/test_mpesa.py`,
+`tests/test_summary.py`.
+
+Frontend: `features/sales/PosPage.jsx`, `features/sales/Receipt.jsx`,
+`features/settings/BusinessSettings.jsx`. Tests: `test/mpesa.test.jsx`.
+
+Other: `.github/workflows/daily-summary.yml`, `render.yaml` (`TASK_TOKEN`, `MPESA_MODE`).
+
+---
+
+# Earlier round
+
 ## The Administrator oversees
 
 - Day-to-day work belongs to the roles that do it: Sales sell and void their own sales,
