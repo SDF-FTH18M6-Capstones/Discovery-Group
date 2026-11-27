@@ -7,6 +7,7 @@ REQUEST_STATUSES = ("pending", "approved", "rejected", "fulfilled", "cancelled")
 ACTIVE_REQUEST_STATUSES = ("pending", "approved")
 PURCHASE_STATUSES = ("draft", "ordered", "partially_received", "received", "cancelled")
 OPEN_PURCHASE_STATUSES = ("draft", "ordered", "partially_received")
+PURCHASE_SOURCES = ("manual", "low_stock", "request")
 
 
 class Request(TenantMixin, TimestampMixin, db.Model):
@@ -53,6 +54,7 @@ class Purchase(TenantMixin, TimestampMixin, db.Model):
         db.UniqueConstraint("business_id", "number", name="uq_purchases_number"),
         db.CheckConstraint("total >= 0", name="total_not_negative"),
         in_list("status", PURCHASE_STATUSES, "status_valid"),
+        in_list("source", PURCHASE_SOURCES, "source_valid"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -67,6 +69,7 @@ class Purchase(TenantMixin, TimestampMixin, db.Model):
         db.Integer, db.ForeignKey("requests.id", ondelete="SET NULL"), index=True
     )
     status = db.Column(db.String(20), nullable=False, server_default="draft", index=True)
+    source = db.Column(db.String(12), nullable=False, server_default="manual", default="manual")
     total = db.Column(Money, nullable=False, server_default="0")
     notes = db.Column(db.Text)
     ordered_at = db.Column(db.DateTime(timezone=True))

@@ -32,7 +32,7 @@ class SupplierQuery(PageQuery):
 @blp.route("/")
 @blp.arguments(SupplierQuery, location="query")
 @blp.response(200, page_schema(SupplierSchema))
-@roles_required("admin", "procurement")
+@roles_required("admin", "procurement", "inventory")
 def list_suppliers(args):
     query = db.select(Supplier).order_by(Supplier.name)
     if args["search"]:
@@ -50,14 +50,14 @@ def list_suppliers(args):
 @blp.route("/", methods=["POST"])
 @blp.arguments(SupplierSchema)
 @blp.response(201, SupplierSchema)
-@roles_required("admin", "procurement")
+@roles_required("procurement")
 def create_supplier(data):
     return save(Supplier(**data), "Could not save this supplier")
 
 
 @blp.route("/<int:supplier_id>")
 @blp.response(200, SupplierSchema)
-@roles_required("admin", "procurement")
+@roles_required("admin", "procurement", "inventory")
 def get_supplier(supplier_id):
     return get_or_404(Supplier, supplier_id)
 
@@ -65,7 +65,7 @@ def get_supplier(supplier_id):
 @blp.route("/<int:supplier_id>", methods=["PUT"])
 @blp.arguments(SupplierSchema)
 @blp.response(200, SupplierSchema)
-@roles_required("admin", "procurement")
+@roles_required("procurement")
 def update_supplier(data, supplier_id):
     supplier = get_or_404(Supplier, supplier_id)
     for key, value in data.items():
@@ -75,7 +75,7 @@ def update_supplier(data, supplier_id):
 
 @blp.route("/<int:supplier_id>", methods=["DELETE"])
 @blp.response(204)
-@roles_required("admin", "procurement")
+@roles_required("procurement")
 def delete_supplier(supplier_id):
     supplier = get_or_404(Supplier, supplier_id)
     delete(

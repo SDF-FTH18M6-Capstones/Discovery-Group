@@ -125,6 +125,16 @@ export function AuthProvider({ children }) {
 
   const hasRole = useCallback((...roles) => Boolean(user && roles.includes(user.role)), [user]);
 
+  const canDo = useCallback(
+    (...jobs) =>
+      Boolean(
+        user &&
+        (jobs.includes(user.role) ||
+          (user.role === "admin" && jobs.some((job) => user.covers?.includes(job)))),
+      ),
+    [user],
+  );
+
   const value = useMemo(
     () => ({
       user,
@@ -137,6 +147,7 @@ export function AuthProvider({ children }) {
       registerBusiness,
       signOut,
       hasRole,
+      canDo,
       updateUser,
       reloadUser,
     }),
@@ -151,6 +162,7 @@ export function AuthProvider({ children }) {
       registerBusiness,
       signOut,
       hasRole,
+      canDo,
       updateUser,
       reloadUser,
     ],

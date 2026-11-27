@@ -180,11 +180,12 @@ def test_receiving_tells_the_buyer(as_role, shop):
 
 
 def test_a_cancelled_order_cannot_be_received(as_role, shop):
-    purchase_id = order(as_role("procurement"), shop).json["id"]
+    buyer = as_role("procurement")
+    purchase_id = order(buyer, shop).json["id"]
     assert (
-        as_role("admin")
-        .post(f"/api/purchases/{purchase_id}/cancel", json={"reason": "Supplier closed"})
-        .json["status"]
+        buyer.post(f"/api/purchases/{purchase_id}/cancel", json={"reason": "Supplier closed"}).json[
+            "status"
+        ]
         == "cancelled"
     )
 

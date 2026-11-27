@@ -22,14 +22,15 @@ from app.models import (
 )
 from app.models.procurement import OPEN_PURCHASE_STATUSES, PURCHASE_STATUSES
 from app.notify import notify, notify_roles
+from app.reorder import average_cost
 from app.resources.requests import fulfil
 from app.schemas import Schema
 from app.stockledger import move_stock
 
 blp = Blueprint("purchases", __name__, url_prefix="/api/purchases", description="Purchase orders")
 
-BUYERS = ("admin", "procurement")
-RECEIVERS = ("admin", "inventory")
+BUYERS = ("procurement",)
+RECEIVERS = ("inventory",)
 VIEWERS = ("admin", "procurement", "inventory")
 AWAITING = ("ordered", "partially_received")
 money = {"places": 2, "as_string": True}
@@ -109,6 +110,7 @@ class PurchaseOut(Schema):
     request_id = fields.Integer(allow_none=True)
     request_reference = fields.String(attribute="request.reference", allow_none=True)
     status = fields.String()
+    source = fields.String()
     total = fields.Decimal(**money)
     notes = fields.String(allow_none=True)
     ordered_at = fields.DateTime(allow_none=True)
@@ -402,6 +404,18 @@ def receive_purchase(data, purchase_id):
     }
     for item_id, quantity in wanted.items():
         line = lines[item_id]
+        product = products[line.product_id]
+        new_cost = average_cost(product, quantity, line.unit_cost)
+        if new_cost != product.cost_price:
+            audit(
+                "updated",
+                "product",
+                product.id,
+                f"{product.name}: cost price {product.cost_price:.2f} → {new_cost:.2f} "
+                f"(average after {receipt.reference})",
+                {"cost_price": [f"{product.cost_price:.2f}", f"{new_cost:.2f}"]},
+            )
+            product.cost_price = new_cost
         line.received_quantity += quantity
         receipt.items.append(
             GoodsReceiptItem(

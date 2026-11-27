@@ -81,8 +81,9 @@ function VoidButton({ sale, onVoided }) {
 
 export default function SalesPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const { user, canDo } = useAuth();
+  const canVoid = (sale) =>
+    canDo("sales") && (user.role === "admin" || sale.attendant_id === user.id);
   const list = useSelector((state) => state.sales);
   const [params] = useSearchParams();
   const [payment, setPayment] = useState("");
@@ -235,7 +236,7 @@ export default function SalesPage() {
         <div className="xl:sticky xl:top-24">
           {open ? (
             <Receipt key={`${open.id}-${open.status}`} sale={open} onClose={() => setOpen(null)}>
-              {isAdmin && (
+              {canVoid(open) && (
                 <VoidButton
                   sale={open}
                   onVoided={(voided) => {

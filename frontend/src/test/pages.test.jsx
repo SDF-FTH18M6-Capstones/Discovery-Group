@@ -156,10 +156,10 @@ describe("categories", () => {
           { error: { code: 409, message: "Category 'Beverages' already exists" } },
         ],
       },
-      "admin",
+      "inventory",
     );
     const user = userEvent.setup();
-    renderAt("/categories", { as: "admin" });
+    renderAt("/categories", { as: "inventory" });
 
     await user.click(await screen.findByRole("button", { name: "Add category" }));
     await user.type(screen.getByLabelText("Category name"), "Beverages");
@@ -328,7 +328,7 @@ describe("approvals", () => {
     renderAt("/approvals", { as: "admin" });
     await user.click(await screen.findByRole("button", { name: "Open request for Printer paper" }));
     expect(
-      screen.getByText("Only a Procurement Manager can approve or reject."),
+      screen.getByText("Your Procurement Manager approves or rejects this."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
   });
@@ -426,7 +426,8 @@ describe("users", () => {
   it("let an administrator change someone's role, but not their own", async () => {
     const spy = mockApi(
       {
-        "GET /api/users/": [200, page(people)],
+        "GET /api/users/": (options, url) =>
+          url.searchParams.get("pending") === "true" ? [200, page([])] : [200, page(people)],
         "PUT /api/users/2/role": [200, { ...people[1], role: "sales" }],
       },
       "admin",
@@ -440,6 +441,43 @@ describe("users", () => {
 
     expect(await screen.findByText("Barclay Koin is now Sales Attendant.")).toBeInTheDocument();
     expect(bodyOf(spy, "PUT", "/api/users/2/role")).toEqual({ role: "sales" });
+  });
+
+  it("let the administrator approve a new joiner with a role", async () => {
+    const grace = {
+      id: 9,
+      full_name: "Grace Wanjiru",
+      email: "grace@test.com",
+      role: "employee",
+      email_verified: true,
+      is_approved: false,
+    };
+    let approved = false;
+    const spy = mockApi(
+      {
+        "GET /api/users/": (options, url) =>
+          url.searchParams.get("pending") === "true"
+            ? [200, page(approved ? [] : [grace])]
+            : [200, page(people)],
+        "POST /api/users/9/approve": () => {
+          approved = true;
+          return [200, { ...grace, role: "inventory", is_approved: true }];
+        },
+      },
+      "admin",
+    );
+    const user = userEvent.setup();
+    renderAt("/users", { as: "admin" });
+
+    expect(await screen.findByText("Waiting for your approval (1)")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Role to give Grace Wanjiru"), "inventory");
+    await user.click(screen.getByRole("button", { name: "Approve Grace Wanjiru" }));
+
+    expect(
+      await screen.findByText("Grace Wanjiru can sign in now as Inventory Manager."),
+    ).toBeInTheDocument();
+    expect(bodyOf(spy, "POST", "/api/users/9/approve")).toEqual({ role: "inventory" });
+    await waitFor(() => expect(screen.queryByText(/Waiting for your approval/)).toBeNull());
   });
 
   it("are closed to everyone but the administrator", async () => {

@@ -1,6 +1,9 @@
+from datetime import UTC, datetime
+
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
 from marshmallow import fields, validate
+from sqlalchemy.exc import IntegrityError
 
 from app.audit import audit
 from app.auth import roles_required
@@ -30,6 +33,7 @@ class UserSchema(Schema):
     role = fields.String(dump_only=True)
     is_active = fields.Boolean(dump_only=True)
     email_verified = fields.Boolean(dump_only=True)
+    is_approved = fields.Boolean(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 
 
@@ -47,6 +51,7 @@ class UserQuery(PageQuery):
     search = fields.String(load_default=None)
     role = fields.String(load_default=None, validate=validate.OneOf(ROLES))
     active = fields.Boolean(load_default=None)
+    pending = fields.Boolean(load_default=None)
 
 
 @blp.route("/")
@@ -62,6 +67,9 @@ def list_users(args):
         query = query.where(User.role == args["role"])
     if args["active"] is not None:
         query = query.where(User.is_active.is_(args["active"]))
+    if args["pending"] is not None:
+        waiting = User.approved_at.is_(None)
+        query = query.where(waiting if args["pending"] else ~waiting)
     return paginate(query, args["page"], args["per_page"])
 
 
@@ -70,7 +78,9 @@ def list_users(args):
 @roles_required("admin", "inventory")
 def user_choices():
     return db.session.scalars(
-        db.select(User).where(User.is_active.is_(True)).order_by(User.full_name)
+        db.select(User)
+        .where(User.is_active.is_(True), User.approved_at.is_not(None))
+        .order_by(User.full_name)
     ).all()
 
 
@@ -131,3 +141,52 @@ def deactivate(user_id):
 @roles_required("admin")
 def reactivate(user_id):
     return set_active(user_id, True)
+
+
+def waiting_user(user_id):
+    user = get_or_404(User, user_id)
+    if user.approved_at is not None:
+        abort(409, message=f"{user.full_name} is already approved.")
+    return user
+
+
+@blp.route("/<int:user_id>/approve", methods=["POST"])
+@blp.arguments(RoleSchema)
+@blp.response(200, UserSchema)
+@roles_required("admin")
+def approve(data, user_id):
+    user = waiting_user(user_id)
+    name = user.full_name
+    values = {"approved_at": datetime.now(UTC), "role": data["role"]}
+    db.session.execute(db.update(User).where(User.id == user_id).values(**values))
+    label = ROLE_LABELS[data["role"]]
+    audit(
+        "approved", "user", user_id, f"{name} approved as {label}", {"role": [None, data["role"]]}
+    )
+    notify(
+        [user_id],
+        f"Welcome to {current_user.business.name}! Your account is approved and your role is "
+        f"{label}. You can sign in now.",
+        link="/login",
+        email_subject="Your StockPilot account is approved",
+    )
+    db.session.commit()
+    db.session.expunge(user)
+    return db.session.get(User, user_id)
+
+
+@blp.route("/<int:user_id>/decline", methods=["POST"])
+@blp.response(204)
+@roles_required("admin")
+def decline(user_id):
+    user = waiting_user(user_id)
+    name = user.full_name
+    audit("declined", "user", user_id, f"{name}'s request to join was declined")
+    db.session.delete(user)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        user = db.session.get(User, user_id)
+        user.is_active = False
+        db.session.commit()

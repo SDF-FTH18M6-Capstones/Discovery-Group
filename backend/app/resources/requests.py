@@ -16,6 +16,7 @@ from app.models.procurement import (
     URGENCIES,
 )
 from app.notify import notify, notify_roles
+from app.reorder import draft_for_request
 from app.schemas import Schema
 from app.shoptime import day_bounds, shop_today
 from app.timeline import TimelineEntry, record_timeline
@@ -138,6 +139,8 @@ def decide(request_id, status, comment):
         f"{status.capitalize()} by {current_user.full_name}" + (f": {comment}" if comment else ""),
         {"status": ["pending", status]},
     )
+    if status == "approved":
+        draft_for_request(req, current_user.id)
     return save(req, "Could not save this decision")
 
 
@@ -276,7 +279,7 @@ def fulfil(req, how):
 
 @blp.route("/<int:request_id>/fulfil", methods=["POST"])
 @blp.response(200, RequestSchema)
-@roles_required(*SEE_ALL)
+@roles_required(*DECIDERS)
 def fulfil_request(request_id):
     req = get_or_404(Request, request_id)
     if req.status != "approved":

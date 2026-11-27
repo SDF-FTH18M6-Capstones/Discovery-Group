@@ -13,14 +13,15 @@ from app.crud import PageQuery, get_or_404, page_schema, paginate
 from app.extensions import db
 from app.models import Product, Sale, SaleItem
 from app.models.sales import PAYMENT_METHODS, SALE_STATUSES
-from app.notify import warn_if_low
+from app.notify import notify_roles, warn_if_low
 from app.schemas import Schema
 from app.shoptime import current_business, day_bounds, range_bounds, shop_today
 from app.stockledger import move_stock
 
 blp = Blueprint("sales", __name__, url_prefix="/api/sales", description="Sales (point of sale)")
 
-SELLERS = ("admin", "sales")
+SELLERS = ("sales",)
+SEE_ALL = ("admin", "sales")
 money = {"places": 2, "as_string": True}
 CENT = Decimal("0.01")
 
@@ -113,7 +114,7 @@ def vat_included(total, rate):
 @blp.route("/")
 @blp.arguments(SaleQuery, location="query")
 @blp.response(200, page_schema(SaleOut))
-@roles_required(*SELLERS)
+@roles_required(*SEE_ALL)
 def list_sales(args):
     query = with_lines(db.select(Sale)).order_by(Sale.created_at.desc(), Sale.id.desc())
     if not is_role("admin"):
@@ -202,7 +203,7 @@ def create_sale(data):
         total += product.selling_price * quantity
         before = product.quantity
         move_stock(product, -quantity, "sale", current_user.id, sale.reference, "Point of sale")
-        warn_if_low(product, before)
+        warn_if_low(product, before, current_user.id)
     sale.total = total
     sale.vat_amount = vat_included(total, rate)
     try:
@@ -217,7 +218,7 @@ def create_sale(data):
 
 @blp.route("/<int:sale_id>")
 @blp.response(200, SaleOut)
-@roles_required(*SELLERS)
+@roles_required(*SEE_ALL)
 def get_sale(sale_id):
     sale = get_or_404(Sale, sale_id)
     if not is_role("admin") and sale.attendant_id != current_user.id:
@@ -228,11 +229,14 @@ def get_sale(sale_id):
 @blp.route("/<int:sale_id>/void", methods=["POST"])
 @blp.arguments(VoidIn)
 @blp.response(200, SaleOut)
-@roles_required("admin")
+@roles_required(*SELLERS)
 def void_sale(data, sale_id):
     sale = db.session.scalar(db.select(Sale).where(Sale.id == sale_id).with_for_update())
     if sale is None:
         abort(404, message=f"Sale {sale_id} not found")
+    if is_role("sales") and sale.attendant_id != current_user.id:
+        db.session.rollback()
+        abort(403, message="You can only void your own sales.")
     if sale.status == "voided":
         db.session.rollback()
         abort(409, message=f"{sale.reference} is already voided.")
@@ -264,5 +268,11 @@ def void_sale(data, sale_id):
     sale.voided_at = datetime.now(UTC)
     sale.void_reason = data["reason"]
     audit("voided", "sale", sale.id, f"{sale.reference} voided: {data['reason']}")
+    notify_roles(
+        ("admin",),
+        f"{current_user.full_name} voided {sale.reference} ({sale.total:,.2f}): {data['reason']}",
+        exclude=current_user.id,
+        link="/sales",
+    )
     db.session.commit()
     return load(sale_id)

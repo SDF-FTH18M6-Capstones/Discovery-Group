@@ -17,7 +17,8 @@ from app.timeline import TimelineEntry, record_timeline
 
 blp = Blueprint("repairs", __name__, url_prefix="/api/repairs", description="Asset repairs")
 
-MANAGERS = ("admin", "inventory")
+MANAGERS = ("inventory",)
+SEE_ALL = ("admin", "inventory")
 STATUS_WORDS = {
     "submitted": "submitted",
     "in_progress": "in progress",
@@ -80,7 +81,7 @@ class RepairQuery(PageQuery):
 
 def visible(repair_id):
     repair = get_or_404(Repair, repair_id)
-    if not is_role(*MANAGERS) and repair.reported_by != current_user.id:
+    if not is_role(*SEE_ALL) and repair.reported_by != current_user.id:
         abort(404, message=f"Repair {repair_id} not found")
     return repair
 
@@ -99,7 +100,7 @@ def list_repairs(args):
         )
         .order_by(Repair.created_at.desc(), Repair.id.desc())
     )
-    if not is_role(*MANAGERS):
+    if not is_role(*SEE_ALL):
         query = query.where(Repair.reported_by == current_user.id)
     if args["status"] == "open":
         query = query.where(Repair.status.in_(OPEN_REPAIR_STATUSES))
@@ -116,7 +117,7 @@ def list_repairs(args):
 @roles_required()
 def report_repair(data):
     asset = find(Asset, data["asset_id"])
-    if asset is None or (not is_role(*MANAGERS) and asset.assigned_to != current_user.id):
+    if asset is None or (not is_role(*SEE_ALL) and asset.assigned_to != current_user.id):
         abort(400, message="Choose an asset you hold.")
     if asset.status == "retired":
         abort(409, message=f"{asset.name} is retired.")

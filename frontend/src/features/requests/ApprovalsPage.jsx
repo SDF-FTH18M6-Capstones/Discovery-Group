@@ -27,13 +27,13 @@ const QUEUES = [
 ];
 
 function DecisionPanel({ request, onStart, onDone, onClose }) {
-  const { user, hasRole } = useAuth();
+  const { user, canDo } = useAuth();
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const own = request.requester_id === user.id;
-  const canDecide = hasRole("procurement") && !own && request.status === "pending";
+  const canDecide = canDo("procurement") && !own && request.status === "pending";
   const canFulfil = request.status === "approved";
 
   const fulfil = async () => {
@@ -178,8 +178,8 @@ function DecisionPanel({ request, onStart, onDone, onClose }) {
           This is your own request: another Procurement Manager decides it.
         </p>
       )}
-      {request.status === "pending" && !own && !hasRole("procurement") && (
-        <p className="text-sm text-muted">Only a Procurement Manager can approve or reject.</p>
+      {request.status === "pending" && !own && !canDo("procurement") && (
+        <p className="text-sm text-muted">Your Procurement Manager approves or rejects this.</p>
       )}
       <button type="button" onClick={onClose} className="self-start text-sm text-brand-dark">
         Close
