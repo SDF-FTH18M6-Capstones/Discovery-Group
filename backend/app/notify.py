@@ -3,6 +3,8 @@ from flask import current_app
 from app.extensions import db
 from app.mail import queue_email
 from app.models import Notification, User
+from app.shoptime import current_business
+from app.whatsapp import queue_alert
 
 
 def notify(user_ids, message, link=None, email_subject=None):
@@ -86,3 +88,4 @@ def warn_if_low(product, before, actor_id):
         link=link,
         email_subject=f"Low stock: {product.name}",
     )
+    queue_alert(current_business(), message)

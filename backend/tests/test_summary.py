@@ -1,9 +1,19 @@
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
 from app.extensions import db
-from app.models import Business, Category, Product, Purchase, Supplier
+from app.models import (
+    Business,
+    Category,
+    MoneyImport,
+    MoneyTransaction,
+    Product,
+    Purchase,
+    Supplier,
+)
+from tests.test_insights import at, ring, today
 
 TOKEN = {"X-Task-Token": "test-task-token"}
 
@@ -115,3 +125,51 @@ def test_the_command_line_sends_it_too(app, admin, outbox):
     result = app.test_cli_runner().invoke(args=["send-daily-summary"])
 
     assert "Sent the summary for 1 business(es)." in result.output
+
+
+def test_the_email_looks_ahead(client, admin, outbox):
+    category = Category(name="Drinks")
+    db.session.add(category)
+    db.session.flush()
+    tea = Product(
+        sku="TEA-2",
+        name="Tea bags",
+        category_id=category.id,
+        cost_price=Decimal("20"),
+        selling_price=Decimal("50"),
+        quantity=12,
+        reorder_level=2,
+        created_at=datetime.now(UTC) - timedelta(days=90),
+    )
+    db.session.add(tea)
+    db.session.commit()
+    for back in range(1, 30):
+        ring(admin.user.id, tea, today() - timedelta(days=back), quantity=2)
+    batch = MoneyImport(source="sms", added=0, duplicates=0, skipped=0, created_by=admin.user.id)
+    batch.transactions.append(
+        MoneyTransaction(
+            receipt="RENT000009",
+            occurred_at=at(today() - timedelta(days=3)),
+            direction="out",
+            amount=Decimal("20000"),
+            kind="paybill",
+            category="rent",
+            counterparty="LANDLORD",
+        )
+    )
+    db.session.add(batch)
+    db.session.commit()
+
+    client.post("/api/tasks/daily-summary", headers=TOKEN)
+
+    body = outbox[-1]["body"]
+    assert "Looking ahead" in body
+    assert "Expected sales over the next 7 days: about KES 700.00" in body
+    assert "  Tea bags: about 6 days left, order about 16" in body
+    assert "Cash: more is likely to go out than come in over the next 30 days" in body
+
+
+def test_without_history_there_is_nothing_to_look_ahead_to(client, admin, outbox):
+    client.post("/api/tasks/daily-summary", headers=TOKEN)
+
+    assert "Looking ahead" not in outbox[-1]["body"]

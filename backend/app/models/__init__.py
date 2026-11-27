@@ -12,7 +12,7 @@ from app.models.business import (
     RevokedToken,
 )
 from app.models.catalogue import Category, Product, Supplier
-from app.models.money import CategoryRule, MoneyImport, MoneyTransaction
+from app.models.money import CategoryRule, MoneyImport, MoneyTransaction, PhoneLink
 from app.models.payments import MpesaPayment
 from app.models.procurement import GoodsReceipt, GoodsReceiptItem, Purchase, PurchaseItem, Request
 from app.models.sales import Sale, SaleItem, StockMovement
@@ -50,6 +50,7 @@ __all__ = [
     "MpesaPayment",
     "Notification",
     "PasswordReset",
+    "PhoneLink",
     "PlatformSetting",
     "ProcurementManager",
     "Product",

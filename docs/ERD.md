@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL, 31 tables. The diagram and the data dictionary below are generated from the
+PostgreSQL, 32 tables. The diagram and the data dictionary below are generated from the
 SQLAlchemy models in `backend/app/models/`, and CI runs `flask db check` to prove the migrations
 build exactly this schema. [erddoc.png](erddoc.png) shows the original single-business design.
 
@@ -41,6 +41,7 @@ erDiagram
     BUSINESSES ||--o{ MONEY_TRANSACTIONS : "business_id"
     BUSINESSES ||--o{ MPESA_PAYMENTS : "business_id"
     BUSINESSES ||--o{ NOTIFICATIONS : "business_id"
+    BUSINESSES ||--o{ PHONE_LINKS : "business_id"
     BUSINESSES ||--o{ PRODUCTS : "business_id"
     BUSINESSES ||--o{ PURCHASES : "business_id"
     BUSINESSES ||--o{ PURCHASE_ITEMS : "business_id"
@@ -86,6 +87,7 @@ erDiagram
     USERS ||--o{ MPESA_PAYMENTS : "attendant_id"
     USERS ||--o{ NOTIFICATIONS : "user_id"
     USERS ||--o{ PASSWORD_RESETS : "user_id"
+    USERS ||--o{ PHONE_LINKS : "created_by"
     USERS ||--o{ PURCHASES : "created_by"
     USERS ||--o{ REPAIRS : "reported_by"
     USERS ||--o{ REQUESTS : "requester_id"
@@ -105,6 +107,8 @@ erDiagram
         boolean is_active
         boolean daily_summary
         date summary_sent_on
+        varchar whatsapp_number
+        boolean whatsapp_alerts
         date trial_ends_on
         date paid_until
         varchar mpesa_mode
@@ -281,6 +285,16 @@ erDiagram
         timestamptz expires_at
         timestamptz used_at
         timestamptz created_at
+    }
+    PHONE_LINKS {
+        int id PK
+        varchar token_hash UK
+        int created_by FK
+        timestamptz created_at
+        timestamptz last_message_at
+        int messages
+        timestamptz revoked_at
+        int business_id FK
     }
     PRODUCTS {
         int id PK
@@ -525,6 +539,8 @@ All staff live in one `users` table; `role` selects the class.
 | `is_active` | boolean | yes |  | Default `true`. |
 | `daily_summary` | boolean | yes |  | Default `true`. |
 | `summary_sent_on` | date | no |  |  |
+| `whatsapp_number` | varchar(20) | no |  |  |
+| `whatsapp_alerts` | boolean | yes |  | Default `false`. |
 | `trial_ends_on` | date | no |  |  |
 | `paid_until` | date | no |  |  |
 | `mpesa_mode` | varchar(10) | no |  |  |
@@ -537,7 +553,7 @@ All staff live in one `users` table; `role` selects the class.
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `vat_rate >= 0 AND vat_rate < 100`; `mpesa_type IN ('paybill', 'till')`
+Checks: `mpesa_type IN ('paybill', 'till')`; `vat_rate >= 0 AND vat_rate < 100`
 
 ### platform_settings
 
@@ -738,7 +754,7 @@ Checks: `amount > 0`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `source IN ('statement', 'csv', 'sms')`
+Checks: `source IN ('statement', 'csv', 'sms', 'phone')`
 
 ### notifications
 
@@ -763,6 +779,19 @@ Checks: `source IN ('statement', 'csv', 'sms')`
 | `used_at` | timestamptz | no |  |  |
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 
+### phone_links
+
+| Column | Type | Required | Keys | Notes |
+|---|---|---|---|---|
+| `id` | int | yes | PK |  |
+| `token_hash` | varchar(64) | yes | UK per business |  |
+| `created_by` | int | yes | FK → users |  |
+| `created_at` | timestamptz | yes |  | Default `now()`. |
+| `last_message_at` | timestamptz | no |  |  |
+| `messages` | int | yes |  | Default `0`. |
+| `revoked_at` | timestamptz | no |  |  |
+| `business_id` | int | yes | FK → businesses |  |
+
 ### products
 
 | Column | Type | Required | Keys | Notes |
@@ -784,7 +813,7 @@ Checks: `source IN ('statement', 'csv', 'sms')`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `quantity >= 0`; `cost_price >= 0`; `reorder_level >= 0`; `selling_price >= 0`; `reorder_quantity > 0`
+Checks: `reorder_level >= 0`; `cost_price >= 0`; `quantity >= 0`; `selling_price >= 0`; `reorder_quantity > 0`
 
 ### sales
 
@@ -806,7 +835,7 @@ Checks: `quantity >= 0`; `cost_price >= 0`; `reorder_level >= 0`; `selling_price
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `status IN ('completed', 'voided')`; `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`
+Checks: `payment_method IN ('cash', 'mpesa', 'card')`; `status IN ('completed', 'voided')`; `total >= 0`
 
 ### asset_assignments
 
@@ -922,7 +951,7 @@ Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `status IN ('submitted
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`
+Checks: `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`; `urgency IN ('low', 'normal', 'high', 'urgent')`
 
 ### sale_items
 
@@ -936,7 +965,7 @@ Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `quantity > 0`; `statu
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `quantity > 0`; `unit_price >= 0`; `unit_cost >= 0`
+Checks: `unit_price >= 0`; `unit_cost >= 0`; `quantity > 0`
 
 ### stock_movements
 
@@ -953,7 +982,7 @@ Checks: `quantity > 0`; `unit_price >= 0`; `unit_cost >= 0`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`; `quantity_after >= 0`; `change <> 0`
+Checks: `quantity_after >= 0`; `change <> 0`; `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`
 
 ### purchases
 
@@ -1003,7 +1032,7 @@ Checks: `status IN ('draft', 'ordered', 'partially_received', 'received', 'cance
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `quantity > 0`; `unit_cost >= 0`; `received_quantity >= 0 AND received_quantity <= quantity`
+Checks: `received_quantity >= 0 AND received_quantity <= quantity`; `quantity > 0`; `unit_cost >= 0`
 
 ### goods_receipt_items
 

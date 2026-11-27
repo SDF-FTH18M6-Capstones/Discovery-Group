@@ -142,7 +142,7 @@ BUSY_DAYS = [0.9, 0.85, 0.95, 1.0, 1.2, 1.45, 0.65]
 def mpesa_history(rng, days=70):
     today = date.today()
     entries = []
-    balance = Decimal("12000")
+    balance = Decimal("30000")
 
     def receipt():
         return "T" + "".join(rng.choices(string.ascii_uppercase + string.digits, k=9))

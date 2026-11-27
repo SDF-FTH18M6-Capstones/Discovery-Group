@@ -48,7 +48,7 @@ def local_time(moment, timezone):
     return moment.replace(tzinfo=ZoneInfo(timezone)).astimezone(UTC)
 
 
-def import_entries(entries, skipped, source, filename, user):
+def import_entries(entries, skipped, source, filename, user, batch=None):
     timezone = user.business.timezone
     rules = {
         (rule.direction, rule.match): rule.category
@@ -70,15 +70,17 @@ def import_entries(entries, skipped, source, filename, user):
             db.select(Sale.payment_reference, Sale.id).where(Sale.payment_reference.is_not(None))
         ).all()
     )
-    batch = MoneyImport(
-        source=source,
-        filename=filename,
-        added=0,
-        duplicates=0,
-        skipped=skipped,
-        created_by=user.id,
-    )
-    db.session.add(batch)
+    if batch is None:
+        batch = MoneyImport(
+            source=source,
+            filename=filename,
+            added=0,
+            duplicates=0,
+            skipped=0,
+            created_by=user.id,
+        )
+        db.session.add(batch)
+    batch.skipped += skipped
     rows = []
     for entry in entries:
         rows.append((entry, entry.kind == "fee"))
@@ -145,3 +147,23 @@ def remember(transaction, category):
             other.category = category
             changed += 1
     return changed
+
+
+def phone_batch(link, today_start):
+    batch = db.session.scalar(
+        db.select(MoneyImport)
+        .where(MoneyImport.source == "phone", MoneyImport.created_at >= today_start)
+        .order_by(MoneyImport.id.desc())
+        .limit(1)
+    )
+    if batch is None:
+        batch = MoneyImport(
+            source="phone",
+            filename="Messages from the phone",
+            added=0,
+            duplicates=0,
+            skipped=0,
+            created_by=link.created_by,
+        )
+        db.session.add(batch)
+    return batch

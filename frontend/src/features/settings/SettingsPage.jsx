@@ -10,6 +10,7 @@ import { Avatar } from "../../components/ui";
 import { useTheme } from "../../theme/ThemeContext";
 import BusinessSettings from "./BusinessSettings";
 import MpesaSettings from "./MpesaSettings";
+import WhatsAppSettings from "./WhatsAppSettings";
 
 const firstMessages = (details = {}) =>
   Object.fromEntries(
@@ -270,6 +271,7 @@ export default function SettingsPage() {
       />
       <BusinessSettings />
       {user?.role === "admin" && <MpesaSettings />}
+      {user?.role === "admin" && <WhatsAppSettings />}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ProfileForm />

@@ -46,10 +46,10 @@ The System status page shows whether the API is reachable.
 | New sale, sales                                      | `/sales/new`, `/sales`                                                        | sales staff run the till; the administrator follows every sale                      |
 | Stock ledger                                         | `/stock`                                                                      | inventory adjusts; the administrator reads                                          |
 | Assets, repairs                                      | `/assets`, `/repairs`                                                         | inventory manages; everyone sees what they hold and reports faults                  |
-| Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator                                                                       |
-| Insights, M-Pesa money                               | `/insights`, `/money`                                                         | administrator: forecasts, and statements or SMS to import                           |
+| Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator; Reports has the loan-readiness PDF                                   |
+| Insights, M-Pesa money                               | `/insights`, `/money`                                                         | administrator: forecasts; statements, SMS or a linked phone                         |
 | Scan a receipt                                       | `/receipts/scan`                                                              | administrator, procurement, inventory: receipt to expense or stock                  |
-| Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; M-Pesa and business settings for the administrator                        |
+| Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; business, M-Pesa and WhatsApp settings for the administrator              |
 | Platform                                             | `/platform`                                                                   | StockPilot's own owners (`PLATFORM_OWNERS` on the API)                              |
 
 Buttons follow the job rather than the title: `useAuth().canDo("sales")` is true for sales staff,

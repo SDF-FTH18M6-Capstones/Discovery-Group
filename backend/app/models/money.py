@@ -22,7 +22,7 @@ CATEGORIES = tuple(dict.fromkeys(MONEY_IN + MONEY_OUT))
 
 class MoneyImport(TenantMixin, db.Model):
     __tablename__ = "money_imports"
-    __table_args__ = (in_list("source", ("statement", "csv", "sms"), "source_valid"),)
+    __table_args__ = (in_list("source", ("statement", "csv", "sms", "phone"), "source_valid"),)
 
     id = db.Column(db.Integer, primary_key=True)
     source = db.Column(db.String(10), nullable=False)
@@ -88,3 +88,19 @@ class CategoryRule(TenantMixin, db.Model):
     direction = db.Column(db.String(3), nullable=False)
     match = db.Column(db.String(120), nullable=False)
     category = db.Column(db.String(20), nullable=False)
+
+
+class PhoneLink(TenantMixin, db.Model):
+    __tablename__ = "phone_links"
+
+    id = db.Column(db.Integer, primary_key=True)
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    created_by = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=db.func.now())
+    last_message_at = db.Column(db.DateTime(timezone=True))
+    messages = db.Column(db.Integer, nullable=False, server_default="0", default=0)
+    revoked_at = db.Column(db.DateTime(timezone=True))
+
+    creator = db.relationship("User")

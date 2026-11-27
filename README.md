@@ -36,6 +36,12 @@ takes M-Pesa payments into its own Paybill or till, and only ever sees its own d
 - **Receipt scanning:** photograph a paper receipt and StockPilot fills in the shop, date, total
   and items, ready to save as an expense or as stock bought over the counter. Photos are read on
   the phone for free, or online for better accuracy when a key is added.
+- **Hands-off M-Pesa:** link the Android phone that receives M-Pesa messages and each one is
+  imported as it arrives, through the free, open-source SMS to URL Forwarder app.
+- **Alerts where owners look:** the evening email looks ahead (expected sales this week, what runs
+  out soon, cash warnings), and the same low-stock and cash warnings can go to WhatsApp.
+- **Loan-readiness report:** a one-page PDF of 3, 6 or 12 months of sales, spending, M-Pesa
+  balances, borrowing and customer numbers, ready for a SACCO or bank.
 - Installable as an app on phones and computers, with light and dark themes.
 
 ## Tech stack

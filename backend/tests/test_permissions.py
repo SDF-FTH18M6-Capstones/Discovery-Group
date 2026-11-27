@@ -145,6 +145,19 @@ ENDPOINTS = [
     ("DELETE", "/api/money/imports/{money_import}", ("admin",), 204, None),
     ("GET", "/api/money/transactions", ("admin",), 200, None),
     ("GET", "/api/money/totals", ("admin",), 200, None),
+    ("GET", "/api/reports/performance.pdf", ("admin",), 200, None),
+    ("GET", "/api/phone/link", ("admin",), 200, None),
+    ("POST", "/api/phone/link", ("admin",), 201, None),
+    ("DELETE", "/api/phone/link", ("admin",), 204, None),
+    ("GET", "/api/business/whatsapp", ("admin",), 200, None),
+    (
+        "PUT",
+        "/api/business/whatsapp",
+        ("admin",),
+        200,
+        {"whatsapp_number": "0712345678", "whatsapp_alerts": False},
+    ),
+    ("POST", "/api/business/whatsapp/test", ("admin",), 409, None),
     ("GET", "/api/receipts/reader", ("admin", "procurement", "inventory"), 200, None),
     (
         "POST",
@@ -230,6 +243,7 @@ PUBLIC = [
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/refresh"),
     ("POST", "/api/payments/mpesa/callback/{}"),
+    ("POST", "/api/phone/inbox/{}"),
     ("POST", "/api/tasks/daily-summary"),
 ]
 

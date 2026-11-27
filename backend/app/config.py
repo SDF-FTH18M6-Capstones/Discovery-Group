@@ -39,6 +39,11 @@ class Config:
     BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
     RECEIPT_AI_KEY = os.getenv("RECEIPT_AI_KEY", "")
     RECEIPT_AI_MODEL = os.getenv("RECEIPT_AI_MODEL", "claude-haiku-5-5")
+    WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
+    WHATSAPP_PHONE_ID = os.getenv("WHATSAPP_PHONE_ID", "")
+    WHATSAPP_TEMPLATE = os.getenv("WHATSAPP_TEMPLATE", "stockpilot_alert")
+    WHATSAPP_LANGUAGE = os.getenv("WHATSAPP_LANGUAGE", "en")
+    WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v23.0")
 
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "true").lower() == "true"
     LOGIN_CODE_REQUIRED = os.getenv("LOGIN_CODE_REQUIRED", "true").lower() == "true"
@@ -138,3 +143,4 @@ class TestConfig(Config):
     MPESA_MODE = "simulate"
     TASK_TOKEN = "test-task-token"
     RECEIPT_AI_KEY = ""
+    WHATSAPP_TOKEN = ""

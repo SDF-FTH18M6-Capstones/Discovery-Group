@@ -227,6 +227,47 @@ person checks everything against the photo before saving. A stock purchase
 (`POST /api/receipts/stock`) is recorded as a purchase already received: stock goes up, average
 cost is updated, and a shop that isn't a supplier yet is added as one.
 
+### M-Pesa messages from a phone
+
+The administrator links a phone from the M-Pesa money page. `POST /api/phone/link` returns a
+private address, `/api/phone/inbox/<token>`, shown once; only a SHA-256 hash of the token is
+stored, and making a new link retires the old one. On an Android phone, the free, open-source
+[SMS to URL Forwarder](https://f-droid.org/packages/tech.bogomolov.incomingsmsgateway/) app posts
+each message from `MPESA` to that address as JSON (`{"from": "...", "text": "..."}`; form posts
+and plain text also work). Messages from other senders, and texts that aren't transactions, are
+ignored, and a receipt already imported is never added twice. Each day's messages collect in one
+import that can be undone like any other.
+
+### Alerts
+
+The evening summary ends with a look ahead: expected sales for the next 7 days, products that will
+run out within a week with a suggested order, and a warning when the next 30 days are likely to
+leave the business short of cash.
+
+With WhatsApp alerts turned on in Settings, the same low-stock warnings (as stock crosses its
+reorder level) and the evening cash warning go to the owner's WhatsApp, through Meta's WhatsApp
+Cloud API. Business-started messages must use an approved template, so the API needs one:
+
+1. In [Meta for Developers](https://developers.facebook.com/), create a Business app and add
+   WhatsApp. Note the **phone number ID** of the sending number.
+2. In Business Settings, create a system user with the `whatsapp_business_messaging` permission
+   and generate a permanent **access token**.
+3. In WhatsApp Manager, create a **Utility** template named `stockpilot_alert` in English with the
+   body `StockPilot alert for {{1}}: {{2}}` and wait for approval.
+4. Set `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_ID`.
+
+Without those two variables, alerts are written to the log instead of being sent. Meta charges
+per delivered template message.
+
+### Loan-readiness report
+
+`GET /api/reports/performance.pdf?months=6` (3, 6 or 12) builds a one-page PDF with ReportLab
+for the last complete months: average monthly sales, the best month, months with more coming in
+than going out, the sales trend, days with sales, paying and regular customers, a monthly chart and
+table (sales, other money in, spending, in minus out, closing M-Pesa balance), loans received and
+repaid, and stock at cost. It says how the figures were prepared and that they are the business's
+own, unaudited records.
+
 ## API reference
 
 Every endpoint is limited to the caller's business. Lists accept `?page=1&per_page=20` (at most
@@ -255,6 +296,10 @@ Every endpoint is limited to the caller's business. Lists accept `?page=1&per_pa
 | `GET /api/insights` | administrator |
 | `GET /api/receipts/reader` · `POST /text`, `/photo` | administrator, procurement, inventory |
 | `POST /api/receipts/stock` | procurement, inventory |
+| `GET`/`POST`/`DELETE /api/phone/link` | administrator |
+| `POST /api/phone/inbox/<token>` | anyone with the private link (the phone) |
+| `GET`/`PUT /api/business/whatsapp` · `POST /whatsapp/test` | administrator |
+| `GET /api/reports/performance.pdf` | administrator |
 | `GET /api/money/categories`, `/imports`, `/transactions`, `/totals` · `POST /statement`, `/sms` · `DELETE /imports/<id>` · `PUT /transactions/<id>` | administrator |
 | `/api/notifications/` · `POST /<id>/read`, `/read-all` | everyone, their own |
 | `/api/auth/register`, `/register-business`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password` · `GET /api/images/<id>` · `GET /api/health` | public |
@@ -286,6 +331,7 @@ Errors share one shape:
 | `PLATFORM_OWNERS` | Comma-separated email addresses that can open the Platform page |
 | `DATA_KEY` | Encrypts each business's M-Pesa keys; defaults to `SECRET_KEY`. Changing it means businesses re-enter their keys |
 | `TASK_TOKEN` | Shared secret for the evening summary schedule |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_ID`, `WHATSAPP_TEMPLATE`, `WHATSAPP_LANGUAGE` | Optional. WhatsApp Cloud API credentials and the approved template (`stockpilot_alert`, `en` by default) |
 | `RECEIPT_AI_KEY`, `RECEIPT_AI_MODEL` | Optional. An Anthropic API key turns on online receipt reading; without it receipts are read on the user's device |
 | `EMAIL_VERIFICATION_REQUIRED`, `LOGIN_CODE_REQUIRED`, `STAFF_APPROVAL_REQUIRED` | Security checks, on by default |
 

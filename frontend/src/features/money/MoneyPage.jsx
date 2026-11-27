@@ -8,7 +8,12 @@ import Pagination from "../../components/Pagination";
 import { dateTime, money, shortDate } from "../../format";
 import { CATEGORY_NAMES, MONEY_IN, MONEY_OUT } from "./categories";
 
-const SOURCES = { statement: "Statement (PDF)", csv: "Statement (CSV)", sms: "Pasted messages" };
+const SOURCES = {
+  statement: "Statement (PDF)",
+  csv: "Statement (CSV)",
+  sms: "Pasted messages",
+  phone: "From the phone",
+};
 
 function summary(batch) {
   const parts = [`Added ${batch.added} transaction${batch.added === 1 ? "" : "s"}`];
@@ -421,6 +426,112 @@ function Transactions({ version, onNotice }) {
   );
 }
 
+const FORWARDER = "https://f-droid.org/packages/tech.bogomolov.incomingsmsgateway/";
+
+function PhoneLink() {
+  const [status, setStatus] = useState(null);
+  const [url, setUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/phone/link").then(setStatus);
+  }, []);
+
+  if (!status) return null;
+
+  const create = async () => {
+    setError("");
+    try {
+      const data = await api("/api/phone/link", { method: "POST" });
+      setStatus(data);
+      setUrl(data.url);
+      setCopied(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const remove = async () => {
+    await api("/api/phone/link", { method: "DELETE" });
+    setStatus({ active: false, messages: 0 });
+    setUrl("");
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="phone-title" className="card flex flex-col gap-4 p-6">
+      <div>
+        <h2 id="phone-title" className="text-lg font-bold">
+          Bring messages in automatically
+        </h2>
+        <p className="text-sm text-muted">
+          Link the Android phone that gets your M-Pesa messages, and each one arrives here on its
+          own. Other messages are ignored.
+        </p>
+      </div>
+      {status.active && !url && (
+        <p className="text-sm">
+          Linked since {dateTime(status.created_at)}.{" "}
+          {status.messages
+            ? `${status.messages} message${status.messages === 1 ? "" : "s"} so far, the last at ${dateTime(status.last_message_at)}.`
+            : "No messages yet."}
+        </p>
+      )}
+      {url && (
+        <div className="flex flex-col gap-3 rounded-xl border border-brand/30 bg-mint p-4 text-sm">
+          <p className="font-semibold">
+            Your private link. It is shown only now, so set up the phone before leaving this page.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="code break-all rounded-lg bg-surface px-2 py-1 text-xs">{url}</code>
+            <button type="button" onClick={copy} className="btn-secondary">
+              {copied ? "Copied" : "Copy link"}
+            </button>
+          </div>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              On the phone, install{" "}
+              <a href={FORWARDER} target="_blank" rel="noreferrer" className="underline">
+                SMS to URL Forwarder
+              </a>{" "}
+              from F-Droid. It is free and open source.
+            </li>
+            <li>Add a rule: sender MPESA, and paste the link above as the URL.</li>
+            <li>Allow it to read SMS, and turn off battery saving for it.</li>
+          </ol>
+          <p className="text-xs text-muted">
+            Anyone with this link can send messages into your records. If it leaks, make a new one.
+          </p>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <button type="button" onClick={create} className="btn-primary">
+          {status.active ? "Make a new link" : "Link a phone"}
+        </button>
+        {status.active && (
+          <button type="button" onClick={remove} className="btn-ghost text-danger">
+            Unlink
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function MoneyPage() {
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
@@ -440,6 +551,7 @@ export default function MoneyPage() {
         <StatementUpload onImported={imported} />
         <PasteMessages onImported={imported} />
       </div>
+      <PhoneLink />
       {notice && (
         <p role="status" className="rounded-xl border border-brand/30 bg-mint p-3 text-sm">
           {notice}

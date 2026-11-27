@@ -1,10 +1,11 @@
 from zoneinfo import available_timezones
 
+from flask import current_app
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
 from marshmallow import fields, validate
 
-from app import mpesa
+from app import mpesa, whatsapp
 from app.audit import audit, diff
 from app.auth import is_role, roles_required
 from app.extensions import db
@@ -163,3 +164,61 @@ def update_mpesa(data):
     )
     db.session.commit()
     return mpesa_view(business)
+
+
+class WhatsAppSchema(Schema):
+    whatsapp_number = fields.String(allow_none=True, load_default=None)
+    whatsapp_alerts = fields.Boolean(load_default=False)
+    connected = fields.Method("get_connected", dump_only=True)
+
+    def get_connected(self, _business):
+        config = current_app.config
+        return bool(config["WHATSAPP_TOKEN"] and config["WHATSAPP_PHONE_ID"])
+
+
+class SentSchema(Schema):
+    sent = fields.Boolean()
+
+
+@blp.route("/whatsapp")
+@blp.response(200, WhatsAppSchema)
+@roles_required("admin")
+def get_whatsapp():
+    return current_user.business
+
+
+@blp.route("/whatsapp", methods=["PUT"])
+@blp.arguments(WhatsAppSchema)
+@blp.response(200, WhatsAppSchema)
+@roles_required("admin")
+def update_whatsapp(data):
+    business = current_user.business
+    number = None
+    if data["whatsapp_number"]:
+        number = whatsapp.normalise(data["whatsapp_number"])
+        if number is None:
+            abort(422, message="Enter a WhatsApp number like 0712 345 678.")
+    if data["whatsapp_alerts"] and number is None:
+        abort(422, message="Add the WhatsApp number that should get the alerts.")
+    wanted = {"whatsapp_number": number, "whatsapp_alerts": data["whatsapp_alerts"]}
+    changes = diff(business, wanted)
+    for key, value in wanted.items():
+        setattr(business, key, value)
+    if changes:
+        audit("updated", "business", business.id, "WhatsApp alerts changed", changes)
+    db.session.commit()
+    return business
+
+
+@blp.route("/whatsapp/test", methods=["POST"])
+@blp.response(200, SentSchema)
+@roles_required("admin")
+def test_whatsapp():
+    business = current_user.business
+    if not business.whatsapp_alerts:
+        abort(409, message="Turn on WhatsApp alerts and save first.")
+    sent = whatsapp.queue_alert(
+        business, "This is a test. Low stock and cash warnings will arrive here."
+    )
+    db.session.commit()
+    return {"sent": sent}
