@@ -8,6 +8,7 @@ import Layout from "./components/Layout";
 import AssetsPage from "./features/assets/AssetsPage";
 import AuditPage from "./features/audit/AuditPage";
 import BillingPage from "./features/billing/BillingPage";
+import PlatformPage from "./features/platform/PlatformPage";
 import CategoriesPage from "./features/categories/CategoriesPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import NotificationsPage from "./features/notifications/NotificationsPage";
@@ -71,6 +72,7 @@ export default function App() {
           <Route path="repairs" element={<RepairsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="platform" element={<PlatformPage />} />
         </Route>
 
         <Route element={<RequireAuth roles={SALES_VIEWERS} />}>

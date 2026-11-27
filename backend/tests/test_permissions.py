@@ -21,6 +21,7 @@ from app.models import (
     Sale,
     Supplier,
 )
+from tests.test_platform import OWNER_ONLY
 
 ALL = ("admin", "procurement", "inventory", "sales", "employee")
 STOCK = ("inventory",)
@@ -388,7 +389,11 @@ def test_every_endpoint_is_listed(app):
         if rule.rule.startswith("/api/") and "openapi" not in rule.rule and "docs" not in rule.rule
         for method in rule.methods - {"HEAD", "OPTIONS"}
     }
-    listed = {(m, shape(p)) for m, p, *_ in ENDPOINTS} | {(m, shape(p)) for m, p in PUBLIC}
+    listed = (
+        {(m, shape(p)) for m, p, *_ in ENDPOINTS}
+        | {(m, shape(p)) for m, p in PUBLIC}
+        | {(m, shape(p)) for m, p in OWNER_ONLY}
+    )
 
     assert in_app - listed == set(), "These endpoints have no permission test"
     assert listed - in_app == set(), "These listed endpoints do not exist"

@@ -11,9 +11,12 @@ def actor_id():
         return None
 
 
-def audit(action, entity_type, entity_id, summary, changes=None, user_id=None):
+SIGNED_IN_USER = object()
+
+
+def audit(action, entity_type, entity_id, summary, changes=None, user_id=SIGNED_IN_USER):
     entry = AuditLog(
-        user_id=user_id if user_id is not None else actor_id(),
+        user_id=actor_id() if user_id is SIGNED_IN_USER else user_id,
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
