@@ -40,6 +40,23 @@ def email_body(user, message, link):
     return "\n".join(lines)
 
 
+def order_if_low(product, actor_id):
+    from app.reorder import draft_for_low_stock
+
+    if not product.is_active or product.quantity > product.reorder_level:
+        return None
+    draft = draft_for_low_stock(product, actor_id)
+    if draft is not None:
+        notify_roles(
+            ("procurement",),
+            f"{product.name} is low on stock ({product.quantity} left). It was added to "
+            f"{draft.reference}, ready to confirm.",
+            exclude=actor_id,
+            link=f"/purchases?open={draft.id}",
+        )
+    return draft
+
+
 def warn_if_low(product, before, actor_id):
     from app.reorder import draft_for_low_stock
 
