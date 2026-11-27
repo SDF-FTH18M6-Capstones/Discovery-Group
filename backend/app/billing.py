@@ -38,7 +38,12 @@ def add_months(day, months):
 def trial_end(business):
     if business.trial_ends_on:
         return business.trial_ends_on
-    started = business.created_at.date() if business.created_at else date.today()
+    zone = ZoneInfo(business.timezone)
+    started = (
+        business.created_at.astimezone(zone).date()
+        if business.created_at
+        else business_today(business)
+    )
     return started + timedelta(days=TRIAL_DAYS)
 
 
