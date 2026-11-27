@@ -7,7 +7,7 @@ from app.auth import roles_required
 from app.crud import PageQuery, get_or_404, page_schema, paginate
 from app.extensions import db
 from app.models import MoneyImport, MoneyTransaction
-from app.models.money import MONEY_IN, MONEY_OUT
+from app.models.money import CATEGORIES, MONEY_IN, MONEY_OUT
 from app.money import import_entries, remember
 from app.schemas import Schema
 from app.statements import StatementError, parse_csv, parse_sms, parse_statement_text, read_pdf
@@ -46,7 +46,7 @@ class TransactionOut(Schema):
 
 class TransactionQuery(PageQuery):
     direction = fields.String(load_default=None, validate=validate.OneOf(("in", "out")))
-    category = fields.String(load_default=None, validate=validate.OneOf(MONEY_IN + MONEY_OUT))
+    category = fields.String(load_default=None, validate=validate.OneOf(CATEGORIES))
     search = fields.String(load_default=None)
     import_id = fields.Integer(load_default=None)
 
@@ -59,7 +59,7 @@ class SmsIn(Schema):
 
 
 class CategoryIn(Schema):
-    category = fields.String(required=True, validate=validate.OneOf(MONEY_IN + MONEY_OUT))
+    category = fields.String(required=True, validate=validate.OneOf(CATEGORIES))
     remember = fields.Boolean(load_default=True)
 
 

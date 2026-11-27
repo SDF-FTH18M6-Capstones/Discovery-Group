@@ -1,7 +1,7 @@
 from app.extensions import db
 from app.models.base import Money, TenantMixin, in_list
 
-MONEY_IN = ("sales", "loan", "owner_deposit", "other_income")
+MONEY_IN = ("sales", "loan", "owner_deposit", "savings", "other_income")
 MONEY_OUT = (
     "stock",
     "rent",
@@ -12,10 +12,12 @@ MONEY_OUT = (
     "fees",
     "loan_repayment",
     "withdrawal",
+    "savings",
     "personal",
     "other_expense",
 )
-TRANSFERS = ("owner_deposit", "withdrawal")
+TRANSFERS = ("owner_deposit", "withdrawal", "savings")
+CATEGORIES = tuple(dict.fromkeys(MONEY_IN + MONEY_OUT))
 
 
 class MoneyImport(TenantMixin, db.Model):
@@ -44,11 +46,16 @@ class MoneyTransaction(TenantMixin, db.Model):
     __tablename__ = "money_transactions"
     __table_args__ = (
         db.UniqueConstraint(
-            "business_id", "receipt", "is_charge", name="uq_money_transactions_receipt"
+            "business_id",
+            "receipt",
+            "is_charge",
+            "direction",
+            "amount",
+            name="uq_money_transactions_receipt",
         ),
         db.CheckConstraint("amount > 0", name="amount_positive"),
         in_list("direction", ("in", "out"), "direction_valid"),
-        in_list("category", MONEY_IN + MONEY_OUT, "category_valid"),
+        in_list("category", CATEGORIES, "category_valid"),
     )
 
     id = db.Column(db.Integer, primary_key=True)

@@ -200,7 +200,7 @@ Every action is written to the affected business's audit log, and its administra
 `pypdf` using the password from the same SMS) or a CSV export, and `POST /api/money/sms` takes
 pasted confirmation messages. `app/statements.py` turns both into transactions: receipt, time,
 direction, amount, balance and the other party. Failed or reversed rows are skipped, transaction
-charges become their own rows, and a receipt already imported is never added twice.
+charges become their own rows, and a row already imported is never added twice. A Fuliza payment shows as two rows with one receipt (the overdraft coming in and the payment going out), and both are kept.
 
 Each transaction gets a category from, in order, a rule the administrator taught it for that phone
 number or name, the transaction type (an agent withdrawal, airtime, a Paybill payment), keywords

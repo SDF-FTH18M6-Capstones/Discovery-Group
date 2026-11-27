@@ -23,6 +23,10 @@ NOISE = re.compile(
     re.IGNORECASE,
 )
 PHONE = re.compile(r"(?:\+?254|0)\s?[17][\d*]{6,10}\d")
+FULIZA = re.compile(r"\s*(?:with\s+)?Fuliza\s+M-?Pesa\b", re.IGNORECASE)
+OVERDRAFT = re.compile(
+    r"overdraft of credit party|od loan repayment|m-pesa overdraw", re.IGNORECASE
+)
 
 
 class StatementError(Exception):
@@ -45,10 +49,23 @@ class Entry:
 
 KINDS = [
     ("fee", ("charge", "transaction cost")),
+    (
+        "savings",
+        (
+            "unit trust",
+            "ziidi",
+            "m-shwari deposit",
+            "m-shwari withdraw",
+            "kcb m-pesa deposit",
+            "kcb m-pesa withdraw",
+            "lock savings",
+        ),
+    ),
+    ("bank", ("transfer from bank", "to customer via api", "bank transfer")),
     ("withdrawal", ("withdrawal at agent", "customer withdrawal", "withdraw ")),
     ("deposit", ("deposit of funds", "agent deposit", "give ")),
     ("airtime", ("airtime", "bundle purchase", "data bundle")),
-    ("loan", ("fuliza", "m-shwari", "od loan", "overdraft", "kcb m-pesa", "loan")),
+    ("loan", ("od loan", "overdraft", "overdraw", "m-shwari loan", "kcb m-pesa loan", "loan")),
     ("paybill", ("pay bill",)),
     ("merchant", ("merchant payment", "buy goods", "customer payment to small business")),
     (
@@ -62,7 +79,7 @@ KINDS = [
 
 
 def classify(details):
-    lowered = details.lower()
+    lowered = FULIZA.sub("", details).lower()
     for kind, words in KINDS:
         if any(word in lowered for word in words):
             return kind
@@ -79,6 +96,9 @@ def money(text):
 def counterparty_of(details, kind="other"):
     if kind == "fee":
         return "M-Pesa charges", None
+    if OVERDRAFT.search(details):
+        return "Fuliza M-Pesa", None
+    details = FULIZA.sub("", details)
     phone_match = PHONE.search(details)
     phone = phone_match.group().replace(" ", "").replace("+", "") if phone_match else None
     rest = details
@@ -89,6 +109,8 @@ def counterparty_of(details, kind="other"):
     rest = PHONE.sub("", rest)
     rest = re.sub(r"^\s*\d{5,}\s*-?\s*", "", rest)
     rest = re.sub(r"\s+Acc\.?.*$", "", rest, flags=re.IGNORECASE)
+    rest = re.sub(r"\s*-?\s*(APP )?to Customer via API.*$", "", rest, flags=re.IGNORECASE)
+    rest = re.sub(r"\s+by M-PESA.*$", "", rest, flags=re.IGNORECASE)
     name = re.sub(r"\s+", " ", rest).strip(" -.")
     return name[:120], phone
 

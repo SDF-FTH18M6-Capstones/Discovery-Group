@@ -219,3 +219,59 @@ def test_the_category_lists_are_published(admin):
 
     assert lists["money_in"][0] == "sales"
     assert "stock" in lists["money_out"]
+
+
+FULIZA_ROWS = [
+    "UKR374ATTE 2026-11-27 18:51:28 Unit Trust Invest to 4145555 - Completed -5.60 102.68",
+    "ZIIDI MMF by M-PESA\\UnitTrust",
+    "UKR374AUWI 2026-11-27 18:40:12 OD Loan Repayment to 232323 - Completed -311.72 188.28",
+    "M-PESA Overdraw",
+    "UKR374AFHP 2026-11-27 17:38:42 OverDraft of Credit Party Completed 40.00 0.00",
+    "UKR374AFHP 2026-11-27 17:38:42 Pay Bill Online Fuliza M-Pesa to 888880 - Completed"
+    " -40.00 0.00",
+    "KPLC PREPAID Acc. 37193146216",
+    "UKQ37455T5 2026-11-26 15:55:43 Customer Send Money to Micro SME Business Completed"
+    " -70.00 0.00",
+    "with Fuliza MPesa - 254714***353 JEREMIAH GATHUMBI",
+    "UKQ37455T5 2026-11-26 15:55:43 OverDraft of Credit Party Completed 70.00 70.00",
+    "UKQ3744V7S 2026-11-26 14:49:27 Transfer from Bank 517819 - IM BANK Completed 150.00 150.00",
+    "LIMITED- APP to Customer via API",
+]
+
+
+def test_fuliza_rows_sharing_a_receipt_are_all_kept_and_sorted(admin):
+    response = upload(admin, statement_pdf(FULIZA_ROWS))
+
+    assert (response.json["added"], response.json["duplicates"]) == (7, 0)
+    rows = {
+        (t.receipt, t.direction): (t.counterparty, t.category)
+        for t in db.session.scalars(db.select(MoneyTransaction))
+    }
+    assert rows == {
+        ("UKR374ATTE", "out"): ("ZIIDI MMF", "savings"),
+        ("UKR374AUWI", "out"): ("Fuliza M-Pesa", "loan_repayment"),
+        ("UKR374AFHP", "in"): ("Fuliza M-Pesa", "loan"),
+        ("UKR374AFHP", "out"): ("KPLC PREPAID", "utilities"),
+        ("UKQ37455T5", "out"): ("JEREMIAH GATHUMBI", "other_expense"),
+        ("UKQ37455T5", "in"): ("Fuliza M-Pesa", "loan"),
+        ("UKQ3744V7S", "in"): ("IM BANK LIMITED", "owner_deposit"),
+    }
+    again = upload(admin, statement_pdf(FULIZA_ROWS)).json
+    assert (again["added"], again["duplicates"]) == (0, 7)
+
+
+def test_savings_can_be_chosen_either_way(admin):
+    lists = admin.get("/api/money/categories").json
+
+    assert "savings" in lists["money_in"]
+    assert "savings" in lists["money_out"]
+
+
+def test_a_savings_payment_by_sms_is_kept_apart_from_spending(admin):
+    text = (
+        "UKR374ATTE Confirmed. Ksh5.60 sent to ZIIDI MMF for account 4145555 on 27/11/26 at"
+        " 6:51 PM. New M-PESA balance is Ksh102.68."
+    )
+    admin.post("/api/money/sms", json={"text": text})
+
+    assert by_receipt()["UKR374ATTE"].category == "savings"

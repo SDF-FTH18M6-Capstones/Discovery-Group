@@ -485,7 +485,7 @@ erDiagram
 | No double receiving, sale or payment | `UNIQUE (business_id, idempotency_key)` on `goods_receipts`, `sales` and `mpesa_payments` |
 | A delivery never exceeds the order | `CHECK (received_quantity <= quantity)` on `purchase_items` |
 | One M-Pesa receipt, one payment | `UNIQUE` on `mpesa_payments.receipt_number` and `checkout_request_id` |
-| A statement imported twice adds nothing | `UNIQUE (business_id, receipt, is_charge)` on `money_transactions` |
+| A statement imported twice adds nothing | `UNIQUE (business_id, receipt, is_charge, direction, amount)` on `money_transactions`, since Fuliza puts two rows under one receipt |
 | One holder per asset at a time | Partial unique index on `asset_assignments (asset_id) WHERE returned_at IS NULL` |
 | Unique SKUs, category names, asset codes and barcodes per business | `UNIQUE (business_id, …)` |
 | Money is exact | `decimal(12,2)`, never floating point |

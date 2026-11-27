@@ -4,11 +4,16 @@ from zoneinfo import ZoneInfo
 from app.extensions import db
 from app.models import CategoryRule, MoneyImport, MoneyTransaction, Sale, Supplier
 
+SAVINGS = ("ziidi", "mmf", "unit trust", "m-shwari", "lock savings")
 UTILITIES = ("kplc", "nairobi water", "water company", "zuku", "safaricom home", "gotv", "dstv")
 DEFAULTS = {
     ("in", "customer_payment"): "sales",
     ("in", "received"): "sales",
     ("in", "deposit"): "owner_deposit",
+    ("in", "bank"): "owner_deposit",
+    ("in", "savings"): "savings",
+    ("out", "savings"): "savings",
+    ("out", "bank"): "withdrawal",
     ("in", "loan"): "loan",
     ("out", "fee"): "fees",
     ("out", "withdrawal"): "withdrawal",
@@ -25,11 +30,13 @@ def suggest(entry, rules, suppliers):
     key = rule_key(entry.counterparty, entry.phone)
     if (entry.direction, key) in rules:
         return rules[(entry.direction, key)]
+    name = (entry.counterparty or "").lower()
+    if any(word in name for word in SAVINGS) and entry.kind != "loan":
+        return "savings"
     if (entry.direction, entry.kind) in DEFAULTS:
         return DEFAULTS[(entry.direction, entry.kind)]
     if entry.direction == "in":
         return "other_income"
-    name = (entry.counterparty or "").lower()
     if any(word in name for word in UTILITIES):
         return "utilities"
     if name and any(supplier in name or name in supplier for supplier in suppliers):
@@ -49,7 +56,14 @@ def import_entries(entries, skipped, source, filename, user):
     }
     suppliers = [name.lower() for name in db.session.scalars(db.select(Supplier.name)) if name]
     known = set(
-        db.session.execute(db.select(MoneyTransaction.receipt, MoneyTransaction.is_charge)).all()
+        db.session.execute(
+            db.select(
+                MoneyTransaction.receipt,
+                MoneyTransaction.is_charge,
+                MoneyTransaction.direction,
+                MoneyTransaction.amount,
+            )
+        ).all()
     )
     sales = dict(
         db.session.execute(
@@ -71,24 +85,27 @@ def import_entries(entries, skipped, source, filename, user):
         if entry.extra.get("fee"):
             rows.append((entry, True))
     for entry, is_charge in rows:
-        if (entry.receipt, is_charge) in known:
+        charge_only = is_charge and entry.kind != "fee"
+        direction = "out" if charge_only else entry.direction
+        amount = entry.extra["fee"] if charge_only else entry.amount
+        key = (entry.receipt, is_charge, direction, amount)
+        if key in known:
             batch.duplicates += 1
             continue
-        known.add((entry.receipt, is_charge))
-        charge_only = is_charge and entry.kind != "fee"
+        known.add(key)
         transaction = MoneyTransaction(
             receipt=entry.receipt,
             is_charge=is_charge,
             occurred_at=local_time(entry.occurred_at, timezone),
-            direction="out" if charge_only else entry.direction,
-            amount=entry.extra["fee"] if charge_only else entry.amount,
+            direction=direction,
+            amount=amount,
             balance=None if charge_only else entry.balance,
             kind="fee" if is_charge else entry.kind,
             category="fees" if is_charge else suggest(entry, rules, suppliers),
             counterparty="M-Pesa charges" if is_charge else entry.counterparty,
             phone=None if is_charge else entry.phone,
             details=entry.details,
-            sale_id=None if is_charge else sales.get(entry.receipt),
+            sale_id=sales.get(entry.receipt) if direction == "in" and not is_charge else None,
         )
         if transaction.sale_id:
             transaction.category = "sales"
