@@ -1,56 +1,99 @@
 # StockPilot
 
-Inventory, sales, procurement and asset management for **any number of businesses**.
-Flask API + React app. Each business signs up, invites its staff with a join code, and sees only
-its own products, sales, orders, assets and people.
+StockPilot runs the till, the stockroom, purchasing and company assets for small businesses. One
+installation serves any number of businesses: each signs up, invites its staff with a join code,
+takes M-Pesa payments into its own Paybill or till, and only ever sees its own data.
 
-| Folder | What it is | How to run it |
-|---|---|---|
-| `backend/` | Flask REST API, PostgreSQL, Swagger docs | see [backend/README.md](backend/README.md) |
-| `frontend/` | React app (Vite, Redux Toolkit, Tailwind), installable as a PWA | see [frontend/README.md](frontend/README.md) |
-| `docs/` | Database design ([ERD.md](docs/ERD.md), [erddoc.png](docs/erddoc.png)), user stories, [what changed](docs/CHANGES.md) | |
+**Live demo:** https://stockpilotke254.netlify.app
 
-## Quick start
+## Features
+
+- **Point of sale:** sell from a searchable product grid, send an M-Pesa prompt to the customer's
+  phone and complete the sale automatically when Safaricom confirms it. Cash and card sales,
+  printable receipts with VAT, same-day voids.
+- **Stock that keeps itself up to date:** every sale, delivery and adjustment is written to a stock
+  ledger. Low stock prepares a purchase order for the product's usual supplier, or sends it
+  straight away to a trusted supplier. Receiving a delivery updates stock and the average cost.
+- **Purchasing:** staff requests with approval, purchase orders emailed to suppliers, partial
+  deliveries with goods received notes.
+- **Assets and repairs:** barcode labels, assignment and return, overdue items, a repair board.
+- **Oversight for owners:** the administrator approves new staff and chooses their roles, follows
+  every sale and order, and reads reports, profit, expenses and a full audit log. An evening email
+  summarises the day.
+- **Security:** email confirmation, one-time sign-in codes, revocable sessions, role checks on
+  every endpoint and strict separation between businesses.
+- **Subscriptions:** a 14-day trial, then monthly plans paid by M-Pesa to StockPilot's Paybill. A
+  lapsed business keeps read access to its data until it renews.
+- Installable as an app on phones and computers, with light and dark themes.
+
+## Tech stack
+
+| Part | Built with |
+|---|---|
+| API | Python 3.13, Flask, flask-smorest (OpenAPI), SQLAlchemy 2, Alembic, JWT |
+| Database | PostgreSQL 16 |
+| Web app | React 19, Vite, Redux Toolkit, React Router, Tailwind CSS |
+| Payments and email | Safaricom Daraja (M-Pesa Express), Brevo |
+| Quality | pytest (97% coverage), Vitest and Testing Library, Ruff, oxlint, Prettier, GitHub Actions |
+| Hosting | Render (API, database, Key Value) and Netlify (web app) |
+
+## Repository layout
+
+| Folder | Contents |
+|---|---|
+| [`backend/`](backend/README.md) | REST API, database migrations, demo data and tests |
+| [`frontend/`](frontend/README.md) | React web app and its tests |
+| [`docs/`](docs/ERD.md) | Database design, user stories and wireframes |
+| `.github/workflows/` | CI on every push and pull request, and the evening summary schedule |
+| `render.yaml` | Render Blueprint for the API, database and Key Value |
+
+## Running it locally
+
+You need Python 3.13, Node.js 22 and PostgreSQL 16.
 
 ```bash
-# backend (needs PostgreSQL 16)
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && cp .env.example .env
-flask db upgrade && python seed.py && flask run
-
-# frontend, in a second terminal
-cd frontend && npm install && cp .env.example .env.local && npm run dev
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+flask db upgrade && python seed.py
+flask run
 ```
 
-Open http://localhost:5173 and sign in as `admin@stockpilot.test` / `ChangeMe123!` (demo data
-for review only; all demo accounts are in the backend README), or start your own business.
+In a second terminal:
 
-## Deploy
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
 
-- **API**: Render Blueprint in [`render.yaml`](render.yaml) on the free plan (web service +
-  PostgreSQL + Key Value). `backend/start.sh` runs migrations (and the demo seed when
-  `SEED_DEMO=true`) on each start, then `gunicorn wsgi:app`. Email goes through Brevo's API
-  (`BREVO_API_KEY`), because Render's free plan blocks SMTP. See `backend/README.md`.
-- **Frontend**: Netlify ([`frontend/netlify.toml`](frontend/netlify.toml)) or Vercel
-  ([`frontend/vercel.json`](frontend/vercel.json)); both rewrite every path to `index.html`.
-- Set the API's `CORS_ORIGINS` and `FRONTEND_URL` to the frontend's HTTPS address, and the
-  frontend's `VITE_API_URL` to the API's.
+Open http://localhost:5173. The demo data includes two businesses; sign in as
+`admin@stockpilot.test` with the password `ChangeMe123!`, or start a business of your own. The
+[backend README](backend/README.md#demo-data) lists every demo account.
+
+## Deployment
+
+The API deploys to Render from [`render.yaml`](render.yaml) and the web app to Netlify from
+[`frontend/netlify.toml`](frontend/netlify.toml). The [backend README](backend/README.md#deployment)
+covers the environment variables, email, M-Pesa and the scheduled summary.
 
 ## Team
 
 | Role | Name |
 |---|---|
-| Scrum Master · QA/DevOps | David |
+| Scrum Master, QA and DevOps | David |
 | Backend | Carlos |
-| Database / API | Vincent |
+| Database and API | Vincent |
 | Frontend | Keith |
 
-## How we work (Gitflow)
+## Contributing
 
-- `main` = what we release at each milestone gate. Never push to it directly.
-- `development` = where finished work is merged.
-- One branch per GitHub issue, made from `development`: `feature/<issue-number>-short-name`
-- Commit messages: `feat: add product form`, `fix: reject negative prices`, `test: ...`, `docs: ...`
-- Open a pull request into `development`. CI (`.github/workflows/ci.yml`) must pass: lint,
-  format check, tests with coverage.
-  Turn on branch protection for `main` and `development` so merging waits for CI.
+- `main` holds released work and `development` collects finished features; neither takes direct
+  pushes.
+- Branch from `development` as `feature/<issue-number>-short-name`.
+- Write commit messages as `feat: …`, `fix: …`, `test: …` or `docs: …`.
+- Open a pull request into `development`. CI must pass: linting, formatting, migrations and tests.
+- Merge `development` into `main` with a merge commit, not a squash, so the two branches keep a
+  shared history.

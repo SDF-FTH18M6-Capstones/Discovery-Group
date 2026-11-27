@@ -2,6 +2,7 @@ from app.extensions import db
 from app.models.base import TenantMixin, in_list
 
 MPESA_STATUSES = ("pending", "paid", "failed", "cancelled")
+MPESA_PURPOSES = ("sale", "subscription")
 
 
 class MpesaPayment(TenantMixin, db.Model):
@@ -12,12 +13,15 @@ class MpesaPayment(TenantMixin, db.Model):
         ),
         db.CheckConstraint("amount > 0", name="amount_positive"),
         in_list("status", MPESA_STATUSES, "status_valid"),
+        in_list("purpose", MPESA_PURPOSES, "purpose_valid"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     attendant_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    purpose = db.Column(db.String(12), nullable=False, server_default="sale", default="sale")
+    months = db.Column(db.Integer)
     phone = db.Column(db.String(15), nullable=False)
     amount = db.Column(db.Integer, nullable=False)
     items = db.Column(db.JSON, nullable=False)

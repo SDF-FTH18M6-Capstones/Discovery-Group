@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import re
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from flask import current_app
 from flask_jwt_extended import (
@@ -19,6 +19,7 @@ from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 from app import verification as verify
 from app.audit import audit
 from app.auth import covers_for, roles_required
+from app.billing import TRIAL_DAYS, subscription
 from app.extensions import db, limiter
 from app.mail import queue_email
 from app.models import (
@@ -82,12 +83,25 @@ class LoginSchema(Schema):
     password = fields.String(required=True, load_only=True)
 
 
+class SubscriptionBrief(Schema):
+    status = fields.String()
+    ends_on = fields.Date()
+    grace_until = fields.Date()
+    days_left = fields.Integer()
+    read_only = fields.Boolean()
+    required = fields.Boolean()
+
+
 class BusinessBrief(Schema):
     id = fields.Integer()
     name = fields.String()
     currency = fields.String()
     timezone = fields.String()
     vat_rate = fields.Decimal(places=2, as_string=True)
+    subscription = fields.Method("get_subscription")
+
+    def get_subscription(self, business):
+        return SubscriptionBrief().dump(subscription(business))
 
 
 class AccountSchema(Schema):
@@ -217,7 +231,9 @@ def start_session(user):
 def register_business(data):
     if find_user(data["email"]):
         abort(409, message="An account with this email already exists.")
-    business = Business(name=data["business_name"])
+    business = Business(
+        name=data["business_name"], trial_ends_on=date.today() + timedelta(days=TRIAL_DAYS)
+    )
     db.session.add(business)
     db.session.flush()
     with tenant(business.id):

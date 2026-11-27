@@ -8,6 +8,7 @@ import pytest
 from app import mpesa
 from app.extensions import db
 from app.models import Category, MpesaPayment, Notification, Product, Sale
+from app.vault import seal
 
 
 @pytest.fixture()
@@ -30,12 +31,14 @@ def tea():
 
 
 @pytest.fixture()
-def sandbox(app):
-    app.config.update(
-        MPESA_MODE="sandbox", MPESA_CONSUMER_KEY="key", MPESA_CONSUMER_SECRET="secret"
-    )
-    yield app
-    app.config.update(MPESA_MODE="simulate", MPESA_CONSUMER_KEY="", MPESA_CONSUMER_SECRET="")
+def sandbox(app, business):
+    business.mpesa_mode = "sandbox"
+    business.mpesa_shortcode = "174379"
+    business.mpesa_passkey = seal("passkey")
+    business.mpesa_consumer_key = seal("key")
+    business.mpesa_consumer_secret = seal("secret")
+    db.session.commit()
+    return business
 
 
 def start(client, product_id, quantity=2, phone="0712 345 678", key="till-key-0001"):
@@ -91,10 +94,11 @@ def test_the_till_learns_whether_prompts_are_on(as_role, app):
     app.config["MPESA_MODE"] = "simulate"
 
 
-def test_production_keeps_prompts_off_until_chosen(app):
+def test_production_keeps_prompts_off_until_chosen(app, business):
     app.config.update(MPESA_MODE="", IS_PRODUCTION=True)
     with app.app_context():
-        assert mpesa.mode() == "off"
+        assert mpesa.platform_mode() == "off"
+        assert mpesa.business_account(business).mode == "off"
     app.config.update(MPESA_MODE="simulate", IS_PRODUCTION=False)
 
 
@@ -168,7 +172,7 @@ def test_a_cancelled_prompt_sells_nothing(as_role, tea):
     again = seller.post(f"/api/payments/mpesa/{payment['id']}/simulate", json={"outcome": "paid"})
 
     assert cancelled.json["status"] == "cancelled"
-    assert cancelled.json["result_desc"] == "The customer cancelled the M-Pesa prompt."
+    assert cancelled.json["result_desc"] == "The M-Pesa prompt was cancelled on the phone."
     assert again.json["status"] == "cancelled"
     assert stock(tea) == 10
 
@@ -183,15 +187,17 @@ def test_other_attendants_cannot_see_a_payment(as_role, tea):
 def test_live_prompts_go_to_safaricom(as_role, tea, sandbox, monkeypatch):
     sent = {}
 
-    def fake_push(phone, amount, reference, description):
-        sent.update(phone=phone, amount=amount)
+    def fake_push(account, phone, amount, reference, description):
+        sent.update(
+            phone=phone, amount=amount, shortcode=account.shortcode, key=account.consumer_key
+        )
         return "ws_CO_1", "29115-1"
 
     monkeypatch.setattr(mpesa, "stk_push", fake_push)
 
     payment = start(as_role("sales"), tea).json
 
-    assert sent == {"phone": "254712345678", "amount": 199}
+    assert sent == {"phone": "254712345678", "amount": 199, "shortcode": "174379", "key": "key"}
     assert payment["simulated"] is False
     row = db.session.get(MpesaPayment, payment["id"])
     assert (row.checkout_request_id, row.merchant_request_id) == ("ws_CO_1", "29115-1")
@@ -255,7 +261,7 @@ def test_a_failed_payment_says_why(as_role, tea, sandbox, monkeypatch, client, a
     shown = seller.get(f"/api/payments/mpesa/{payment['id']}").json
     assert (shown["status"], shown["result_desc"]) == (
         "failed",
-        "The customer's M-Pesa balance is too low.",
+        "The M-Pesa balance is too low.",
     )
 
 
@@ -295,7 +301,7 @@ def test_a_lost_callback_is_recovered_by_asking_safaricom(as_role, tea, sandbox,
     payment = live_payment(seller, tea, monkeypatch)
     asked = []
     monkeypatch.setattr(
-        mpesa, "stk_query", lambda checkout: asked.append(checkout) or {"ResultCode": "1032"}
+        mpesa, "stk_query", lambda _, checkout: asked.append(checkout) or {"ResultCode": "1032"}
     )
 
     early = seller.get(f"/api/payments/mpesa/{payment['id']}").json
@@ -311,7 +317,7 @@ def test_still_processing_keeps_waiting_then_gives_up(as_role, tea, sandbox, mon
     seller = as_role("sales")
     payment = live_payment(seller, tea, monkeypatch)
 
-    def busy(_):
+    def busy(*_):
         raise mpesa.MpesaError("M-Pesa said: The transaction is being processed")
 
     monkeypatch.setattr(mpesa, "stk_query", busy)
@@ -326,14 +332,14 @@ def test_still_processing_keeps_waiting_then_gives_up(as_role, tea, sandbox, mon
     assert waiting["status"] == "pending"
     assert (given_up["status"], given_up["result_desc"]) == (
         "failed",
-        "The customer's phone did not answer in time.",
+        "The phone did not answer in time.",
     )
 
 
 def test_a_paid_query_waits_for_the_callback(as_role, tea, sandbox, monkeypatch):
     seller = as_role("sales")
     payment = live_payment(seller, tea, monkeypatch)
-    monkeypatch.setattr(mpesa, "stk_query", lambda _: {"ResultCode": "0"})
+    monkeypatch.setattr(mpesa, "stk_query", lambda *_: {"ResultCode": "0"})
     age(payment["id"], 30)
 
     assert seller.get(f"/api/payments/mpesa/{payment['id']}").json["status"] == "pending"
@@ -356,6 +362,9 @@ class FakeResponse(io.BytesIO):
         return False
 
 
+ACCOUNT = mpesa.Account(mode="sandbox", consumer_key="k", consumer_secret="s")
+
+
 def test_the_client_signs_requests_for_daraja(app, monkeypatch):
     calls = []
 
@@ -368,23 +377,20 @@ def test_the_client_signs_requests_for_daraja(app, monkeypatch):
         )
 
     monkeypatch.setattr(mpesa.urllib.request, "urlopen", fake_urlopen)
-    mpesa._token.update(value=None, expires=0.0, key=None)
-    app.config.update(MPESA_MODE="sandbox", MPESA_CONSUMER_KEY="k", MPESA_CONSUMER_SECRET="s")
-    try:
-        with app.test_request_context(base_url="https://api.example.com"):
-            answer = mpesa.stk_push("254712345678", 199, "Demo Shop Ltd", "StockPilot sale")
-            mpesa.stk_query("ws_1")
-    finally:
-        app.config.update(MPESA_MODE="simulate", MPESA_CONSUMER_KEY="", MPESA_CONSUMER_SECRET="")
+    mpesa._tokens.clear()
+    with app.test_request_context(base_url="https://api.example.com"):
+        answer = mpesa.stk_push(ACCOUNT, "254712345678", 199, "Demo Shop Ltd", "StockPilot sale")
+        mpesa.stk_query(ACCOUNT, "ws_1")
 
     assert answer == ("ws_1", "m_1")
     assert calls[0].full_url.startswith("https://sandbox.safaricom.co.ke/oauth/v1/generate")
     assert calls[0].get_header("Authorization") == "Basic azpz"
     push = json.loads(calls[1].data)
     assert calls[1].get_header("Authorization") == "Bearer tok"
-    assert (push["Amount"], push["PartyA"], push["AccountReference"]) == (
+    assert (push["Amount"], push["PartyA"], push["PartyB"], push["AccountReference"]) == (
         199,
         "254712345678",
+        "174379",
         "Demo Shop Lt",
     )
     assert push["CallBackURL"].startswith("https://api.example.com/api/payments/mpesa/callback/")
@@ -398,25 +404,22 @@ def test_daraja_errors_become_plain_messages(app, monkeypatch):
         )
 
     monkeypatch.setattr(mpesa.urllib.request, "urlopen", broken)
-    mpesa._token.update(value="tok", expires=9e18, key=("k", "s", "sandbox"))
-    app.config.update(MPESA_MODE="sandbox", MPESA_CONSUMER_KEY="k", MPESA_CONSUMER_SECRET="s")
+    mpesa._tokens[("sandbox", "k", "s")] = ("tok", 9e18)
     try:
         with app.test_request_context(), pytest.raises(mpesa.MpesaError) as error:
-            mpesa.stk_push("254712345678", 1, "Shop", "Sale")
+            mpesa.stk_push(ACCOUNT, "254712345678", 1, "Shop", "Sale")
         monkeypatch.setattr(
             mpesa.urllib.request,
             "urlopen",
             lambda *_a, **_k: (_ for _ in ()).throw(mpesa.urllib.error.URLError("down")),
         )
         with app.test_request_context(), pytest.raises(mpesa.MpesaError) as offline:
-            mpesa.stk_query("ws_1")
-        app.config["MPESA_CONSUMER_KEY"] = ""
+            mpesa.stk_query(ACCOUNT, "ws_1")
         with app.test_request_context(), pytest.raises(mpesa.MpesaError) as no_keys:
-            mpesa.access_token()
+            mpesa.access_token(mpesa.Account(mode="sandbox"))
     finally:
-        app.config.update(MPESA_MODE="simulate", MPESA_CONSUMER_KEY="", MPESA_CONSUMER_SECRET="")
-        mpesa._token.update(value=None, expires=0.0, key=None)
+        mpesa._tokens.clear()
 
     assert str(error.value) == "M-Pesa said: Invalid Amount"
     assert str(offline.value) == "Could not reach M-Pesa. Check the connection and try again."
-    assert "keys are missing" in str(no_keys.value)
+    assert "consumer key and secret are missing" in str(no_keys.value)

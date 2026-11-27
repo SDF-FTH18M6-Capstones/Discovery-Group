@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from app import create_app
+from app.billing import TRIAL_DAYS
 from app.extensions import db
 from app.models import (
     ROLE_CLASSES,
@@ -63,6 +64,7 @@ DEMO_SHOP = {
     ],
     "supplier_for": {"Beverages": 1, "Grocery": 1, "Packaging": 0, "Stationery": 0, "SP-002": 2},
     "waiting": [("Grace Wanjiru", "grace@stockpilot.test")],
+    "trusted": ("Metro Wholesale",),
     "asset_categories": ["Computers", "Furniture", "Devices"],
     "assets": [
         (
@@ -130,6 +132,7 @@ def seed_business(spec):
         phone=spec.get("phone"),
         address=spec.get("address"),
         receipt_footer=spec.get("receipt_footer"),
+        trial_ends_on=date.today() + timedelta(days=TRIAL_DAYS),
     )
     db.session.add(business)
     db.session.flush()
@@ -191,7 +194,7 @@ def seed_business(spec):
         db.session.flush()
 
         suppliers = [
-            Supplier(name=name, email=email, phone=phone)
+            Supplier(name=name, email=email, phone=phone, trusted=name in spec.get("trusted", ()))
             for name, email, phone in spec["suppliers"]
         ]
         db.session.add_all(suppliers)
