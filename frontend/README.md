@@ -48,6 +48,7 @@ The System status page shows whether the API is reachable.
 | Assets, repairs                                      | `/assets`, `/repairs`                                                         | inventory manages; everyone sees what they hold and reports faults                  |
 | Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator                                                                       |
 | Insights, M-Pesa money                               | `/insights`, `/money`                                                         | administrator: forecasts, and statements or SMS to import                           |
+| Scan a receipt                                       | `/receipts/scan`                                                              | administrator, procurement, inventory: receipt to expense or stock                  |
 | Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; M-Pesa and business settings for the administrator                        |
 | Platform                                             | `/platform`                                                                   | StockPilot's own owners (`PLATFORM_OWNERS` on the API)                              |
 
@@ -83,6 +84,13 @@ src/
 `public/manifest.webmanifest`, the icons and `public/sw.js` make the built app installable over
 HTTPS. The service worker caches only the app shell; API responses and tokens are never cached.
 Offline, the app shows a banner, and pages that were never opened fall back to `offline.html`.
+
+## Receipt reading
+
+Scan a receipt shrinks the photo in the browser first. Unless the server has online reading
+turned on, `tesseract.js` then reads it on the device. The library is loaded only when someone
+scans, and it fetches its English language data (about 4 MB) from jsDelivr the first time, so the
+first scan needs a connection.
 
 ## Deployment
 

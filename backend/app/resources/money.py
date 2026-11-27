@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from flask import request
 from flask_jwt_extended import current_user
 from flask_smorest import Blueprint, abort
@@ -44,11 +46,33 @@ class TransactionOut(Schema):
     sale_id = fields.Integer(allow_none=True)
 
 
-class TransactionQuery(PageQuery):
+class Filters(Schema):
     direction = fields.String(load_default=None, validate=validate.OneOf(("in", "out")))
     category = fields.String(load_default=None, validate=validate.OneOf(CATEGORIES))
     search = fields.String(load_default=None)
     import_id = fields.Integer(load_default=None)
+
+
+class TransactionQuery(PageQuery, Filters):
+    pass
+
+
+class CategoryTotal(Schema):
+    category = fields.String()
+    direction = fields.String()
+    total = fields.Decimal(places=2, as_string=True)
+    count = fields.Integer()
+
+
+class TotalsOut(Schema):
+    money_in = fields.Decimal(places=2, as_string=True)
+    money_out = fields.Decimal(places=2, as_string=True)
+    charges = fields.Decimal(places=2, as_string=True)
+    net = fields.Decimal(places=2, as_string=True)
+    count = fields.Integer()
+    first_at = fields.DateTime(allow_none=True)
+    last_at = fields.DateTime(allow_none=True)
+    by_category = fields.List(fields.Nested(CategoryTotal))
 
 
 class SmsIn(Schema):
@@ -147,14 +171,7 @@ def undo_import(import_id):
     db.session.commit()
 
 
-@blp.route("/transactions")
-@blp.arguments(TransactionQuery, location="query")
-@blp.response(200, page_schema(TransactionOut))
-@roles_required("admin")
-def transactions(args):
-    query = db.select(MoneyTransaction).order_by(
-        MoneyTransaction.occurred_at.desc(), MoneyTransaction.id.desc()
-    )
+def filtered(query, args):
     for field in ("direction", "category", "import_id"):
         if args[field]:
             query = query.where(getattr(MoneyTransaction, field) == args[field])
@@ -167,7 +184,52 @@ def transactions(args):
                 MoneyTransaction.phone.ilike(term),
             )
         )
-    return paginate(query, args["page"], args["per_page"])
+    return query
+
+
+@blp.route("/transactions")
+@blp.arguments(TransactionQuery, location="query")
+@blp.response(200, page_schema(TransactionOut))
+@roles_required("admin")
+def transactions(args):
+    query = db.select(MoneyTransaction).order_by(
+        MoneyTransaction.occurred_at.desc(), MoneyTransaction.id.desc()
+    )
+    return paginate(filtered(query, args), args["page"], args["per_page"])
+
+
+@blp.route("/totals")
+@blp.arguments(Filters, location="query")
+@blp.response(200, TotalsOut)
+@roles_required("admin")
+def totals(args):
+    query = filtered(
+        db.select(
+            MoneyTransaction.category,
+            MoneyTransaction.direction,
+            db.func.sum(MoneyTransaction.amount),
+            db.func.count(MoneyTransaction.id),
+            db.func.min(MoneyTransaction.occurred_at),
+            db.func.max(MoneyTransaction.occurred_at),
+        ).group_by(MoneyTransaction.category, MoneyTransaction.direction),
+        args,
+    )
+    groups = db.session.execute(query).all()
+    money_in = sum((g[2] for g in groups if g[1] == "in"), Decimal(0))
+    money_out = sum((g[2] for g in groups if g[1] == "out"), Decimal(0))
+    return {
+        "money_in": money_in,
+        "money_out": money_out,
+        "charges": sum((g[2] for g in groups if g[0] == "fees"), Decimal(0)),
+        "net": money_in - money_out,
+        "count": sum(g[3] for g in groups),
+        "first_at": min((g[4] for g in groups), default=None),
+        "last_at": max((g[5] for g in groups), default=None),
+        "by_category": [
+            {"category": category, "direction": direction, "total": total, "count": count}
+            for category, direction, total, count, _, _ in sorted(groups, key=lambda g: -g[2])
+        ],
+    }
 
 
 @blp.route("/transactions/<int:transaction_id>", methods=["PUT"])

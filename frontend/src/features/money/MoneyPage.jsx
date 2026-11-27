@@ -5,7 +5,7 @@ import Field from "../../components/Field";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
-import { dateTime, money } from "../../format";
+import { dateTime, money, shortDate } from "../../format";
 import { CATEGORY_NAMES, MONEY_IN, MONEY_OUT } from "./categories";
 
 const SOURCES = { statement: "Statement (PDF)", csv: "Statement (CSV)", sms: "Pasted messages" };
@@ -209,19 +209,80 @@ function CategoryPicker({ row, onSaved }) {
   );
 }
 
+function Totals({ totals, category, onPick }) {
+  if (!totals?.count) return null;
+  const spending = totals.by_category.filter((group) => group.direction === "out").slice(0, 6);
+  const top = spending[0]?.total || 1;
+  return (
+    <div className="flex flex-col gap-4 border-b border-line p-4">
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div>
+          <dt className="text-xs text-muted">Money in</dt>
+          <dd className="figure text-lg text-brand-dark">{money(totals.money_in)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted">Money out</dt>
+          <dd className="figure text-lg">{money(totals.money_out)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted">Difference</dt>
+          <dd className={`figure text-lg ${Number(totals.net) < 0 ? "text-danger" : ""}`}>
+            {money(totals.net)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs text-muted">M-Pesa charges</dt>
+          <dd className="figure text-lg">{money(totals.charges)}</dd>
+        </div>
+      </dl>
+      <p className="text-xs text-muted">
+        {totals.count} transaction{totals.count === 1 ? "" : "s"} from {shortDate(totals.first_at)}{" "}
+        to {shortDate(totals.last_at)}
+      </p>
+      {!category && spending.length > 1 && (
+        <div>
+          <h3 className="mb-2 text-sm font-semibold">Where the money went</h3>
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {spending.map((group) => (
+              <li key={group.category}>
+                <button
+                  type="button"
+                  onClick={() => onPick(group.category)}
+                  className="grid w-full grid-cols-[10rem_1fr_7rem] items-center gap-3 text-left hover:opacity-80"
+                >
+                  <span className="truncate">{CATEGORY_NAMES[group.category]}</span>
+                  <span className="h-2 rounded-full bg-line">
+                    <span
+                      className="block h-2 rounded-full bg-[var(--sp-chart)]"
+                      style={{ width: `${(Number(group.total) / Number(top)) * 100}%` }}
+                    />
+                  </span>
+                  <span className="figure text-right">{money(group.total)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Transactions({ version, onNotice }) {
   const [direction, setDirection] = useState("");
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [list, setList] = useState(null);
+  const [totals, setTotals] = useState(null);
 
   const load = () => {
-    const query = new URLSearchParams({ page, per_page: 20 });
-    if (direction) query.set("direction", direction);
-    if (category) query.set("category", category);
-    if (search) query.set("search", search);
-    return api(`/api/money/transactions?${query}`).then(setList);
+    const filters = new URLSearchParams();
+    if (direction) filters.set("direction", direction);
+    if (category) filters.set("category", category);
+    if (search) filters.set("search", search);
+    api(`/api/money/totals?${filters}`).then(setTotals);
+    return api(`/api/money/transactions?${filters}&page=${page}&per_page=20`).then(setList);
   };
 
   useEffect(() => {
@@ -300,6 +361,15 @@ function Transactions({ version, onNotice }) {
           className="input w-52"
         />
       </div>
+      <Totals
+        totals={totals}
+        category={category}
+        onPick={(picked) => {
+          setDirection("out");
+          setCategory(picked);
+          setPage(1);
+        }}
+      />
       {list?.count === 0 ? (
         <p className="p-8 text-center text-muted">
           Nothing yet. Upload a statement or paste messages to see your money here.

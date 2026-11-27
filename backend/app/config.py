@@ -37,6 +37,8 @@ class Config:
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
     MAIL_FROM = os.getenv("MAIL_FROM", "StockPilot <no-reply@stockpilot.local>")
     BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+    RECEIPT_AI_KEY = os.getenv("RECEIPT_AI_KEY", "")
+    RECEIPT_AI_MODEL = os.getenv("RECEIPT_AI_MODEL", "claude-haiku-5-5")
 
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "true").lower() == "true"
     LOGIN_CODE_REQUIRED = os.getenv("LOGIN_CODE_REQUIRED", "true").lower() == "true"
@@ -135,3 +137,4 @@ class TestConfig(Config):
     LOGIN_CODE_EXEMPT_DOMAINS = []
     MPESA_MODE = "simulate"
     TASK_TOKEN = "test-task-token"
+    RECEIPT_AI_KEY = ""

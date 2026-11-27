@@ -33,6 +33,9 @@ takes M-Pesa payments into its own Paybill or till, and only ever sees its own d
   Each transaction is read, sorted into a category such as stock, rent or sales, and matched to
   till sales. Correcting a category teaches StockPilot how to sort that sender from then on, so a
   kiosk with no till history still gets forecasts from its first statement.
+- **Receipt scanning:** photograph a paper receipt and StockPilot fills in the shop, date, total
+  and items, ready to save as an expense or as stock bought over the counter. Photos are read on
+  the phone for free, or online for better accuracy when a key is added.
 - Installable as an app on phones and computers, with light and dark themes.
 
 ## Tech stack

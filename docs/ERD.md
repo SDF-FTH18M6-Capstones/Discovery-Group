@@ -337,8 +337,8 @@ erDiagram
         varchar receipt UK
         boolean is_charge UK
         timestamptz occurred_at
-        varchar direction
-        decimal amount
+        varchar direction UK
+        decimal amount UK
         decimal balance
         varchar kind
         varchar category
@@ -836,8 +836,8 @@ Checks: `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor',
 | `receipt` | varchar(20) | yes | UK per business |  |
 | `is_charge` | boolean | yes | UK per business |  |
 | `occurred_at` | timestamptz | yes |  |  |
-| `direction` | varchar(3) | yes |  |  |
-| `amount` | decimal(12, 2) | yes |  |  |
+| `direction` | varchar(3) | yes | UK per business |  |
+| `amount` | decimal(12, 2) | yes | UK per business |  |
 | `balance` | decimal(12, 2) | no |  |  |
 | `kind` | varchar(20) | yes |  |  |
 | `category` | varchar(20) | yes |  |  |
@@ -847,7 +847,7 @@ Checks: `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor',
 | `sale_id` | int | no | FK → sales |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `amount > 0`; `direction IN ('in', 'out')`; `category IN ('sales', 'loan', 'owner_deposit', 'other_income', 'stock', 'rent', 'utilities', 'wages', 'transport', 'airtime', 'fees', 'loan_repayment', 'withdrawal', 'personal', 'other_expense')`
+Checks: `amount > 0`; `direction IN ('in', 'out')`; `category IN ('sales', 'loan', 'owner_deposit', 'savings', 'other_income', 'stock', 'rent', 'utilities', 'wages', 'transport', 'airtime', 'fees', 'loan_repayment', 'withdrawal', 'personal', 'other_expense')`
 
 ### mpesa_payments
 
@@ -976,7 +976,7 @@ Checks: `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`; `quantity_aft
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`; `source IN ('manual', 'low_stock', 'request')`; `total >= 0`
+Checks: `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`; `source IN ('manual', 'low_stock', 'request', 'receipt')`; `total >= 0`
 
 ### goods_receipts
 

@@ -275,3 +275,31 @@ def test_a_savings_payment_by_sms_is_kept_apart_from_spending(admin):
     admin.post("/api/money/sms", json={"text": text})
 
     assert by_receipt()["UKR374ATTE"].category == "savings"
+
+
+def test_totals_follow_the_filters(admin):
+    upload(admin, statement_pdf(ROWS))
+
+    everything = admin.get("/api/money/totals").json
+    assert (everything["money_in"], everything["money_out"], everything["charges"]) == (
+        "300.00",
+        "1157.00",
+        "7.00",
+    )
+    assert (everything["net"], everything["count"]) == ("-857.00", 5)
+    assert everything["by_category"][0] == {
+        "category": "other_expense",
+        "direction": "out",
+        "total": "700.00",
+        "count": 2,
+    }
+    assert everything["first_at"].startswith("2026-11-02T05:00")
+
+    spending = admin.get("/api/money/totals?direction=out&search=kplc").json
+    assert (spending["money_in"], spending["money_out"], spending["count"]) == ("0.00", "450.00", 1)
+
+
+def test_totals_with_nothing_imported(admin):
+    empty = admin.get("/api/money/totals").json
+
+    assert (empty["money_in"], empty["count"], empty["first_at"]) == ("0.00", 0, None)

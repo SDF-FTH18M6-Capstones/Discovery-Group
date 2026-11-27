@@ -31,6 +31,8 @@ services:
           property: connectionString
       - key: BREVO_API_KEY
         sync: false
+      - key: RECEIPT_AI_KEY
+        sync: false
       - key: MAIL_FROM
         sync: false
       - key: SEED_DEMO

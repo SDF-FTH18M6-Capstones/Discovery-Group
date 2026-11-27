@@ -19,6 +19,7 @@ import PurchasesPage from "./features/purchases/PurchasesPage";
 import RepairsPage from "./features/repairs/RepairsPage";
 import ReportsPage from "./features/reports/ReportsPage";
 import MoneyPage from "./features/money/MoneyPage";
+import ScanPage from "./features/receipts/ScanPage";
 import ApprovalsPage from "./features/requests/ApprovalsPage";
 import RequestsPage from "./features/requests/RequestsPage";
 import PosPage from "./features/sales/PosPage";
@@ -90,6 +91,7 @@ export default function App() {
 
         <Route element={<RequireAuth roles={PURCHASE_VIEWERS} />}>
           <Route path="purchases" element={<PurchasesPage />} />
+          <Route path="receipts/scan" element={<ScanPage />} />
         </Route>
 
         <Route element={<RequireAuth roles={PROCUREMENT_VIEWERS} />}>

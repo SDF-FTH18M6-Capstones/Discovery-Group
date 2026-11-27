@@ -366,6 +366,11 @@ export default function PurchasesPage() {
                         Auto: low stock
                       </span>
                     )}
+                    {purchase.source === "receipt" && (
+                      <span className="rounded-full bg-mint px-2 py-0.5 text-xs font-semibold text-brand-dark">
+                        From a receipt
+                      </span>
+                    )}
                     {purchase.request_reference && (
                       <span className="code text-xs text-muted">
                         For {purchase.request_reference}

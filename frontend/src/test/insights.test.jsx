@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { mockApi, page, renderAt } from "./helpers";
 
@@ -212,6 +212,44 @@ describe("M-Pesa money", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "2 earlier payments with MAMA MBOGA SUPPLIES changed too",
     );
+  });
+
+  it("totals the money for the current filters and filters by category", async () => {
+    const asked = [];
+    mockApi(
+      {
+        "GET /api/money/totals": (_, url) => {
+          asked.push(url.search);
+          return [
+            200,
+            {
+              money_in: "236024.83",
+              money_out: "235922.15",
+              charges: "1820.00",
+              net: "102.68",
+              count: 1218,
+              first_at: "2026-09-27T06:00:00Z",
+              last_at: "2026-11-27T15:51:00Z",
+              by_category: [
+                { category: "sales", direction: "in", total: "75823.92", count: 300 },
+                { category: "other_expense", direction: "out", total: "117340.00", count: 400 },
+                { category: "utilities", direction: "out", total: "3998.91", count: 12 },
+              ],
+            },
+          ];
+        },
+      },
+      "admin",
+    );
+    const user = userEvent.setup();
+    renderAt("/money", { as: "admin" });
+
+    expect(await screen.findByText("KES 236,024.83")).toBeInTheDocument();
+    expect(screen.getByText("KES 235,922.15")).toBeInTheDocument();
+    expect(screen.getByText(/1218 transactions from/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Electricity and water/ }));
+    await vi.waitFor(() => expect(asked.at(-1)).toBe("?direction=out&category=utilities"));
   });
 
   it("undoes an import", async () => {

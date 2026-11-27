@@ -213,6 +213,20 @@ records, the file itself is discarded once read, and undoing an import deletes i
 business using this should tell customers how their payment details are used, as the Data
 Protection Act, 2019 expects.
 
+### Receipt scanning
+
+A photo of a paper receipt becomes either an expense or a stock purchase. Out of the box the
+photo is read in the browser with Tesseract (`tesseract.js`), so nothing is uploaded and nothing
+is paid for; the text goes to `POST /api/receipts/text`, where `app/receipts.py` finds the shop,
+date, receipt number, total, VAT and item lines. With `RECEIPT_AI_KEY` set, the photo is sent to
+`POST /api/receipts/photo` instead and read by Claude, which copes far better with faded or
+crumpled till slips. Either way the photo is not stored.
+
+Item lines are matched to products by SKU or by name, and the shop to an existing supplier. The
+person checks everything against the photo before saving. A stock purchase
+(`POST /api/receipts/stock`) is recorded as a purchase already received: stock goes up, average
+cost is updated, and a shop that isn't a supplier yet is added as one.
+
 ## API reference
 
 Every endpoint is limited to the caller's business. Lists accept `?page=1&per_page=20` (at most
@@ -239,7 +253,9 @@ Every endpoint is limited to the caller's business. Lists accept `?page=1&per_pa
 | `/api/repairs/` · `PUT /<id>/status` | anyone reports for assets they hold; inventory moves repairs along |
 | `GET /api/reports/summary` · `/api/expenses/` | administrator |
 | `GET /api/insights` | administrator |
-| `GET /api/money/categories`, `/imports`, `/transactions` · `POST /statement`, `/sms` · `DELETE /imports/<id>` · `PUT /transactions/<id>` | administrator |
+| `GET /api/receipts/reader` · `POST /text`, `/photo` | administrator, procurement, inventory |
+| `POST /api/receipts/stock` | procurement, inventory |
+| `GET /api/money/categories`, `/imports`, `/transactions`, `/totals` · `POST /statement`, `/sms` · `DELETE /imports/<id>` · `PUT /transactions/<id>` | administrator |
 | `/api/notifications/` · `POST /<id>/read`, `/read-all` | everyone, their own |
 | `/api/auth/register`, `/register-business`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password` · `GET /api/images/<id>` · `GET /api/health` | public |
 | `GET`/`PUT /api/auth/me` · `POST /api/auth/password`, `/logout` | the signed-in user |
@@ -270,6 +286,7 @@ Errors share one shape:
 | `PLATFORM_OWNERS` | Comma-separated email addresses that can open the Platform page |
 | `DATA_KEY` | Encrypts each business's M-Pesa keys; defaults to `SECRET_KEY`. Changing it means businesses re-enter their keys |
 | `TASK_TOKEN` | Shared secret for the evening summary schedule |
+| `RECEIPT_AI_KEY`, `RECEIPT_AI_MODEL` | Optional. An Anthropic API key turns on online receipt reading; without it receipts are read on the user's device |
 | `EMAIL_VERIFICATION_REQUIRED`, `LOGIN_CODE_REQUIRED`, `STAFF_APPROVAL_REQUIRED` | Security checks, on by default |
 
 ## Deployment

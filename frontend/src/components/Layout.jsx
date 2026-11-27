@@ -41,6 +41,7 @@ const groups = [
       { to: "/categories", label: "Categories", icon: "tag" },
       { to: "/stock", label: "Stock ledger", icon: "ledger", roles: STOCK_VIEWERS },
       { to: "/purchases", label: "Purchases", icon: "truck", roles: PURCHASE_VIEWERS },
+      { to: "/receipts/scan", label: "Scan a receipt", icon: "camera", roles: PURCHASE_VIEWERS },
       { to: "/suppliers", label: "Suppliers", icon: "building", roles: PROCUREMENT_VIEWERS },
     ],
   },
