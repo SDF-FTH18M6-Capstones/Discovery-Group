@@ -40,6 +40,12 @@ def email_body(user, message, link):
     return "\n".join(lines)
 
 
+def on_order(purchase):
+    if purchase.status == "ordered":
+        return f"{purchase.reference} was sent to the supplier automatically."
+    return f"It was added to {purchase.reference}, ready to confirm."
+
+
 def order_if_low(product, actor_id):
     from app.reorder import draft_for_low_stock
 
@@ -49,8 +55,7 @@ def order_if_low(product, actor_id):
     if draft is not None:
         notify_roles(
             ("procurement",),
-            f"{product.name} is low on stock ({product.quantity} left). It was added to "
-            f"{draft.reference}, ready to confirm.",
+            f"{product.name} is low on stock ({product.quantity} left). {on_order(draft)}",
             exclude=actor_id,
             link=f"/purchases?open={draft.id}",
         )
@@ -69,7 +74,7 @@ def warn_if_low(product, before, actor_id):
     left = "is out of stock" if after == 0 else f"is low on stock ({after} left)"
     draft = draft_for_low_stock(product, actor_id)
     if draft is not None:
-        message = f"{product.name} {left}. It was added to {draft.reference}, ready to confirm."
+        message = f"{product.name} {left}. {on_order(draft)}"
         link = f"/purchases?open={draft.id}"
     else:
         message = f"{product.name} {left}."

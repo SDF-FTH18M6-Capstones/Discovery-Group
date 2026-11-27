@@ -52,6 +52,9 @@ class Config:
     MPESA_TRANSACTION_TYPE = os.getenv("MPESA_TRANSACTION_TYPE", "CustomerPayBillOnline")
     MPESA_CALLBACK_BASE = os.getenv("MPESA_CALLBACK_BASE", "")
     TASK_TOKEN = os.getenv("TASK_TOKEN", "")
+    DATA_KEY = os.getenv("DATA_KEY", "")
+    SUBSCRIPTIONS_REQUIRED = os.getenv("SUBSCRIPTIONS_REQUIRED", "false").lower() == "true"
+    SUBSCRIPTION_PRICE = int(os.getenv("SUBSCRIPTION_PRICE", "1500"))
     LOGIN_CODE_EXEMPT_DOMAINS = [
         d.strip().lower()
         for d in os.getenv("LOGIN_CODE_EXEMPT_DOMAINS", "").split(",")

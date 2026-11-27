@@ -11,6 +11,7 @@ import {
   STOCK_VIEWERS,
 } from "../auth/roles";
 import { NOTIFICATIONS_CHANGED } from "../events";
+import { longDate } from "../format";
 import ErrorBoundary from "./ErrorBoundary";
 import Icon from "./Icon";
 import Logo from "./Logo";
@@ -62,6 +63,7 @@ const groups = [
       { to: "/reports", label: "Reports", icon: "chart", roles: ["admin"] },
       { to: "/users", label: "Users", icon: "users", roles: ["admin"] },
       { to: "/audit", label: "Audit log", icon: "shield", roles: ["admin"] },
+      { to: "/billing", label: "Billing", icon: "card", roles: ["admin"] },
     ],
   },
   {
@@ -223,6 +225,36 @@ function SignedOutShell() {
   );
 }
 
+function SubscriptionBanner({ user }) {
+  const plan = user?.business?.subscription;
+  if (!plan?.required) return null;
+  const soon = plan.days_left <= 3 && (plan.status === "trial" || plan.status === "active");
+  if (!soon && plan.status !== "grace" && plan.status !== "expired") return null;
+  const text = {
+    trial: `Your free trial ends in ${plan.days_left} day${plan.days_left === 1 ? "" : "s"}.`,
+    active: `Your subscription ends in ${plan.days_left} day${plan.days_left === 1 ? "" : "s"}.`,
+    grace: `Your subscription has ended. Everything keeps working until ${longDate(plan.grace_until)}.`,
+    expired: "Your subscription has ended, so changes are paused. Your data is safe.",
+  }[plan.status];
+  return (
+    <div
+      role="status"
+      className={`mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl p-4 text-sm ${
+        plan.status === "expired" ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"
+      }`}
+    >
+      <span className="font-medium">{text}</span>
+      {user.role === "admin" ? (
+        <Link to="/billing" className="btn-secondary">
+          Renew now
+        </Link>
+      ) : (
+        <span>Ask your administrator to renew it.</span>
+      )}
+    </div>
+  );
+}
+
 export default function Layout() {
   const { user, signOut, hasRole, canDo } = useAuth();
   const { pathname } = useLocation();
@@ -368,6 +400,7 @@ export default function Layout() {
             </div>
           </header>
           <main className="mx-auto w-full max-w-[90rem] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+            <SubscriptionBanner user={user} />
             <ErrorBoundary key={pathname}>
               <Outlet />
             </ErrorBoundary>

@@ -21,8 +21,8 @@ from app.models import (
     Supplier,
 )
 from app.models.procurement import OPEN_PURCHASE_STATUSES, PURCHASE_STATUSES
-from app.notify import notify, notify_roles
-from app.reorder import average_cost
+from app.notify import notify
+from app.reorder import average_cost, place_order
 from app.resources.requests import fulfil
 from app.schemas import Schema
 from app.stockledger import move_stock
@@ -211,25 +211,6 @@ def fill_lines(purchase, items):
     purchase.total = total
 
 
-def place_order(purchase):
-    purchase.status = "ordered"
-    purchase.ordered_at = datetime.now(UTC)
-    notify_roles(
-        RECEIVERS,
-        f"{purchase.reference} from {db.session.get(Supplier, purchase.supplier_id).name} is on "
-        "order; receive it when it arrives.",
-        exclude=current_user.id,
-        link=f"/purchases?open={purchase.id}",
-    )
-    audit(
-        "ordered",
-        "purchase",
-        purchase.id,
-        f"{purchase.reference} placed",
-        {"status": ["draft", "ordered"]},
-    )
-
-
 def link_request(purchase, req):
     if req is not None and purchase.request_id != req.id:
         purchase.request_id = req.id
@@ -255,7 +236,7 @@ def create_purchase(data):
     audit("created", "purchase", purchase.id, f"{purchase.reference} drafted")
     link_request(purchase, req)
     if data["confirm"]:
-        place_order(purchase)
+        place_order(purchase, current_user.id)
     db.session.commit()
     return load(purchase.id)
 
@@ -296,7 +277,7 @@ def update_purchase(data, purchase_id):
     link_request(purchase, req)
     if data["confirm"]:
         db.session.flush()
-        place_order(purchase)
+        place_order(purchase, current_user.id)
     db.session.commit()
     return load(purchase_id)
 
@@ -311,7 +292,7 @@ def confirm_purchase(purchase_id):
     supplier = db.session.get(Supplier, purchase.supplier_id)
     if not supplier.is_active:
         refuse(f"{supplier.name} is inactive and cannot receive new orders.")
-    place_order(purchase)
+    place_order(purchase, current_user.id)
     db.session.commit()
     return load(purchase_id)
 

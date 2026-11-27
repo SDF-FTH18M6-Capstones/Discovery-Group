@@ -6,26 +6,75 @@ import re
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from flask import current_app, request
 
+from app.vault import unseal
+
 HOSTS = {"sandbox": "https://sandbox.safaricom.co.ke", "live": "https://api.safaricom.co.ke"}
 MODES = ("off", "simulate", "sandbox", "live")
+SANDBOX_SHORTCODE = "174379"
+SANDBOX_PASSKEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
 NAIROBI = ZoneInfo("Africa/Nairobi")
-_token = {"value": None, "expires": 0.0, "key": None}
+_tokens = {}
 
 
 class MpesaError(Exception):
     pass
 
 
-def mode():
+@dataclass(frozen=True)
+class Account:
+    mode: str
+    consumer_key: str = ""
+    consumer_secret: str = ""
+    shortcode: str = SANDBOX_SHORTCODE
+    passkey: str = SANDBOX_PASSKEY
+    transaction_type: str = "CustomerPayBillOnline"
+    party_b: str = ""
+
+    @property
+    def online(self):
+        return self.mode in ("sandbox", "live")
+
+
+def platform_mode():
     chosen = current_app.config["MPESA_MODE"].strip().lower()
     if chosen in MODES:
         return chosen
     return "off" if current_app.config.get("IS_PRODUCTION") else "simulate"
+
+
+def platform_account():
+    config = current_app.config
+    return Account(
+        mode=platform_mode(),
+        consumer_key=config["MPESA_CONSUMER_KEY"],
+        consumer_secret=config["MPESA_CONSUMER_SECRET"],
+        shortcode=config["MPESA_SHORTCODE"],
+        passkey=config["MPESA_PASSKEY"],
+        transaction_type=config["MPESA_TRANSACTION_TYPE"],
+        party_b=config["MPESA_PARTY_B"],
+    )
+
+
+def business_account(business):
+    mode = business.mpesa_mode or ("simulate" if platform_mode() == "simulate" else "off")
+    if mode not in ("sandbox", "live"):
+        return Account(mode=mode)
+    till = business.mpesa_type == "till"
+    return Account(
+        mode=mode,
+        consumer_key=unseal(business.mpesa_consumer_key),
+        consumer_secret=unseal(business.mpesa_consumer_secret),
+        shortcode=business.mpesa_shortcode or "",
+        passkey=unseal(business.mpesa_passkey),
+        transaction_type="CustomerBuyGoodsOnline" if till else "CustomerPayBillOnline",
+        party_b=(business.mpesa_till or "") if till else "",
+    )
 
 
 def normalise_phone(raw):
@@ -49,11 +98,12 @@ def callback_url():
     return f"{base}/api/payments/mpesa/callback/{callback_token()}"
 
 
-def _call(path, body=None, auth=None):
-    url = HOSTS[mode()] + path
+def _call(account, path, body=None, auth=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method="POST" if body is not None else "GET")
-    req.add_header("Authorization", auth or f"Bearer {access_token()}")
+    req = urllib.request.Request(
+        HOSTS[account.mode] + path, data=data, method="POST" if body is not None else "GET"
+    )
+    req.add_header("Authorization", auth or f"Bearer {access_token(account)}")
     if body is not None:
         req.add_header("Content-Type", "application/json")
     try:
@@ -70,43 +120,43 @@ def _call(path, body=None, auth=None):
         raise MpesaError("Could not reach M-Pesa. Check the connection and try again.") from err
 
 
-def access_token():
-    config = current_app.config
-    key = (config["MPESA_CONSUMER_KEY"], config["MPESA_CONSUMER_SECRET"], mode())
-    if not key[0] or not key[1]:
-        raise MpesaError("M-Pesa keys are missing. Set MPESA_CONSUMER_KEY and _SECRET.")
-    if _token["key"] == key and _token["expires"] > time.time() + 60:
-        return _token["value"]
-    basic = base64.b64encode(f"{key[0]}:{key[1]}".encode()).decode()
-    answer = _call("/oauth/v1/generate?grant_type=client_credentials", auth=f"Basic {basic}")
-    _token.update(
-        value=answer["access_token"],
-        expires=time.time() + int(answer.get("expires_in", 3599)),
-        key=key,
+def access_token(account):
+    if not account.consumer_key or not account.consumer_secret:
+        raise MpesaError("The M-Pesa consumer key and secret are missing.")
+    cache_key = (account.mode, account.consumer_key, account.consumer_secret)
+    cached = _tokens.get(cache_key)
+    if cached and cached[1] > time.time() + 60:
+        return cached[0]
+    basic = base64.b64encode(f"{account.consumer_key}:{account.consumer_secret}".encode()).decode()
+    answer = _call(
+        account, "/oauth/v1/generate?grant_type=client_credentials", auth=f"Basic {basic}"
     )
-    return _token["value"]
+    _tokens[cache_key] = (
+        answer["access_token"],
+        time.time() + int(answer.get("expires_in", 3599)),
+    )
+    return answer["access_token"]
 
 
-def _password():
-    config = current_app.config
+def _password(account):
     stamp = datetime.now(NAIROBI).strftime("%Y%m%d%H%M%S")
-    raw = f"{config['MPESA_SHORTCODE']}{config['MPESA_PASSKEY']}{stamp}"
+    raw = f"{account.shortcode}{account.passkey}{stamp}"
     return base64.b64encode(raw.encode()).decode(), stamp
 
 
-def stk_push(phone, amount, reference, description):
-    config = current_app.config
-    password, stamp = _password()
+def stk_push(account, phone, amount, reference, description):
+    password, stamp = _password(account)
     answer = _call(
+        account,
         "/mpesa/stkpush/v1/processrequest",
         {
-            "BusinessShortCode": config["MPESA_SHORTCODE"],
+            "BusinessShortCode": account.shortcode,
             "Password": password,
             "Timestamp": stamp,
-            "TransactionType": config["MPESA_TRANSACTION_TYPE"],
+            "TransactionType": account.transaction_type,
             "Amount": amount,
             "PartyA": phone,
-            "PartyB": config["MPESA_PARTY_B"] or config["MPESA_SHORTCODE"],
+            "PartyB": account.party_b or account.shortcode,
             "PhoneNumber": phone,
             "CallBackURL": callback_url(),
             "AccountReference": reference[:12],
@@ -118,13 +168,13 @@ def stk_push(phone, amount, reference, description):
     return answer["CheckoutRequestID"], answer.get("MerchantRequestID")
 
 
-def stk_query(checkout_request_id):
-    config = current_app.config
-    password, stamp = _password()
+def stk_query(account, checkout_request_id):
+    password, stamp = _password(account)
     return _call(
+        account,
         "/mpesa/stkpushquery/v1/query",
         {
-            "BusinessShortCode": config["MPESA_SHORTCODE"],
+            "BusinessShortCode": account.shortcode,
             "Password": password,
             "Timestamp": stamp,
             "CheckoutRequestID": checkout_request_id,

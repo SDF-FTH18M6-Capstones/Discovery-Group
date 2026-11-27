@@ -7,6 +7,7 @@ import { PROCUREMENT_VIEWERS, PURCHASE_VIEWERS, SALES_VIEWERS, STOCK_VIEWERS } f
 import Layout from "./components/Layout";
 import AssetsPage from "./features/assets/AssetsPage";
 import AuditPage from "./features/audit/AuditPage";
+import BillingPage from "./features/billing/BillingPage";
 import CategoriesPage from "./features/categories/CategoriesPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import NotificationsPage from "./features/notifications/NotificationsPage";
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="audit" element={<AuditPage />} />
+          <Route path="billing" element={<BillingPage />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

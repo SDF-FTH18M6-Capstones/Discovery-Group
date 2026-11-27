@@ -2,7 +2,7 @@ import secrets
 import uuid
 
 from app.extensions import db
-from app.models.base import Money, TenantMixin, TimestampMixin
+from app.models.base import Money, TenantMixin, TimestampMixin, in_list
 
 JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
@@ -15,6 +15,7 @@ class Business(TimestampMixin, db.Model):
     __tablename__ = "businesses"
     __table_args__ = (
         db.CheckConstraint("vat_rate >= 0 AND vat_rate < 100", name="vat_rate_valid"),
+        in_list("mpesa_type", ("paybill", "till"), "mpesa_type_valid"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -30,6 +31,15 @@ class Business(TimestampMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
     daily_summary = db.Column(db.Boolean, nullable=False, server_default=db.true(), default=True)
     summary_sent_on = db.Column(db.Date)
+    trial_ends_on = db.Column(db.Date)
+    paid_until = db.Column(db.Date)
+    mpesa_mode = db.Column(db.String(10))
+    mpesa_type = db.Column(db.String(10), nullable=False, server_default="paybill")
+    mpesa_shortcode = db.Column(db.String(20))
+    mpesa_till = db.Column(db.String(20))
+    mpesa_passkey = db.Column(db.Text)
+    mpesa_consumer_key = db.Column(db.Text)
+    mpesa_consumer_secret = db.Column(db.Text)
 
 
 class DocumentCounter(db.Model):

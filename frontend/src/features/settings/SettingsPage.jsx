@@ -9,6 +9,7 @@ import PageHeader from "../../components/PageHeader";
 import { Avatar } from "../../components/ui";
 import { useTheme } from "../../theme/ThemeContext";
 import BusinessSettings from "./BusinessSettings";
+import MpesaSettings from "./MpesaSettings";
 
 const firstMessages = (details = {}) =>
   Object.fromEntries(
@@ -260,6 +261,7 @@ function Appearance() {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   return (
     <section className="flex flex-col gap-6">
       <PageHeader
@@ -267,6 +269,7 @@ export default function SettingsPage() {
         subtitle="Your business, your profile, your password and how StockPilot looks."
       />
       <BusinessSettings />
+      {user?.role === "admin" && <MpesaSettings />}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ProfileForm />

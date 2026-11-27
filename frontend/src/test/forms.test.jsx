@@ -148,6 +148,7 @@ describe("suppliers page", () => {
         phone: null,
         address: null,
         is_active: true,
+        trusted: false,
       });
     });
   });

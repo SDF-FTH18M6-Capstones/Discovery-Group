@@ -21,6 +21,7 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
     phone: supplier?.phone || "",
     address: supplier?.address || "",
     is_active: supplier ? supplier.is_active !== false : true,
+    trusted: Boolean(supplier?.trusted),
   });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
@@ -43,6 +44,7 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
       phone: values.phone || null,
       address: values.address || null,
       is_active: values.is_active,
+      trusted: values.trusted,
     };
     const result = await dispatch(suppliers.saveItem({ id: supplier?.id, data }));
     if (suppliers.saveItem.fulfilled.match(result)) {
@@ -105,6 +107,23 @@ export default function SupplierForm({ supplier, onSaved, onCancel }) {
           className="size-4 accent-[var(--sp-brand)]"
         />
         Active (can receive new orders)
+      </label>
+      <label className="flex items-start gap-2 text-sm sm:col-span-2">
+        <input
+          type="checkbox"
+          checked={values.trusted}
+          onChange={(event) =>
+            setValues((current) => ({ ...current, trusted: event.target.checked }))
+          }
+          className="mt-0.5 size-4 accent-[var(--sp-brand)]"
+        />
+        <span>
+          Trusted supplier
+          <span className="block text-muted">
+            When stock runs low, orders for this supplier are placed and emailed to them straight
+            away instead of waiting as drafts.
+          </span>
+        </span>
       </label>
       <div className="flex gap-2 sm:col-span-3">
         <button type="submit" className="btn-primary">
