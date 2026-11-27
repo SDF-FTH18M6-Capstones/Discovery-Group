@@ -1,11 +1,14 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from flask import Response
+from flask_jwt_extended import current_user
 from flask_smorest import Blueprint
 from marshmallow import ValidationError, fields, validate, validates_schema
 
 from app.auth import roles_required
 from app.extensions import db
+from app.loanreport import build_pdf, default_today, filename
 from app.models import (
     Expense,
     GoodsReceipt,
@@ -262,3 +265,20 @@ def summary(args):
         ],
         "low_stock": low,
     }
+
+
+class LoanReportQuery(Schema):
+    months = fields.Integer(load_default=6, validate=validate.OneOf((3, 6, 12)))
+
+
+@blp.route("/performance.pdf")
+@blp.arguments(LoanReportQuery, location="query")
+@roles_required("admin")
+def performance_pdf(args):
+    business = current_user.business
+    today = default_today(business)
+    return Response(
+        build_pdf(business, args["months"], today),
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename(business, today)}"'},
+    )

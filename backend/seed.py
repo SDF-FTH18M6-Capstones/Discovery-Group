@@ -1,3 +1,5 @@
+import random
+import string
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
@@ -12,9 +14,11 @@ from app.models import (
     AuditLog,
     Business,
     Category,
+    CategoryRule,
     Expense,
     GoodsReceipt,
     GoodsReceiptItem,
+    MoneyImport,
     Notification,
     Product,
     Purchase,
@@ -27,7 +31,9 @@ from app.models import (
     User,
 )
 from app.models.base import reference
+from app.money import import_entries
 from app.resources.sales import vat_included
+from app.statements import Entry
 from app.stockledger import move_stock
 from app.tenancy import tenant
 
@@ -88,6 +94,7 @@ DEMO_SHOP = {
         (1, "mpesa", [("SP-001", 3), ("SP-002", 1)]),
         (0, "cash", [("SP-001", 2), ("SP-002", 1), ("SP-003", 2)]),
     ],
+    "mpesa_history": True,
     "expenses": [
         (20, "Rent", "Shop rent", "35000.00"),
         (3, "Electricity", "KPLC tokens", "4200.00"),
@@ -117,14 +124,108 @@ SECOND_SHOP = {
 }
 
 
+REGULARS = [
+    ("JANE WANJIKU", "0712***678"),
+    ("PETER OTIENO", "0722***104"),
+    ("MERCY AKINYI", "0798***551"),
+    ("JOHN KARIUKI", "0701***923"),
+    ("FAITH CHEBET", "0745***310"),
+    ("SAMUEL MWANGI", "0113***467"),
+    ("LUCY NJERI", "0727***085"),
+    ("KEVIN OMONDI", "0790***642"),
+]
+FIRST_NAMES = ["BRIAN", "ANN", "DENNIS", "GLADYS", "ERIC", "IRENE", "MOSES", "ESTHER", "COLLINS"]
+LAST_NAMES = ["KIPROTICH", "MUTHONI", "WAFULA", "ATIENO", "MUTUA", "NJOROGE", "ODHIAMBO"]
+BUSY_DAYS = [0.9, 0.85, 0.95, 1.0, 1.2, 1.45, 0.65]
+
+
+def mpesa_history(rng, days=70):
+    today = date.today()
+    entries = []
+    balance = Decimal("30000")
+
+    def receipt():
+        return "T" + "".join(rng.choices(string.ascii_uppercase + string.digits, k=9))
+
+    def add(day, hour, direction, amount, kind, who, phone=None, fee=0):
+        nonlocal balance
+        amount = Decimal(amount)
+        balance += amount if direction == "in" else -(amount + fee)
+        entries.append(
+            Entry(
+                receipt=receipt(),
+                occurred_at=datetime.combine(day, datetime.min.time()).replace(
+                    hour=hour, minute=rng.randrange(60)
+                ),
+                direction=direction,
+                amount=amount,
+                details=f"{kind} {who}",
+                balance=balance,
+                counterparty=who,
+                phone=phone,
+                kind=kind,
+                extra={"fee": Decimal(fee)} if fee else {},
+            )
+        )
+
+    for back in range(days, 0, -1):
+        day = today - timedelta(days=back)
+        target = 6000 * BUSY_DAYS[day.weekday()] * rng.uniform(0.85, 1.15)
+        while target > 150:
+            if rng.random() < 0.6:
+                who, phone = rng.choice(REGULARS)
+                if who == "PETER OTIENO" and back < 40:
+                    who, phone = REGULARS[0]
+            else:
+                who, phone = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}", None
+            amount = min(round(rng.uniform(150, 1400), -1), round(target, -1))
+            add(day, rng.randrange(8, 20), "in", amount, "customer_payment", who, phone)
+            target -= amount
+        if day.weekday() == 1:
+            add(day, 11, "out", rng.randrange(18, 25) * 1000, "paybill", "Metro Wholesale", fee=108)
+        if day.weekday() == 5:
+            add(day, 18, "out", 3000, "sent", "TABITHA WAIRIMU", "0711***208", fee=33)
+            add(day, 19, "out", 15000, "withdrawal", "Agent 302114 Moi Avenue", fee=29)
+        if day.weekday() in (0, 3):
+            fare = rng.choice([300, 400, 500])
+            add(day, 8, "out", fare, "sent", "BODA JOSEPH", "0768***419", fee=7)
+        if back % 10 == 0:
+            add(day, 9, "out", 500, "airtime", "Safaricom airtime")
+    return entries
+
+
+def add_mpesa_history(admin):
+    for match, category in (("0711***208", "wages"), ("0768***419", "transport")):
+        db.session.add(CategoryRule(direction="out", match=match, category=category))
+    db.session.flush()
+    entries = mpesa_history(random.Random(2026))
+    batch = import_entries(entries, 0, "statement", "MPESA_Statement_demo.pdf", admin)
+    batch.created_at = ago(1)
+
+
 def ago(days, hour=10):
     return (datetime.now(UTC) - timedelta(days=days)).replace(hour=hour, minute=15)
+
+
+def backfill_mpesa_history(spec, business):
+    with tenant(business.id):
+        if db.session.scalar(db.select(MoneyImport.id).limit(1)):
+            return
+        admin_email = next(email for role, _, email in spec["users"] if role == "admin")
+        admin = db.session.scalar(db.select(User).filter_by(email=admin_email))
+        if admin is None:
+            return
+        add_mpesa_history(admin)
+        db.session.commit()
+    print(f"  {spec['name']}: added 10 weeks of M-Pesa history")
 
 
 def seed_business(spec):
     business = db.session.scalar(db.select(Business).filter_by(join_code=spec["join_code"]))
     if business is not None:
         print(f"  {spec['name']}: already there, skipped")
+        if spec.get("mpesa_history"):
+            backfill_mpesa_history(spec, business)
         return
     business = Business(
         name=spec["name"],
@@ -209,6 +310,8 @@ def seed_business(spec):
         add_sales(spec, products, seller, business.vat_rate)
         add_assets(spec, users, admin, stock_keeper)
         add_requests_and_notes(users, by_role, admin)
+        if spec.get("mpesa_history"):
+            add_mpesa_history(admin)
         for days, category, description, amount in spec["expenses"]:
             db.session.add(
                 Expense(

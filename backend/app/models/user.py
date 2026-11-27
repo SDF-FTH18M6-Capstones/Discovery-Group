@@ -9,7 +9,6 @@ def hash_secret(raw: str) -> str:
 
 
 def check_secret(hashed: str | None, raw: str) -> bool:
-
     if not hashed or len(raw.encode("utf-8")) > 72:
         return False
     try:

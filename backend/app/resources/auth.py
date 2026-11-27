@@ -2,7 +2,8 @@ import hashlib
 import hmac
 import re
 import secrets
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from flask import current_app
 from flask_jwt_extended import (
@@ -35,6 +36,7 @@ from app.models.user import check_secret, hash_secret
 from app.notify import notify_roles
 from app.resources.platform import is_platform_owner
 from app.schemas import Schema
+from app.shoptime import DEFAULT_ZONE
 from app.tenancy import tenant
 
 blp = Blueprint("auth", __name__, url_prefix="/api/auth", description="Sign-in and accounts")
@@ -233,8 +235,11 @@ def start_session(user):
 def register_business(data):
     if find_user(data["email"]):
         abort(409, message="An account with this email already exists.")
+    today = datetime.now(ZoneInfo(DEFAULT_ZONE)).date()
     business = Business(
-        name=data["business_name"], trial_ends_on=date.today() + timedelta(days=TRIAL_DAYS)
+        name=data["business_name"],
+        timezone=DEFAULT_ZONE,
+        trial_ends_on=today + timedelta(days=TRIAL_DAYS),
     )
     db.session.add(business)
     db.session.flush()

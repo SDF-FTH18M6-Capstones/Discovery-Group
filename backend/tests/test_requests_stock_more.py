@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from app.extensions import db
 from app.models import Product, Request, StockMovement
@@ -166,7 +167,7 @@ def test_the_ledger_filters_by_date_and_exports_csv(as_role, category):
     store.post(
         "/api/stock/adjustments", json={"product_id": product.id, "change": 1, "reason": "Found"}
     )
-    today = datetime.now(UTC).date().isoformat()
+    today = datetime.now(ZoneInfo("Africa/Nairobi")).date().isoformat()
 
     recent = store.get(f"/api/stock/movements?date_from={today}&date_to={today}").json
     exported = store.get("/api/stock/movements.csv")

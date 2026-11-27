@@ -31,6 +31,10 @@ class Business(TimestampMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
     daily_summary = db.Column(db.Boolean, nullable=False, server_default=db.true(), default=True)
     summary_sent_on = db.Column(db.Date)
+    whatsapp_number = db.Column(db.String(20))
+    whatsapp_alerts = db.Column(
+        db.Boolean, nullable=False, server_default=db.false(), default=False
+    )
     trial_ends_on = db.Column(db.Date)
     paid_until = db.Column(db.Date)
     mpesa_mode = db.Column(db.String(10))

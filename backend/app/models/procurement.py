@@ -7,7 +7,7 @@ REQUEST_STATUSES = ("pending", "approved", "rejected", "fulfilled", "cancelled")
 ACTIVE_REQUEST_STATUSES = ("pending", "approved")
 PURCHASE_STATUSES = ("draft", "ordered", "partially_received", "received", "cancelled")
 OPEN_PURCHASE_STATUSES = ("draft", "ordered", "partially_received")
-PURCHASE_SOURCES = ("manual", "low_stock", "request")
+PURCHASE_SOURCES = ("manual", "low_stock", "request", "receipt")
 
 
 class Request(TenantMixin, TimestampMixin, db.Model):

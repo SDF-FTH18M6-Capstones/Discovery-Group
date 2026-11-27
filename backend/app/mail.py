@@ -48,6 +48,14 @@ def build_message(app, to, subject, body):
 BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 
 
+def print_unsent_mail(app):
+    if app.config.get("BREVO_API_KEY") or app.config.get("MAIL_SERVER") or app.testing:
+        return
+    log.setLevel(logging.INFO)
+    if not log.handlers:
+        log.addHandler(logging.StreamHandler())
+
+
 def send_now(app, to, subject, body):
     config = app.config
     if config.get("BREVO_API_KEY"):

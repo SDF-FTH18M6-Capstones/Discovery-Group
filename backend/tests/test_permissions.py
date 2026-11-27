@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -11,6 +11,8 @@ from app.models import (
     AssetCategory,
     Category,
     Expense,
+    MoneyImport,
+    MoneyTransaction,
     MpesaPayment,
     Notification,
     Product,
@@ -126,6 +128,56 @@ ENDPOINTS = [
     ("GET", "/api/business/mpesa", ("admin",), 200, None),
     ("PUT", "/api/business/mpesa", ("admin",), 200, {"mode": "simulate", "type": "paybill"}),
     ("GET", "/api/billing", ("admin",), 200, None),
+    ("GET", "/api/insights", ("admin",), 200, None),
+    ("GET", "/api/money/categories", ("admin",), 200, None),
+    ("POST", "/api/money/statement", ("admin",), 400, None),
+    (
+        "POST",
+        "/api/money/sms",
+        ("admin",),
+        201,
+        {
+            "text": "QK71ZP3X12 Confirmed. You have received Ksh150.00 from JOHN 0712345678 "
+            "on 18/11/26 at 9:41 AM New M-PESA balance is Ksh1,345.00."
+        },
+    ),
+    ("GET", "/api/money/imports", ("admin",), 200, None),
+    ("DELETE", "/api/money/imports/{money_import}", ("admin",), 204, None),
+    ("GET", "/api/money/transactions", ("admin",), 200, None),
+    ("GET", "/api/money/totals", ("admin",), 200, None),
+    ("GET", "/api/reports/performance.pdf", ("admin",), 200, None),
+    ("GET", "/api/phone/link", ("admin",), 200, None),
+    ("POST", "/api/phone/link", ("admin",), 201, None),
+    ("DELETE", "/api/phone/link", ("admin",), 204, None),
+    ("GET", "/api/business/whatsapp", ("admin",), 200, None),
+    (
+        "PUT",
+        "/api/business/whatsapp",
+        ("admin",),
+        200,
+        {"whatsapp_number": "0712345678", "whatsapp_alerts": False},
+    ),
+    ("POST", "/api/business/whatsapp/test", ("admin",), 409, None),
+    ("GET", "/api/receipts/reader", ("admin", "procurement", "inventory"), 200, None),
+    (
+        "POST",
+        "/api/receipts/text",
+        ("admin", "procurement", "inventory"),
+        200,
+        {"text": "Corner Shop\nSugar 150.00\nTotal 150.00"},
+    ),
+    ("POST", "/api/receipts/photo", ("admin", "procurement", "inventory"), 409, None),
+    (
+        "POST",
+        "/api/receipts/stock",
+        ("procurement", "inventory"),
+        201,
+        {
+            "supplier_name": "Corner Shop",
+            "lines": [{"product_id": "{product}", "quantity": 1, "unit_cost": "1.00"}],
+        },
+    ),
+    ("PUT", "/api/money/transactions/{money_row}", ("admin",), 200, {"category": "loan"}),
     ("POST", "/api/billing/pay", ("admin",), 201, {"months": 1, "phone": "0712345678"}),
     ("GET", "/api/billing/payments/{my_subscription}", ("admin",), 200, None),
     (
@@ -191,6 +243,7 @@ PUBLIC = [
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/refresh"),
     ("POST", "/api/payments/mpesa/callback/{}"),
+    ("POST", "/api/phone/inbox/{}"),
     ("POST", "/api/tasks/daily-summary"),
 ]
 
@@ -282,8 +335,30 @@ def build_world(caller, make_user):
         simulated=True,
         checkout_request_id=f"SIM-subscription-{caller.id}",
     )
+    money_import = MoneyImport(source="sms", added=1, duplicates=0, skipped=0, created_by=caller.id)
+    money_import.transactions.append(
+        MoneyTransaction(
+            receipt=f"PERM{caller.id:06d}",
+            occurred_at=datetime.now(UTC),
+            direction="in",
+            amount=100,
+            kind="received",
+            category="sales",
+            counterparty="MARY",
+        )
+    )
     db.session.add_all(
-        [my_sale, purchase, draft, expense, my_repair, my_notification, my_payment, my_subscription]
+        [
+            my_sale,
+            purchase,
+            draft,
+            expense,
+            my_repair,
+            my_notification,
+            my_payment,
+            my_subscription,
+            money_import,
+        ]
     )
     db.session.commit()
     return {
@@ -298,6 +373,8 @@ def build_world(caller, make_user):
         "my_sale": my_sale.id,
         "my_payment": my_payment.id,
         "my_subscription": my_subscription.id,
+        "money_import": money_import.id,
+        "money_row": money_import.transactions[0].id,
         "spare_product": spare_product.id,
         "spare_asset": spare_asset.id,
         "my_repair": my_repair.id,
@@ -379,7 +456,6 @@ def test_each_role_gets_exactly_its_permissions(as_role, make_user, endpoint, ro
 
 
 def test_every_endpoint_is_listed(app):
-
     def shape(path):
         return re.sub(r"<[^>]+>|\{[^}]+\}", "{}", path)
 

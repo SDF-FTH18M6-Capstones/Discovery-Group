@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -244,3 +244,37 @@ def test_subscription_payments_are_kept_per_business(admin):
     pay(admin)
 
     assert db.session.scalar(db.select(MpesaPayment.business_id)) == admin.user.business_id
+
+
+class LateNight(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        moment = datetime(2026, 11, 27, 22, 30, tzinfo=UTC)
+        return moment.astimezone(tz) if tz else moment.replace(tzinfo=None)
+
+
+class ServerDate(date):
+    @classmethod
+    def today(cls):
+        return date(2026, 11, 27)
+
+
+def test_signing_up_after_midnight_in_nairobi_still_gives_fourteen_days(client, monkeypatch):
+    monkeypatch.setattr("app.resources.auth.datetime", LateNight)
+    monkeypatch.setattr("app.billing.datetime", LateNight)
+    monkeypatch.setattr("app.resources.auth.date", ServerDate, raising=False)
+    monkeypatch.setattr("app.billing.date", ServerDate)
+
+    response = client.post(
+        "/api/auth/register-business",
+        json={
+            "business_name": "Night Kiosk",
+            "full_name": "Otieno Omondi",
+            "email": "o@kiosk.test",
+            "password": "Secret123!",
+        },
+    )
+
+    subscription = response.json["user"]["business"]["subscription"]
+    assert subscription["ends_on"] == "2026-12-12"
+    assert subscription["days_left"] == 14

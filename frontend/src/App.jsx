@@ -11,12 +11,15 @@ import BillingPage from "./features/billing/BillingPage";
 import PlatformPage from "./features/platform/PlatformPage";
 import CategoriesPage from "./features/categories/CategoriesPage";
 import DashboardPage from "./features/dashboard/DashboardPage";
+import InsightsPage from "./features/insights/InsightsPage";
 import NotificationsPage from "./features/notifications/NotificationsPage";
 import ProductDetailPage from "./features/products/ProductDetailPage";
 import ProductsPage from "./features/products/ProductsPage";
 import PurchasesPage from "./features/purchases/PurchasesPage";
 import RepairsPage from "./features/repairs/RepairsPage";
 import ReportsPage from "./features/reports/ReportsPage";
+import MoneyPage from "./features/money/MoneyPage";
+import ScanPage from "./features/receipts/ScanPage";
 import ApprovalsPage from "./features/requests/ApprovalsPage";
 import RequestsPage from "./features/requests/RequestsPage";
 import PosPage from "./features/sales/PosPage";
@@ -88,6 +91,7 @@ export default function App() {
 
         <Route element={<RequireAuth roles={PURCHASE_VIEWERS} />}>
           <Route path="purchases" element={<PurchasesPage />} />
+          <Route path="receipts/scan" element={<ScanPage />} />
         </Route>
 
         <Route element={<RequireAuth roles={PROCUREMENT_VIEWERS} />}>
@@ -99,6 +103,8 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="audit" element={<AuditPage />} />
+          <Route path="insights" element={<InsightsPage />} />
+          <Route path="money" element={<MoneyPage />} />
           <Route path="billing" element={<BillingPage />} />
         </Route>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { api } from "../../api/client";
+import { api, download } from "../../api/client";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import { SkeletonCards } from "../../components/Skeleton";
@@ -195,6 +195,65 @@ function Expenses({ from, to, onChanged }) {
           </li>
         ))}
       </ul>
+    </Panel>
+  );
+}
+
+function PerformanceReport() {
+  const [months, setMonths] = useState("6");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const get = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await download(
+        `/api/reports/performance.pdf?months=${months}`,
+        `performance-report-${isoToday()}.pdf`,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel
+      title="Loan-readiness report"
+      subtitle="A clean PDF of your sales and cashflow, month by month, to take to a SACCO or bank."
+    >
+      <div className="flex flex-wrap items-end gap-3 p-4">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="performance-months" className="text-sm font-medium text-ink-2">
+            Covering
+          </label>
+          <select
+            id="performance-months"
+            value={months}
+            onChange={(event) => setMonths(event.target.value)}
+            className="input w-auto"
+          >
+            <option value="3">The last 3 months</option>
+            <option value="6">The last 6 months</option>
+            <option value="12">The last 12 months</option>
+          </select>
+        </div>
+        <button type="button" onClick={get} disabled={busy} className="btn-primary">
+          <Icon name="printer" size={16} />
+          {busy ? "Preparing…" : "Download PDF"}
+        </button>
+        <p className="w-full text-xs text-muted">
+          Uses full months up to the end of last month. Importing your M-Pesa statements first makes
+          it much stronger.
+        </p>
+        {error && (
+          <p role="alert" className="w-full text-sm text-danger">
+            {error}
+          </p>
+        )}
+      </div>
     </Panel>
   );
 }
@@ -526,6 +585,7 @@ export default function ReportsPage() {
           />
         </>
       )}
+      <PerformanceReport />
     </section>
   );
 }

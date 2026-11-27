@@ -3,7 +3,6 @@ from app.models import StockMovement
 
 
 def move_stock(product, change, type_, user_id, reference=None, reason=None):
-
     product.quantity += change
     movement = StockMovement(
         product=product,

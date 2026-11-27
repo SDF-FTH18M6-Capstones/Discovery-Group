@@ -118,3 +118,19 @@ def test_a_brevo_failure_is_logged_not_raised(app, monkeypatch, caplog):
     _brevo_send({**app.config, "BREVO_API_KEY": "k"}, "x@test.com", "S", "B")
 
     assert "through Brevo" in caplog.text
+
+
+def test_unsent_mail_is_printed_when_no_mail_service_is_set_up(app, capsys):
+    import logging
+
+    from app.mail import log, print_unsent_mail, send_now
+
+    app.testing = False
+    try:
+        print_unsent_mail(app)
+        send_now(app, "admin@stockpilot.test", "Your sign-in code", "Your code is 482913.")
+    finally:
+        app.testing = True
+        log.handlers.clear()
+        log.setLevel(logging.NOTSET)
+    assert "482913" in capsys.readouterr().err

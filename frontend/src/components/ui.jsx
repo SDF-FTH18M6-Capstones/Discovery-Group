@@ -213,11 +213,13 @@ export function BarChart({ data, format = String, label, height = 220 }) {
                 className="group flex h-full min-w-0 flex-1 items-end focus-visible:outline-offset-0"
               >
                 <span
-                  className={`w-full rounded-t-[4px] transition-opacity ${active !== null && active !== i ? "opacity-45" : ""}`}
+                  className={`w-full rounded-t-[4px] transition-opacity ${active !== null && active !== i ? "opacity-45" : ""} ${d.forecast ? "border border-b-0 border-dashed border-[var(--sp-chart)]" : ""}`}
                   style={{
                     height: `${(d.value / top) * 100}%`,
                     minHeight: d.value ? 3 : 0,
-                    background: "var(--sp-chart)",
+                    background: d.forecast
+                      ? "color-mix(in srgb, var(--sp-chart) 30%, transparent)"
+                      : "var(--sp-chart)",
                   }}
                 />
               </button>

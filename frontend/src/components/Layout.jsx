@@ -19,7 +19,14 @@ import ThemeSwitch from "./ThemeSwitch";
 import { Avatar } from "./ui";
 
 const groups = [
-  { title: "Overview", links: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }] },
+  {
+    title: "Overview",
+    links: [
+      { to: "/", label: "Dashboard", icon: "dashboard", end: true },
+      { to: "/insights", label: "Insights", icon: "pulse", roles: ["admin"] },
+      { to: "/money", label: "M-Pesa money", icon: "cash", roles: ["admin"] },
+    ],
+  },
   {
     title: "Selling",
     links: [
@@ -34,6 +41,7 @@ const groups = [
       { to: "/categories", label: "Categories", icon: "tag" },
       { to: "/stock", label: "Stock ledger", icon: "ledger", roles: STOCK_VIEWERS },
       { to: "/purchases", label: "Purchases", icon: "truck", roles: PURCHASE_VIEWERS },
+      { to: "/receipts/scan", label: "Scan a receipt", icon: "camera", roles: PURCHASE_VIEWERS },
       { to: "/suppliers", label: "Suppliers", icon: "building", roles: PROCUREMENT_VIEWERS },
     ],
   },
