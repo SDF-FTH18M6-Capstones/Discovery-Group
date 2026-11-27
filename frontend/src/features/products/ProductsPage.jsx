@@ -16,8 +16,8 @@ import ProductForm from "./ProductForm";
 
 export default function ProductsPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole("admin", "inventory");
+  const { canDo } = useAuth();
+  const canEdit = canDo("inventory");
   const list = useSelector((state) => state.products);
   const categoryOptions = useSelector((state) => state.categories.items);
   const [params] = useSearchParams();

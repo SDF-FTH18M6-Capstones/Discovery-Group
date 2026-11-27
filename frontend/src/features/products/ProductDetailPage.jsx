@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { api, mediaUrl } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import { STOCK_MANAGERS } from "../../auth/roles";
+import { STOCK_VIEWERS } from "../../auth/roles";
 import Icon from "../../components/Icon";
 import { SkeletonCards } from "../../components/Skeleton";
 import StatusBadge from "../../components/StatusBadge";
@@ -54,7 +54,7 @@ function ShelfCard({ product }) {
 export default function ProductDetailPage() {
   const { id } = useParams();
   const { hasRole } = useAuth();
-  const canTrace = hasRole(...STOCK_MANAGERS);
+  const canTrace = hasRole(...STOCK_VIEWERS);
   const [product, setProduct] = useState(null);
   const [error, setError] = useState("");
 

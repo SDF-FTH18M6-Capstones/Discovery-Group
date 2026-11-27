@@ -3,7 +3,13 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { PROCUREMENT, PURCHASE_VIEWERS, ROLE_NAMES, SELLERS, STOCK_MANAGERS } from "../auth/roles";
+import {
+  PROCUREMENT_VIEWERS,
+  PURCHASE_VIEWERS,
+  ROLE_NAMES,
+  SALES_VIEWERS,
+  STOCK_VIEWERS,
+} from "../auth/roles";
 import { NOTIFICATIONS_CHANGED } from "../events";
 import ErrorBoundary from "./ErrorBoundary";
 import Icon from "./Icon";
@@ -16,8 +22,8 @@ const groups = [
   {
     title: "Selling",
     links: [
-      { to: "/sales/new", label: "New sale", icon: "sale", roles: SELLERS },
-      { to: "/sales", label: "Sales", icon: "receipt", roles: SELLERS, end: true },
+      { to: "/sales/new", label: "New sale", icon: "sale", jobs: ["sales"] },
+      { to: "/sales", label: "Sales", icon: "receipt", roles: SALES_VIEWERS, end: true },
     ],
   },
   {
@@ -25,22 +31,22 @@ const groups = [
     links: [
       { to: "/products", label: "Products", icon: "box" },
       { to: "/categories", label: "Categories", icon: "tag" },
-      { to: "/stock", label: "Stock ledger", icon: "ledger", roles: STOCK_MANAGERS },
+      { to: "/stock", label: "Stock ledger", icon: "ledger", roles: STOCK_VIEWERS },
       { to: "/purchases", label: "Purchases", icon: "truck", roles: PURCHASE_VIEWERS },
-      { to: "/suppliers", label: "Suppliers", icon: "building", roles: PROCUREMENT },
+      { to: "/suppliers", label: "Suppliers", icon: "building", roles: PROCUREMENT_VIEWERS },
     ],
   },
   {
     title: "Requests",
     links: [
       { to: "/requests", label: "My requests", icon: "inbox" },
-      { to: "/approvals", label: "Approvals", icon: "check", roles: PROCUREMENT },
+      { to: "/approvals", label: "Approvals", icon: "check", roles: PROCUREMENT_VIEWERS },
     ],
   },
   {
     title: "Assets",
     links: [
-      { to: "/assets", label: "Assets", icon: "laptop", roles: STOCK_MANAGERS },
+      { to: "/assets", label: "Assets", icon: "laptop", roles: STOCK_VIEWERS },
       {
         to: "/assets",
         label: "Assets with me",
@@ -218,7 +224,7 @@ function SignedOutShell() {
 }
 
 export default function Layout() {
-  const { user, signOut, hasRole } = useAuth();
+  const { user, signOut, hasRole, canDo } = useAuth();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -235,7 +241,9 @@ export default function Layout() {
   const visible = groups
     .map((group) => ({
       ...group,
-      links: group.links.filter((link) => !link.roles || hasRole(...link.roles)),
+      links: group.links.filter(
+        (link) => (!link.roles || hasRole(...link.roles)) && (!link.jobs || canDo(...link.jobs)),
+      ),
     }))
     .filter((group) => group.links.length);
   const here = whereAmI(pathname);

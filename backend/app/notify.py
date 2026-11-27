@@ -17,10 +17,18 @@ def notify(user_ids, message, link=None, email_subject=None):
             queue_email(user.email, email_subject, email_body(user, message, link))
 
 
-def notify_roles(roles, message, exclude=None, link=None, email_subject=None):
-    ids = db.session.scalars(
-        db.select(User.id).where(User.role.in_(roles), User.is_active.is_(True))
+def staff_ids(roles):
+    return db.session.scalars(
+        db.select(User.id).where(
+            User.role.in_(roles), User.is_active.is_(True), User.approved_at.is_not(None)
+        )
     ).all()
+
+
+def notify_roles(roles, message, exclude=None, link=None, email_subject=None):
+    ids = staff_ids(roles)
+    if not ids and "admin" not in roles:
+        ids = staff_ids(("admin",))
     notify([uid for uid in ids if uid != exclude], message, link, email_subject)
 
 
@@ -32,7 +40,9 @@ def email_body(user, message, link):
     return "\n".join(lines)
 
 
-def warn_if_low(product, before, actor_id=None):
+def warn_if_low(product, before, actor_id):
+    from app.reorder import draft_for_low_stock
+
     after = product.quantity
     level = product.reorder_level
     crossed_reorder = before > level >= after
@@ -40,10 +50,17 @@ def warn_if_low(product, before, actor_id=None):
     if not (crossed_reorder or ran_out):
         return
     left = "is out of stock" if after == 0 else f"is low on stock ({after} left)"
+    draft = draft_for_low_stock(product, actor_id)
+    if draft is not None:
+        message = f"{product.name} {left}. It was added to {draft.reference}, ready to confirm."
+        link = f"/purchases?open={draft.id}"
+    else:
+        message = f"{product.name} {left}."
+        link = f"/products/{product.id}"
     notify_roles(
-        ("admin", "inventory"),
-        f"{product.name} {left}.",
+        ("inventory", "procurement"),
+        message,
         exclude=actor_id,
-        link=f"/products/{product.id}",
+        link=link,
         email_subject=f"Low stock: {product.name}",
     )

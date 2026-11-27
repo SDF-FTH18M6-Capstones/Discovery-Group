@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { mockApi, page, renderAt } from "./helpers";
+import { mockApi, page, renderAt, soleOwner } from "./helpers";
 
 const bodyOf = (spy, method, path) => {
   const call = spy.mock.calls.find(
@@ -42,14 +42,23 @@ describe("menu", () => {
     }
   });
 
-  it("gives the Administrator every new section", async () => {
+  it("lets the Administrator follow every section without the till", async () => {
     mockApi({}, "admin");
     renderAt("/", { as: "admin" });
 
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    for (const name of ["New sale", "Sales", "Stock ledger", "Purchases", "Repairs", "Reports"]) {
+    for (const name of ["Sales", "Stock ledger", "Purchases", "Repairs", "Reports", "Users"]) {
       expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
     }
+    expect(within(nav).queryByRole("link", { name: "New sale" })).toBeNull();
+  });
+
+  it("opens the till to an owner who has no sales staff yet", async () => {
+    mockApi({}, soleOwner());
+    renderAt("/", { as: soleOwner() });
+
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    expect(within(nav).getByRole("link", { name: "New sale" })).toBeInTheDocument();
   });
 
   it("keeps the till closed to an employee who types its address", async () => {
@@ -334,6 +343,65 @@ describe("purchases", () => {
       confirm: true,
       items: [{ product_id: 1, quantity: 5, unit_cost: "80.00" }],
     });
+  });
+
+  it("let Procurement create a missing product without leaving the order", async () => {
+    const flour = {
+      id: 8,
+      sku: "FLR",
+      name: "Flour",
+      cost_price: "70.00",
+      quantity: 0,
+      default_supplier_id: 5,
+    };
+    const spy = mockApi(
+      {
+        "GET /api/suppliers/": [200, page([{ id: 5, name: "Metro Wholesale" }])],
+        "GET /api/categories/": [200, page([{ id: 2, name: "Grocery" }])],
+        "POST /api/products/": [201, flour],
+      },
+      "procurement",
+    );
+    const user = userEvent.setup();
+    renderAt("/purchases", { as: "procurement" });
+
+    await user.click(await screen.findByRole("button", { name: "New purchase order" }));
+    await user.type(screen.getByLabelText("Supplier"), "Met");
+    await user.click(await screen.findByRole("option", { name: /Metro Wholesale/ }));
+    await user.click(screen.getByRole("button", { name: /Product not in the list/ }));
+    const form = await screen.findByRole("form", { name: "Add product" });
+    await user.type(within(form).getByLabelText("SKU"), "FLR");
+    await user.type(within(form).getByLabelText("Name"), "Flour");
+    await user.selectOptions(await within(form).findByLabelText("Category"), "2");
+    await user.type(within(form).getByLabelText(/Cost price/), "70");
+    await user.type(within(form).getByLabelText(/Selling price/), "95");
+    await waitFor(() => expect(within(form).getByLabelText("Usual supplier")).toHaveValue("5"));
+    await user.click(within(form).getByRole("button", { name: "Save product" }));
+
+    expect(await screen.findByDisplayValue(/Flour/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Unit cost 1")).toHaveValue(70);
+    expect(bodyOf(spy, "POST", "/api/products/")).toMatchObject({
+      sku: "FLR",
+      category_id: 2,
+      default_supplier_id: 5,
+      reorder_quantity: null,
+    });
+  });
+
+  it("mark orders that StockPilot prepared from low stock", async () => {
+    mockApi(
+      {
+        "GET /api/purchases/": [
+          200,
+          page([{ ...order, status: "draft", source: "low_stock", ordered_at: null }]),
+        ],
+      },
+      "procurement",
+    );
+    renderAt("/purchases", { as: "procurement" });
+
+    expect(await screen.findByText("Auto: low stock")).toBeInTheDocument();
+    expect(screen.getByText(/Prepared automatically/)).toBeInTheDocument();
   });
 
   it("let Inventory receive part of an order, but not place or cancel one", async () => {

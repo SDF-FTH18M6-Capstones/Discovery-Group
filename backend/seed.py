@@ -61,6 +61,8 @@ DEMO_SHOP = {
         ("Metro Wholesale", "orders@metro.example", "+254712758495"),
         ("Highland Coffee Traders", "hello@highland.example", "+254774658223"),
     ],
+    "supplier_for": {"Beverages": 1, "Grocery": 1, "Packaging": 0, "Stationery": 0, "SP-002": 2},
+    "waiting": [("Grace Wanjiru", "grace@stockpilot.test")],
     "asset_categories": ["Computers", "Furniture", "Devices"],
     "assets": [
         (
@@ -105,6 +107,7 @@ SECOND_SHOP = {
         ("HC-03", "Croissant", "Pastries", "60.00", "180.00", 12, 15),
     ],
     "suppliers": [("Nairobi Bakers", "orders@bakers.example", "+254711000111")],
+    "supplier_for": {"Pastries": 0},
     "asset_categories": ["Kitchen"],
     "assets": [("Espresso machine", "Kitchen", "LM-2020-77", None, "good")],
     "sales": [(1, "mpesa", [("HC-01", 3), ("HC-03", 2)]), (0, "cash", [("HC-02", 4)])],
@@ -139,11 +142,20 @@ def seed_business(spec):
                     f"{email} already belongs to another business; use a fresh database."
                 )
             user = ROLE_CLASSES[role](
-                full_name=name, email=email, email_verified_at=datetime.now(UTC)
+                full_name=name,
+                email=email,
+                email_verified_at=datetime.now(UTC),
+                approved_at=ago(9),
             )
             user.set_password(DEMO_PASSWORD)
             db.session.add(user)
             users[email] = user
+        for name, email in spec.get("waiting", []):
+            waiting = ROLE_CLASSES["employee"](
+                full_name=name, email=email, email_verified_at=datetime.now(UTC)
+            )
+            waiting.set_password(DEMO_PASSWORD)
+            db.session.add(waiting)
         db.session.flush()
         by_role = {u.role: u for u in users.values()}
         admin = by_role["admin"]
@@ -184,6 +196,11 @@ def seed_business(spec):
         ]
         db.session.add_all(suppliers)
         db.session.flush()
+        choices = spec.get("supplier_for", {})
+        for sku, product in products.items():
+            pick = choices.get(sku, choices.get(product.category.name))
+            if pick is not None:
+                product.default_supplier_id = suppliers[pick].id
 
         add_purchases(spec, products, suppliers, buyer, stock_keeper)
         add_sales(spec, products, seller, business.vat_rate)

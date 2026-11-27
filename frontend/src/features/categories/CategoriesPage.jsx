@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { useAuth } from "../../auth/AuthContext";
-import { STOCK_MANAGERS } from "../../auth/roles";
 import Field from "../../components/Field";
 import Pagination from "../../components/Pagination";
 import { SkeletonRows } from "../../components/Skeleton";
@@ -10,8 +9,8 @@ import { categories } from "../../store";
 
 export default function CategoriesPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const canEdit = hasRole(...STOCK_MANAGERS);
+  const { canDo } = useAuth();
+  const canEdit = canDo("inventory");
   const list = useSelector((state) => state.categories);
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState(null);

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 from app.extensions import db
@@ -33,10 +35,12 @@ def other_business(app):
     with tenant(business.id):
         counter = {"n": 0}
 
-        def make_user(role="employee", **_):
+        def make_user(role="employee", approved=True, **_):
             counter["n"] += 1
             user = ROLE_CLASSES[role](
-                full_name=f"Other {role} {counter['n']}", email=f"other{counter['n']}@other.test"
+                full_name=f"Other {role} {counter['n']}",
+                email=f"other{counter['n']}@other.test",
+                approved_at=datetime.now(UTC) if approved else None,
             )
             user.set_password(PASSWORD)
             db.session.add(user)
@@ -103,7 +107,7 @@ def test_ids_from_another_business_cannot_be_used_in_a_body(as_role, make_user, 
             "items": [{"product_id": mine["product"], "quantity": 1, "unit_cost": "1"}],
         },
     )
-    product = admin.post(
+    product = store.post(
         "/api/products/",
         json={
             "sku": "X-1",

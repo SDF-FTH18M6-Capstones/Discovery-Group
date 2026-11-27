@@ -96,12 +96,13 @@ def test_a_retired_product_cannot_be_sold_and_leaves_the_till(as_role, water):
 
 
 def test_voiding_a_sale_returns_stock_and_keeps_the_record(as_role, water):
-    sale = sell(as_role("sales"), water.id, 3).json
+    seller = as_role("sales")
+    sale = sell(seller, water.id, 3).json
     admin = as_role("admin")
 
-    no_reason = admin.post(f"/api/sales/{sale['id']}/void", json={})
-    voided = admin.post(f"/api/sales/{sale['id']}/void", json={"reason": "Rang up twice"})
-    twice = admin.post(f"/api/sales/{sale['id']}/void", json={"reason": "Again"})
+    no_reason = seller.post(f"/api/sales/{sale['id']}/void", json={})
+    voided = seller.post(f"/api/sales/{sale['id']}/void", json={"reason": "Rang up twice"})
+    twice = seller.post(f"/api/sales/{sale['id']}/void", json={"reason": "Again"})
 
     assert no_reason.status_code == 422
     assert voided.status_code == 200
@@ -118,12 +119,13 @@ def test_voiding_a_sale_returns_stock_and_keeps_the_record(as_role, water):
 
 
 def test_only_todays_sales_can_be_voided(as_role, water):
-    sale = sell(as_role("sales"), water.id).json
+    seller = as_role("sales")
+    sale = sell(seller, water.id).json
     row = db.session.get(Sale, sale["id"])
     row.created_at = datetime.now(UTC) - timedelta(days=2)
     db.session.commit()
 
-    response = as_role("admin").post(f"/api/sales/{sale['id']}/void", json={"reason": "Mistake"})
+    response = seller.post(f"/api/sales/{sale['id']}/void", json={"reason": "Mistake"})
 
     assert response.status_code == 409
     assert response.json["error"]["message"] == "Only today's sales can be voided."

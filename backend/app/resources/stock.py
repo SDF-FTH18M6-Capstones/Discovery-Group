@@ -21,7 +21,8 @@ from app.tenancy import current_business_id, next_number, scoped
 
 blp = Blueprint("stock", __name__, url_prefix="/api/stock", description="Stock ledger")
 
-STOCK = ("admin", "inventory")
+STOCK = ("inventory",)
+SEE_ALL = ("admin", "inventory")
 CSV_LIMIT = 50_000
 
 
@@ -81,7 +82,7 @@ def movements(args):
 @blp.route("/movements")
 @blp.arguments(MovementQuery, location="query")
 @blp.response(200, page_schema(MovementOut))
-@roles_required(*STOCK)
+@roles_required(*SEE_ALL)
 def list_movements(args):
     return paginate(movements(args), args["page"], args["per_page"])
 
@@ -89,7 +90,7 @@ def list_movements(args):
 @blp.route("/movements.csv")
 @blp.arguments(MovementQuery, location="query")
 @blp.response(200, content_type="text/csv")
-@roles_required(*STOCK)
+@roles_required(*SEE_ALL)
 def export_movements(args):
     zone = shop_zone()
     out = io.StringIO()

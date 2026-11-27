@@ -21,6 +21,7 @@ class Product(TenantMixin, TimestampMixin, db.Model):
         db.CheckConstraint("reorder_level >= 0", name="reorder_level_not_negative"),
         db.CheckConstraint("cost_price >= 0", name="cost_price_not_negative"),
         db.CheckConstraint("selling_price >= 0", name="selling_price_not_negative"),
+        db.CheckConstraint("reorder_quantity > 0", name="reorder_quantity_positive"),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -35,9 +36,14 @@ class Product(TenantMixin, TimestampMixin, db.Model):
     selling_price = db.Column(Money, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, server_default="0")
     reorder_level = db.Column(db.Integer, nullable=False, server_default="0")
+    reorder_quantity = db.Column(db.Integer)
+    default_supplier_id = db.Column(
+        db.Integer, db.ForeignKey("suppliers.id", ondelete="SET NULL"), index=True
+    )
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true(), index=True)
 
     category = db.relationship("Category", back_populates="products")
+    default_supplier = db.relationship("Supplier")
     movements = db.relationship("StockMovement", back_populates="product")
 
     @property

@@ -47,7 +47,7 @@ def test_a_new_account_must_confirm_its_email_before_signing_in(strict, client, 
     joined = join(client)
 
     assert joined.status_code == 201
-    assert "open it to confirm your email" in joined.json["message"]
+    assert "to confirm your email" in joined.json["message"]
     assert outbox[-1]["subject"] == "Confirm your StockPilot email"
     blocked = sign_in(client, "barclay@test.com")
     assert blocked.status_code == 403

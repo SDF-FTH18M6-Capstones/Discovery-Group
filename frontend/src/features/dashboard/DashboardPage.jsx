@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import { PROCUREMENT, ROLE_NAMES, SELLERS, STOCK_MANAGERS } from "../../auth/roles";
+import { ROLE_NAMES } from "../../auth/roles";
 import Icon from "../../components/Icon";
 import { BarChart, EmptyState, Panel, StatStrip, StockMeter } from "../../components/ui";
 import { money, shortDate, timeAgo } from "../../format";
@@ -181,11 +181,11 @@ function Latest() {
   );
 }
 
-function Shortcuts({ hasRole }) {
+function Shortcuts({ canDo }) {
   const links = [
-    hasRole(...SELLERS) && { to: "/sales/new", icon: "sale", label: "Ring up a sale" },
-    hasRole(...STOCK_MANAGERS) && { to: "/stock", icon: "ledger", label: "Adjust stock" },
-    hasRole(...PROCUREMENT) && { to: "/purchases", icon: "truck", label: "Place an order" },
+    canDo("sales") && { to: "/sales/new", icon: "sale", label: "Ring up a sale" },
+    canDo("inventory") && { to: "/stock", icon: "ledger", label: "Adjust stock" },
+    canDo("procurement") && { to: "/purchases", icon: "truck", label: "Place an order" },
     { to: "/requests?new=1", icon: "inbox", label: "Ask for something" },
     { to: "/repairs", icon: "wrench", label: "Report a fault" },
   ].filter(Boolean);
@@ -209,7 +209,7 @@ function Shortcuts({ hasRole }) {
 }
 
 export default function DashboardPage() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, canDo } = useAuth();
   const location = useLocation();
   const tiles = usePulse();
 
@@ -227,15 +227,12 @@ export default function DashboardPage() {
           {user.business?.name && <p className="text-sm text-muted">{user.business.name}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasRole(...SELLERS) && (
+          {canDo("sales") && (
             <Link to="/sales/new" className="btn-primary">
               <Icon name="sale" size={16} /> New sale
             </Link>
           )}
-          <Link
-            to="/requests?new=1"
-            className={hasRole(...SELLERS) ? "btn-secondary" : "btn-primary"}
-          >
+          <Link to="/requests?new=1" className={canDo("sales") ? "btn-secondary" : "btn-primary"}>
             New request
           </Link>
           <Link to="/products" className="btn-secondary">
@@ -298,7 +295,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           <Latest />
-          <Shortcuts hasRole={hasRole} />
+          <Shortcuts canDo={canDo} />
         </div>
       </div>
     </section>

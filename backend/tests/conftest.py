@@ -63,7 +63,9 @@ def make_user(app):
 
     counter = {"n": 0}
 
-    def make(role="employee", email=None, password=PASSWORD, full_name=None, verified=True):
+    def make(
+        role="employee", email=None, password=PASSWORD, full_name=None, verified=True, approved=True
+    ):
         from datetime import UTC, datetime
 
         counter["n"] += 1
@@ -71,6 +73,7 @@ def make_user(app):
             full_name=full_name or f"{role.title()} User {counter['n']}",
             email=email or f"{role}{counter['n']}@test.com",
             email_verified_at=datetime.now(UTC) if verified else None,
+            approved_at=datetime.now(UTC) if approved else None,
         )
         user.set_password(password)
         _db.session.add(user)

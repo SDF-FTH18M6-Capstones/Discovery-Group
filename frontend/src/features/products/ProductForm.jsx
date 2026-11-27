@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { api, upload } from "../../api/client";
@@ -15,6 +15,8 @@ const EMPTY = {
   selling_price: "",
   quantity: "0",
   reorder_level: "0",
+  reorder_quantity: "",
+  default_supplier_id: "",
 };
 
 export function validateProduct(values) {
@@ -27,16 +29,34 @@ export function validateProduct(values) {
       errors[field] = "Enter a number of 0 or more.";
     }
   }
+  const size = values.reorder_quantity;
+  if (size !== "" && !(Number.isInteger(Number(size)) && Number(size) >= 1)) {
+    errors.reorder_quantity = "Enter a whole number of 1 or more, or leave it empty.";
+  }
   return errors;
 }
 
-export default function ProductForm({ product, categoryOptions, onSaved, onCancel }) {
+export default function ProductForm({
+  product,
+  categoryOptions,
+  onSaved,
+  onCancel,
+  compact = false,
+  supplierId = "",
+}) {
   const dispatch = useDispatch();
   const [values, setValues] = useState(
     product
       ? Object.fromEntries(Object.keys(EMPTY).map((key) => [key, String(product[key] ?? "")]))
-      : EMPTY,
+      : { ...EMPTY, default_supplier_id: String(supplierId) },
   );
+  const [supplierOptions, setSupplierOptions] = useState([]);
+
+  useEffect(() => {
+    api("/api/suppliers/?per_page=100")
+      .then((result) => setSupplierOptions(result.results.filter((s) => s.is_active !== false)))
+      .catch(() => {});
+  }, []);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -71,12 +91,19 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       category_id: Number(values.category_id),
       quantity: Number(values.quantity),
       reorder_level: Number(values.reorder_level),
+      reorder_quantity: values.reorder_quantity === "" ? null : Number(values.reorder_quantity),
+      default_supplier_id: values.default_supplier_id ? Number(values.default_supplier_id) : null,
     };
     if (product) delete data.quantity;
     const result = await dispatch(products.saveItem({ id: product?.id, data }));
     if (products.saveItem.fulfilled.match(result)) {
       let saved = result.payload;
       try {
+        if (compact) {
+          setSaving(false);
+          onSaved(saved);
+          return;
+        }
         if (photo) saved = await upload(`/api/products/${saved.id}/photo`, photo);
         else if (removePhoto && product?.image_url)
           saved = await api(`/api/products/${saved.id}/photo`, { method: "DELETE" });
@@ -180,7 +207,39 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
         onChange={handleChange}
         error={errors.reorder_level}
       />
-      <div className="sm:col-span-2">
+      <Field label="Usual supplier" name="default_supplier_id" error={errors.default_supplier_id}>
+        {(id) => (
+          <select
+            id={id}
+            name="default_supplier_id"
+            value={values.default_supplier_id}
+            onChange={handleChange}
+            className="input px-2"
+          >
+            <option value="">None</option>
+            {supplierOptions.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+      <Field
+        label="Order this many when low"
+        name="reorder_quantity"
+        inputMode="numeric"
+        placeholder="Automatic"
+        value={values.reorder_quantity}
+        onChange={handleChange}
+        error={errors.reorder_quantity}
+      />
+      <p className="-mt-2 text-xs text-muted sm:col-span-2">
+        When stock falls to the reorder level, StockPilot adds this product to a draft order for its
+        usual supplier, ready for Procurement to confirm. Leave the amount empty to refill to twice
+        the reorder level.
+      </p>
+      <div className={compact ? "hidden" : "sm:col-span-2"}>
         <PhotoPicker
           currentUrl={removePhoto ? "" : product?.image_url}
           file={photo}
@@ -194,7 +253,8 @@ export default function ProductForm({ product, categoryOptions, onSaved, onCance
       </div>
       {product && (
         <p className="text-xs text-muted sm:col-span-2">
-          New prices apply to new sales only; past receipts keep the price they were sold at.
+          New prices apply to new sales only; past receipts keep the price they were sold at. The
+          cost price also updates by itself when a delivery is received (average cost).
         </p>
       )}
       <div className="flex gap-2 sm:col-span-2">

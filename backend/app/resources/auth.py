@@ -18,7 +18,7 @@ from marshmallow import EXCLUDE, ValidationError, fields, validate, validates
 
 from app import verification as verify
 from app.audit import audit
-from app.auth import roles_required
+from app.auth import covers_for, roles_required
 from app.extensions import db, limiter
 from app.mail import queue_email
 from app.models import (
@@ -31,6 +31,7 @@ from app.models import (
     User,
 )
 from app.models.user import check_secret, hash_secret
+from app.notify import notify_roles
 from app.schemas import Schema
 from app.tenancy import tenant
 
@@ -96,6 +97,7 @@ class AccountSchema(Schema):
     email_verified = fields.Boolean()
     phone = fields.String(allow_none=True)
     role = fields.String()
+    covers = fields.Function(covers_for)
     business = fields.Nested(BusinessBrief)
 
 
@@ -219,7 +221,9 @@ def register_business(data):
     db.session.add(business)
     db.session.flush()
     with tenant(business.id):
-        owner = Admin(full_name=data["full_name"], email=data["email"].lower())
+        owner = Admin(
+            full_name=data["full_name"], email=data["email"].lower(), approved_at=verify.now()
+        )
         owner.set_password(data["password"])
         db.session.add(owner)
         db.session.flush()
@@ -261,21 +265,40 @@ def register(data):
     if find_user(data["email"]):
         abort(409, message="An account with this email already exists.")
     with tenant(business.id):
-        user = Employee(full_name=data["full_name"], email=data["email"].lower())
+        needs_approval = current_app.config["STAFF_APPROVAL_REQUIRED"]
+        user = Employee(
+            full_name=data["full_name"],
+            email=data["email"].lower(),
+            approved_at=None if needs_approval else verify.now(),
+        )
         user.set_password(data["password"])
         db.session.add(user)
         db.session.flush()
         audit("joined", "user", user.id, f"{user.full_name} joined", user_id=user.id)
+        if needs_approval:
+            notify_roles(
+                ("admin",),
+                f"{user.full_name} ({user.email}) joined {business.name} and is waiting for "
+                "you to approve them and choose their role.",
+                link="/users?pending=true",
+                email_subject=f"{user.full_name} is waiting for approval",
+            )
+        steps = []
         if verify.verification_required():
             verify.send_verification(user)
-            db.session.commit()
-            return {
-                "message": f"Account created at {business.name}. We sent a link to "
-                f"{user.email}: open it to confirm your email, then sign in."
-            }
-        user.email_verified_at = verify.now()
+            steps.append(f"open the link we sent to {user.email} to confirm your email")
+        else:
+            user.email_verified_at = verify.now()
+        if needs_approval:
+            steps.append("your administrator will approve your account and choose your role")
         db.session.commit()
-    return {"message": f"Account created at {business.name}. You can now sign in."}
+    if not steps:
+        return {"message": f"Account created at {business.name}. You can now sign in."}
+    return {
+        "message": f"Account created at {business.name}. Next, "
+        + " and ".join(steps)
+        + ". Then you can sign in."
+    }
 
 
 @blp.route("/login", methods=["POST"])
@@ -299,6 +322,13 @@ def login(data):
             403,
             message="Confirm your email first: open the link we sent you, or ask for a new one.",
             reason="email_unverified",
+        )
+    if not user.is_approved:
+        abort(
+            403,
+            message="Your administrator has not approved your account yet. We will email you "
+            "as soon as they do.",
+            reason="awaiting_approval",
         )
     if verify.code_required_for(user):
         challenge = verify.start_challenge(user)

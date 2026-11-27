@@ -17,12 +17,18 @@ export const page = (results) => ({
   pages: 1,
 });
 
-export const userFor = (role) => ({
+export const userFor = (role, extra = {}) => ({
   id: 1,
   full_name: `Test ${role}`,
   email: `${role}@test.com`,
   role,
+  covers: [],
+  ...extra,
 });
+
+export const soleOwner = () => userFor("admin", { covers: ["procurement", "inventory", "sales"] });
+
+const asUser = (who) => (typeof who === "string" ? userFor(who) : who);
 
 export function mockApi(routes = {}, role = null) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (url, options = {}) => {
@@ -31,14 +37,14 @@ export function mockApi(routes = {}, role = null) {
     const [status, body] =
       typeof answer === "function"
         ? answer(options, new URL(url))
-        : answer || (key === "GET /api/auth/me" && role ? [200, userFor(role)] : [200, page([])]);
+        : answer || (key === "GET /api/auth/me" && role ? [200, asUser(role)] : [200, page([])]);
     return { ok: status < 400, status, json: async () => body };
   });
 }
 
 export function renderAt(path, { as = null } = {}) {
   if (as) {
-    saveSession({ accessToken: "test-access", refreshToken: "test-refresh", user: userFor(as) });
+    saveSession({ accessToken: "test-access", refreshToken: "test-refresh", user: asUser(as) });
   }
   return render(
     <Provider store={makeStore()}>

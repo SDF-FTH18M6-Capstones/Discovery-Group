@@ -9,7 +9,7 @@ from app.auth import roles_required
 from app.crud import PageQuery, delete, find, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.images import read_upload, remove_photo, replace_photo
-from app.models import Category, Product, PurchaseItem, SaleItem, StockMovement
+from app.models import Category, Product, PurchaseItem, SaleItem, StockMovement, Supplier
 from app.schemas import Schema
 from app.stockledger import move_stock
 from app.timeline import TimelineEntry, product_timeline
@@ -17,8 +17,19 @@ from app.timeline import TimelineEntry, product_timeline
 blp = Blueprint("products", __name__, url_prefix="/api/products", description="Products")
 
 money = {"places": 2, "as_string": True, "validate": validate.Range(min=0)}
-EDITORS = ("admin", "inventory")
-TRACKED = ("sku", "name", "category_id", "cost_price", "selling_price", "reorder_level")
+EDITORS = ("inventory",)
+CREATORS = ("inventory", "procurement")
+SEE_ALL = ("admin", "inventory")
+TRACKED = (
+    "sku",
+    "name",
+    "category_id",
+    "cost_price",
+    "selling_price",
+    "reorder_level",
+    "reorder_quantity",
+    "default_supplier_id",
+)
 
 
 class ProductSchema(Schema):
@@ -32,6 +43,13 @@ class ProductSchema(Schema):
     selling_price = fields.Decimal(required=True, **money)
     quantity = fields.Integer(load_default=0, validate=validate.Range(min=0))
     reorder_level = fields.Integer(load_default=0, validate=validate.Range(min=0))
+    reorder_quantity = fields.Integer(
+        load_default=None, allow_none=True, validate=validate.Range(min=1, max=100000)
+    )
+    default_supplier_id = fields.Integer(load_default=None, allow_none=True)
+    default_supplier_name = fields.String(
+        attribute="default_supplier.name", dump_only=True, allow_none=True
+    )
     is_active = fields.Boolean(dump_only=True)
     is_low_stock = fields.Boolean(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
@@ -51,6 +69,11 @@ class ProductQuery(PageQuery):
 def check_category(category_id):
     if find(Category, category_id) is None:
         abort(400, message=f"Category {category_id} does not exist")
+
+
+def check_supplier(supplier_id):
+    if supplier_id is not None and find(Supplier, supplier_id) is None:
+        abort(400, message=f"Supplier {supplier_id} does not exist")
 
 
 @blp.route("/")
@@ -76,9 +99,10 @@ def list_products(args):
 @blp.route("/", methods=["POST"])
 @blp.arguments(ProductSchema)
 @blp.response(201, ProductSchema)
-@roles_required(*EDITORS)
+@roles_required(*CREATORS)
 def create_product(data):
     check_category(data["category_id"])
+    check_supplier(data["default_supplier_id"])
     opening = data.pop("quantity")
     product = Product(**data, quantity=0)
     db.session.add(product)
@@ -108,6 +132,7 @@ def get_product(product_id):
 def update_product(data, product_id):
     product = get_or_404(Product, product_id)
     check_category(data["category_id"])
+    check_supplier(data["default_supplier_id"])
     data.pop("quantity", None)
     changes = diff(product, data, TRACKED)
     for key, value in data.items():
@@ -216,7 +241,7 @@ def delete_photo(product_id):
 @blp.route("/<int:product_id>/timeline")
 @blp.arguments(PageQuery, location="query")
 @blp.response(200, page_schema(TimelineEntry))
-@roles_required(*EDITORS)
+@roles_required(*SEE_ALL)
 def timeline(args, product_id):
     get_or_404(Product, product_id)
     return product_timeline(product_id, args["page"], args["per_page"])
