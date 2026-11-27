@@ -8,6 +8,7 @@ from app.models.business import (
     Image,
     LoginChallenge,
     PasswordReset,
+    PlatformSetting,
     RevokedToken,
 )
 from app.models.catalogue import Category, Product, Supplier
@@ -45,6 +46,7 @@ __all__ = [
     "MpesaPayment",
     "Notification",
     "PasswordReset",
+    "PlatformSetting",
     "ProcurementManager",
     "Product",
     "Purchase",

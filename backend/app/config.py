@@ -55,6 +55,11 @@ class Config:
     DATA_KEY = os.getenv("DATA_KEY", "")
     SUBSCRIPTIONS_REQUIRED = os.getenv("SUBSCRIPTIONS_REQUIRED", "false").lower() == "true"
     SUBSCRIPTION_PRICE = int(os.getenv("SUBSCRIPTION_PRICE", "1500"))
+    PLATFORM_OWNERS = [
+        email.strip().lower()
+        for email in os.getenv("PLATFORM_OWNERS", "").split(",")
+        if email.strip()
+    ]
     LOGIN_CODE_EXEMPT_DOMAINS = [
         d.strip().lower()
         for d in os.getenv("LOGIN_CODE_EXEMPT_DOMAINS", "").split(",")

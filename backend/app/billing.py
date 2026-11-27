@@ -4,9 +4,25 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
+from app.extensions import db
+from app.models import PlatformSetting
+
 TRIAL_DAYS = 14
 GRACE_DAYS = 7
 PLANS = (1, 3, 6, 12)
+
+
+def monthly_price():
+    setting = db.session.get(PlatformSetting, "subscription_price")
+    return int(setting.value) if setting else current_app.config["SUBSCRIPTION_PRICE"]
+
+
+def set_monthly_price(amount):
+    setting = db.session.get(PlatformSetting, "subscription_price")
+    if setting is None:
+        db.session.add(PlatformSetting(key="subscription_price", value=str(amount)))
+    else:
+        setting.value = str(amount)
 
 
 def business_today(business):
@@ -49,7 +65,7 @@ def subscription(business):
         "grace_until": grace_until,
         "days_left": (ends - today).days,
         "read_only": required and status == "expired",
-        "price": current_app.config["SUBSCRIPTION_PRICE"],
+        "price": monthly_price(),
     }
 
 

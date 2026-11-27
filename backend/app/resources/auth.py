@@ -33,6 +33,7 @@ from app.models import (
 )
 from app.models.user import check_secret, hash_secret
 from app.notify import notify_roles
+from app.resources.platform import is_platform_owner
 from app.schemas import Schema
 from app.tenancy import tenant
 
@@ -112,6 +113,7 @@ class AccountSchema(Schema):
     phone = fields.String(allow_none=True)
     role = fields.String()
     covers = fields.Function(covers_for)
+    platform_owner = fields.Function(is_platform_owner)
     business = fields.Nested(BusinessBrief)
 
 

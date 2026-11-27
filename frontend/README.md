@@ -48,6 +48,7 @@ The System status page shows whether the API is reachable.
 | Assets, repairs                                      | `/assets`, `/repairs`                                                         | inventory manages; everyone sees what they hold and reports faults                  |
 | Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator                                                                       |
 | Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; M-Pesa and business settings for the administrator                        |
+| Platform                                             | `/platform`                                                                   | StockPilot's own owners (`PLATFORM_OWNERS` on the API)                              |
 
 Buttons follow the job rather than the title: `useAuth().canDo("sales")` is true for sales staff,
 and for the administrator only while nobody holds that role.

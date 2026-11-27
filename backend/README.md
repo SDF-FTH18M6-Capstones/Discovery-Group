@@ -158,6 +158,17 @@ When `SUBSCRIPTIONS_REQUIRED=true`, a business whose trial or subscription ended
 ago becomes read-only: it can still sign in, read its data and pay, but any change answers 403
 with `"reason": "subscription_ended"`.
 
+### Platform owners
+
+People whose email address is listed in `PLATFORM_OWNERS` run StockPilot itself. They sign in
+with their normal account and get a Platform page that lists every business with its owner, staff
+count, last sale and subscription status, every subscription payment, and the takings for the
+month. From there they can add free months (for example after a payment made outside M-Pesa),
+suspend or reactivate a business, and change the monthly price, which is stored in
+`platform_settings` and overrides `SUBSCRIPTION_PRICE`. The page also shows whether StockPilot's
+Paybill is connected; its keys stay in the server's environment and never pass through the app.
+Every action is written to the affected business's audit log, and its administrators are told.
+
 ## API reference
 
 Every endpoint is limited to the caller's business. Lists accept `?page=1&per_page=20` (at most
@@ -187,6 +198,7 @@ Every endpoint is limited to the caller's business. Lists accept `?page=1&per_pa
 | `/api/auth/register`, `/register-business`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password` · `GET /api/images/<id>` · `GET /api/health` | public |
 | `GET`/`PUT /api/auth/me` · `POST /api/auth/password`, `/logout` | the signed-in user |
 | `POST /api/payments/mpesa/callback/<token>` · `POST /api/tasks/daily-summary` | Safaricom · the scheduler (`X-Task-Token` header) |
+| `GET /api/platform/overview`, `/businesses`, `/payments` · `PUT /price` · `POST /businesses/<id>/extend`, `/suspend`, `/reactivate` | platform owners only; everyone else gets 404 |
 
 Errors share one shape:
 
@@ -208,7 +220,8 @@ Errors share one shape:
 | `CORS_ORIGINS`, `FRONTEND_URL` | The web app's address, for browser access and for links in emails |
 | `BREVO_API_KEY` or `MAIL_SERVER`, `MAIL_FROM` | Email delivery; Brevo's HTTPS API works where SMTP ports are blocked |
 | `MPESA_MODE`, `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET`, `MPESA_SHORTCODE`, `MPESA_PASSKEY` | StockPilot's own Paybill, used for subscriptions |
-| `SUBSCRIPTIONS_REQUIRED`, `SUBSCRIPTION_PRICE` | Whether lapsed businesses become read-only, and the monthly price in KES |
+| `SUBSCRIPTIONS_REQUIRED`, `SUBSCRIPTION_PRICE` | Whether lapsed businesses become read-only, and the default monthly price in KES |
+| `PLATFORM_OWNERS` | Comma-separated email addresses that can open the Platform page |
 | `DATA_KEY` | Encrypts each business's M-Pesa keys; defaults to `SECRET_KEY`. Changing it means businesses re-enter their keys |
 | `TASK_TOKEN` | Shared secret for the evening summary schedule |
 | `EMAIL_VERIFICATION_REQUIRED`, `LOGIN_CODE_REQUIRED`, `STAFF_APPROVAL_REQUIRED` | Security checks, on by default |

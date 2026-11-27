@@ -23,7 +23,9 @@ takes M-Pesa payments into its own Paybill or till, and only ever sees its own d
 - **Security:** email confirmation, one-time sign-in codes, revocable sessions, role checks on
   every endpoint and strict separation between businesses.
 - **Subscriptions:** a 14-day trial, then monthly plans paid by M-Pesa to StockPilot's Paybill. A
-  lapsed business keeps read access to its data until it renews.
+  lapsed business keeps read access to its data until it renews. A platform console lets
+  StockPilot's owners follow every business and payment, add free months, suspend accounts and
+  set the price.
 - Installable as an app on phones and computers, with light and dark themes.
 
 ## Tech stack
