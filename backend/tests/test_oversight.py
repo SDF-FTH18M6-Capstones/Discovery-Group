@@ -337,3 +337,44 @@ def test_procurement_can_add_a_product_while_ordering(as_role, stocked):
 
     assert created.status_code == 201
     assert created.json["quantity"] == 0
+
+
+def test_choosing_a_supplier_for_a_product_already_low_orders_it(as_role, stocked):
+    store, buyer = as_role("inventory"), as_role("procurement")
+    rice = db.session.get(Product, stocked["rice"])
+    rice.quantity = 1
+    db.session.commit()
+    current = store.get(f"/api/products/{stocked['rice']}").json
+    fields = ("sku", "name", "category_id", "cost_price", "selling_price", "reorder_level")
+
+    store.put(
+        f"/api/products/{stocked['rice']}",
+        json={**{k: current[k] for k in fields}, "default_supplier_id": stocked["supplier"]},
+    )
+
+    [draft] = drafts()
+    assert [(line.product_id, line.quantity) for line in draft.items] == [(stocked["rice"], 3)]
+    shown = store.get(f"/api/products/{stocked['rice']}").json
+    assert shown["on_order"] == [
+        {"reference": draft.reference, "purchase_id": draft.id, "status": "draft", "outstanding": 3}
+    ]
+    notes = db.session.scalars(
+        db.select(Notification.message).where(Notification.user_id == buyer.user.id)
+    ).all()
+    assert notes == [
+        f"Rice is low on stock (1 left). It was added to {draft.reference}, ready to confirm."
+    ]
+
+
+def test_editing_a_well_stocked_product_orders_nothing(as_role, stocked):
+    store = as_role("inventory")
+    current = store.get(f"/api/products/{stocked['rice']}").json
+    fields = ("sku", "name", "category_id", "cost_price", "selling_price", "reorder_level")
+
+    store.put(
+        f"/api/products/{stocked['rice']}",
+        json={**{k: current[k] for k in fields}, "default_supplier_id": stocked["supplier"]},
+    )
+
+    assert drafts() == []
+    assert store.get(f"/api/products/{stocked['rice']}").json["on_order"] == []
