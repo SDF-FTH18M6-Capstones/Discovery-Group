@@ -121,6 +121,14 @@ describe("voiding a sale (US-29)", () => {
     expect(screen.queryByRole("button", { name: "Void sale" })).toBeNull();
   });
 
+  it("keeps the New sale button for whoever runs the till", async () => {
+    mockApi({ "GET /api/sales/": [200, page([sale])] }, "admin");
+    renderAt("/sales", { as: "admin" });
+
+    expect(await screen.findByText("S-0005")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "New sale" })).toBeNull();
+  });
+
   it("is left to the attendants when the shop has sales staff", async () => {
     mockApi({ "GET /api/sales/": [200, page([sale])] }, "admin");
     const user = userEvent.setup();

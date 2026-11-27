@@ -104,10 +104,12 @@ export default function SalesPage() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title="Sales" subtitle="Every receipt from the till. Open one to print it again.">
-        <Link to="/sales/new" className="btn-primary">
-          <Icon name="sale" size={16} />
-          New sale
-        </Link>
+        {canDo("sales") && (
+          <Link to="/sales/new" className="btn-primary">
+            <Icon name="sale" size={16} />
+            New sale
+          </Link>
+        )}
       </PageHeader>
 
       {list.error && (

@@ -9,7 +9,17 @@ from app.auth import roles_required
 from app.crud import PageQuery, delete, find, get_or_404, page_schema, paginate, save
 from app.extensions import db
 from app.images import read_upload, remove_photo, replace_photo
-from app.models import Category, Product, PurchaseItem, SaleItem, StockMovement, Supplier
+from app.models import (
+    Category,
+    Product,
+    Purchase,
+    PurchaseItem,
+    SaleItem,
+    StockMovement,
+    Supplier,
+)
+from app.models.procurement import OPEN_PURCHASE_STATUSES
+from app.notify import order_if_low
 from app.schemas import Schema
 from app.stockledger import move_stock
 from app.timeline import TimelineEntry, product_timeline
@@ -118,11 +128,42 @@ def create_product(data):
     return product
 
 
+class OnOrderSchema(Schema):
+    reference = fields.String()
+    purchase_id = fields.Integer()
+    status = fields.String()
+    outstanding = fields.Integer()
+
+
+class ProductDetailSchema(ProductSchema):
+    on_order = fields.List(fields.Nested(OnOrderSchema), dump_only=True)
+
+
 @blp.route("/<int:product_id>")
-@blp.response(200, ProductSchema)
+@blp.response(200, ProductDetailSchema)
 @roles_required()
 def get_product(product_id):
-    return get_or_404(Product, product_id)
+    product = get_or_404(Product, product_id)
+    rows = db.session.execute(
+        db.select(Purchase, PurchaseItem.quantity - PurchaseItem.received_quantity)
+        .join(PurchaseItem)
+        .where(
+            PurchaseItem.product_id == product.id,
+            Purchase.status.in_(OPEN_PURCHASE_STATUSES),
+            PurchaseItem.received_quantity < PurchaseItem.quantity,
+        )
+        .order_by(Purchase.id)
+    ).all()
+    product.on_order = [
+        {
+            "reference": purchase.reference,
+            "purchase_id": purchase.id,
+            "status": purchase.status,
+            "outstanding": outstanding,
+        }
+        for purchase, outstanding in rows
+    ]
+    return product
 
 
 @blp.route("/<int:product_id>", methods=["PUT"])
@@ -140,6 +181,8 @@ def update_product(data, product_id):
     save(product, f"SKU '{data['sku']}' is already used")
     if changes:
         audit("updated", "product", product.id, f"{product.name} edited", changes)
+        if {"default_supplier_id", "reorder_level"} & changes.keys():
+            order_if_low(product, current_user.id)
         db.session.commit()
     return product
 

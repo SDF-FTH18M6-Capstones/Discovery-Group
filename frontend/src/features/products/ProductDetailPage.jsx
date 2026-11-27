@@ -47,6 +47,27 @@ function ShelfCard({ product }) {
             : "Time to order more."}
         </p>
       </div>
+      <dl className="flex flex-col gap-1 border-t border-line pt-3 text-sm">
+        <div className="flex flex-wrap gap-1">
+          <dt className="text-muted">Usual supplier:</dt>
+          <dd className="font-medium">
+            {product.default_supplier_name || "none yet (set one to get automatic orders)"}
+          </dd>
+        </div>
+        {product.on_order?.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            <dt className="text-muted">On order:</dt>
+            <dd className="font-medium">
+              {product.on_order
+                .map(
+                  (line) =>
+                    `${line.outstanding} on ${line.reference}${line.status === "draft" ? " (draft)" : ""}`,
+                )
+                .join(", ")}
+            </dd>
+          </div>
+        )}
+      </dl>
     </div>
   );
 }
