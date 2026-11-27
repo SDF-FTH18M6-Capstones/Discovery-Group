@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL, 27 tables. The diagram and the data dictionary below are generated from the
+PostgreSQL, 28 tables. The diagram and the data dictionary below are generated from the
 SQLAlchemy models in `backend/app/models/`, and CI runs `flask db check` to prove the migrations
 build exactly this schema. [erddoc.png](erddoc.png) shows the original single-business design.
 
@@ -109,6 +109,11 @@ erDiagram
         text mpesa_consumer_key
         text mpesa_consumer_secret
         timestamptz created_at
+        timestamptz updated_at
+    }
+    PLATFORM_SETTINGS {
+        varchar key PK
+        varchar value
         timestamptz updated_at
     }
     REVOKED_TOKENS {
@@ -490,6 +495,14 @@ All staff live in one `users` table; `role` selects the class.
 
 Checks: `vat_rate >= 0 AND vat_rate < 100`; `mpesa_type IN ('paybill', 'till')`
 
+### platform_settings
+
+| Column | Type | Required | Keys | Notes |
+|---|---|---|---|---|
+| `key` | varchar(50) | yes | PK |  |
+| `value` | varchar(200) | yes |  |  |
+| `updated_at` | timestamptz | yes |  | Default `now()`. |
+
 ### revoked_tokens
 
 | Column | Type | Required | Keys | Notes |
@@ -699,7 +712,7 @@ Checks: `amount > 0`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `reorder_level >= 0`; `selling_price >= 0`; `reorder_quantity > 0`; `quantity >= 0`; `cost_price >= 0`
+Checks: `quantity >= 0`; `cost_price >= 0`; `reorder_level >= 0`; `selling_price >= 0`; `reorder_quantity > 0`
 
 ### sales
 
@@ -721,7 +734,7 @@ Checks: `reorder_level >= 0`; `selling_price >= 0`; `reorder_quantity > 0`; `qua
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `status IN ('completed', 'voided')`; `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`
+Checks: `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`; `status IN ('completed', 'voided')`
 
 ### asset_assignments
 
@@ -740,7 +753,7 @@ Checks: `status IN ('completed', 'voided')`; `total >= 0`; `payment_method IN ('
 | `return_notes` | text | no |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `condition_out IN ('new', 'good', 'fair', 'poor', 'damaged')`; `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor', 'damaged')`
+Checks: `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor', 'damaged')`; `condition_out IN ('new', 'good', 'fair', 'poor', 'damaged')`
 
 ### mpesa_payments
 
@@ -768,7 +781,7 @@ Checks: `condition_out IN ('new', 'good', 'fair', 'poor', 'damaged')`; `conditio
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `purpose IN ('sale', 'subscription')`; `amount > 0`; `status IN ('pending', 'paid', 'failed', 'cancelled')`
+Checks: `amount > 0`; `status IN ('pending', 'paid', 'failed', 'cancelled')`; `purpose IN ('sale', 'subscription')`
 
 ### repairs
 
@@ -815,7 +828,7 @@ Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `status IN ('submitted
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`
+Checks: `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`; `urgency IN ('low', 'normal', 'high', 'urgent')`
 
 ### sale_items
 
@@ -829,7 +842,7 @@ Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `quantity > 0`; `statu
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `quantity > 0`; `unit_price >= 0`; `unit_cost >= 0`
+Checks: `unit_price >= 0`; `unit_cost >= 0`; `quantity > 0`
 
 ### stock_movements
 
@@ -846,7 +859,7 @@ Checks: `quantity > 0`; `unit_price >= 0`; `unit_cost >= 0`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`; `quantity_after >= 0`; `change <> 0`
+Checks: `quantity_after >= 0`; `change <> 0`; `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`
 
 ### purchases
 
@@ -869,7 +882,7 @@ Checks: `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`; `quantity_aft
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `total >= 0`; `source IN ('manual', 'low_stock', 'request')`; `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`
+Checks: `source IN ('manual', 'low_stock', 'request')`; `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`; `total >= 0`
 
 ### goods_receipts
 
@@ -896,7 +909,7 @@ Checks: `total >= 0`; `source IN ('manual', 'low_stock', 'request')`; `status IN
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `unit_cost >= 0`; `received_quantity >= 0 AND received_quantity <= quantity`; `quantity > 0`
+Checks: `received_quantity >= 0 AND received_quantity <= quantity`; `quantity > 0`; `unit_cost >= 0`
 
 ### goods_receipt_items
 

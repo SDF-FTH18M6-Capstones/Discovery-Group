@@ -147,3 +147,16 @@ class Expense(TenantMixin, TimestampMixin, db.Model):
     )
 
     creator = db.relationship("User")
+
+
+class PlatformSetting(db.Model):
+    __tablename__ = "platform_settings"
+
+    key = db.Column(db.String(50), primary_key=True)
+    value = db.Column(db.String(200), nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )

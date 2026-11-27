@@ -67,6 +67,10 @@ const groups = [
     ],
   },
   {
+    title: "StockPilot",
+    links: [{ to: "/platform", label: "Platform", icon: "layers", owners: true }],
+  },
+  {
     title: "Account",
     links: [
       { to: "/settings", label: "Settings", icon: "settings" },
@@ -274,7 +278,10 @@ export default function Layout() {
     .map((group) => ({
       ...group,
       links: group.links.filter(
-        (link) => (!link.roles || hasRole(...link.roles)) && (!link.jobs || canDo(...link.jobs)),
+        (link) =>
+          (!link.roles || hasRole(...link.roles)) &&
+          (!link.jobs || canDo(...link.jobs)) &&
+          (!link.owners || user?.platform_owner),
       ),
     }))
     .filter((group) => group.links.length);
