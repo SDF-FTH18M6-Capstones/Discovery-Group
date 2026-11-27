@@ -1,6 +1,6 @@
 # Database design
 
-PostgreSQL, 28 tables. The diagram and the data dictionary below are generated from the
+PostgreSQL, 31 tables. The diagram and the data dictionary below are generated from the
 SQLAlchemy models in `backend/app/models/`, and CI runs `flask db check` to prove the migrations
 build exactly this schema. [erddoc.png](erddoc.png) shows the original single-business design.
 
@@ -31,11 +31,14 @@ erDiagram
     BUSINESSES ||--o{ ASSET_CATEGORIES : "business_id"
     BUSINESSES ||--o{ AUDIT_LOGS : "business_id"
     BUSINESSES ||--o{ CATEGORIES : "business_id"
+    BUSINESSES ||--o{ CATEGORY_RULES : "business_id"
     BUSINESSES ||--o{ DOCUMENT_COUNTERS : "business_id"
     BUSINESSES ||--o{ EXPENSES : "business_id"
     BUSINESSES ||--o{ GOODS_RECEIPTS : "business_id"
     BUSINESSES ||--o{ GOODS_RECEIPT_ITEMS : "business_id"
     BUSINESSES ||--o{ IMAGES : "business_id"
+    BUSINESSES ||--o{ MONEY_IMPORTS : "business_id"
+    BUSINESSES ||--o{ MONEY_TRANSACTIONS : "business_id"
     BUSINESSES ||--o{ MPESA_PAYMENTS : "business_id"
     BUSINESSES ||--o{ NOTIFICATIONS : "business_id"
     BUSINESSES ||--o{ PRODUCTS : "business_id"
@@ -52,6 +55,7 @@ erDiagram
     GOODS_RECEIPTS ||--o{ GOODS_RECEIPT_ITEMS : "receipt_id"
     IMAGES |o--o{ ASSETS : "image_id"
     IMAGES |o--o{ PRODUCTS : "image_id"
+    MONEY_IMPORTS ||--o{ MONEY_TRANSACTIONS : "import_id"
     PRODUCTS |o--o{ REQUESTS : "product_id"
     PRODUCTS ||--o{ GOODS_RECEIPT_ITEMS : "product_id"
     PRODUCTS ||--o{ PURCHASE_ITEMS : "product_id"
@@ -61,6 +65,7 @@ erDiagram
     PURCHASES ||--o{ PURCHASE_ITEMS : "purchase_id"
     PURCHASE_ITEMS ||--o{ GOODS_RECEIPT_ITEMS : "purchase_item_id"
     REQUESTS |o--o{ PURCHASES : "request_id"
+    SALES |o--o{ MONEY_TRANSACTIONS : "sale_id"
     SALES |o--o{ MPESA_PAYMENTS : "sale_id"
     SALES ||--o{ SALE_ITEMS : "sale_id"
     SUPPLIERS |o--o{ PRODUCTS : "default_supplier_id"
@@ -77,6 +82,7 @@ erDiagram
     USERS ||--o{ EXPENSES : "created_by"
     USERS ||--o{ GOODS_RECEIPTS : "received_by"
     USERS ||--o{ LOGIN_CHALLENGES : "user_id"
+    USERS ||--o{ MONEY_IMPORTS : "created_by"
     USERS ||--o{ MPESA_PAYMENTS : "attendant_id"
     USERS ||--o{ NOTIFICATIONS : "user_id"
     USERS ||--o{ PASSWORD_RESETS : "user_id"
@@ -134,6 +140,13 @@ erDiagram
         int business_id FK
         timestamptz created_at
         timestamptz updated_at
+    }
+    CATEGORY_RULES {
+        int id PK
+        varchar direction UK
+        varchar match UK
+        varchar category
+        int business_id FK
     }
     DOCUMENT_COUNTERS {
         int business_id PK,FK
@@ -239,6 +252,19 @@ erDiagram
         timestamptz cancelled_at
         timestamptz created_at
     }
+    MONEY_IMPORTS {
+        int id PK
+        varchar source
+        varchar filename
+        int added
+        int duplicates
+        int skipped
+        timestamptz first_at
+        timestamptz last_at
+        int created_by FK
+        timestamptz created_at
+        int business_id FK
+    }
     NOTIFICATIONS {
         int id PK
         int user_id FK
@@ -303,6 +329,23 @@ erDiagram
         int received_by FK
         varchar condition_in
         text return_notes
+        int business_id FK
+    }
+    MONEY_TRANSACTIONS {
+        int id PK
+        int import_id FK
+        varchar receipt UK
+        boolean is_charge UK
+        timestamptz occurred_at
+        varchar direction
+        decimal amount
+        decimal balance
+        varchar kind
+        varchar category
+        varchar counterparty
+        varchar phone
+        varchar details
+        int sale_id FK
         int business_id FK
     }
     MPESA_PAYMENTS {
@@ -442,6 +485,7 @@ erDiagram
 | No double receiving, sale or payment | `UNIQUE (business_id, idempotency_key)` on `goods_receipts`, `sales` and `mpesa_payments` |
 | A delivery never exceeds the order | `CHECK (received_quantity <= quantity)` on `purchase_items` |
 | One M-Pesa receipt, one payment | `UNIQUE` on `mpesa_payments.receipt_number` and `checkout_request_id` |
+| A statement imported twice adds nothing | `UNIQUE (business_id, receipt, is_charge)` on `money_transactions` |
 | One holder per asset at a time | Partial unique index on `asset_assignments (asset_id) WHERE returned_at IS NULL` |
 | Unique SKUs, category names, asset codes and barcodes per business | `UNIQUE (business_id, …)` |
 | Money is exact | `decimal(12,2)`, never floating point |
@@ -531,6 +575,16 @@ Checks: `vat_rate >= 0 AND vat_rate < 100`; `mpesa_type IN ('paybill', 'till')`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
+### category_rules
+
+| Column | Type | Required | Keys | Notes |
+|---|---|---|---|---|
+| `id` | int | yes | PK |  |
+| `direction` | varchar(3) | yes | UK per business |  |
+| `match` | varchar(120) | yes | UK per business |  |
+| `category` | varchar(20) | yes |  |  |
+| `business_id` | int | yes | FK → businesses |  |
+
 ### document_counters
 
 | Column | Type | Required | Keys | Notes |
@@ -610,7 +664,7 @@ Checks: `role IN ('admin', 'procurement', 'inventory', 'sales', 'employee')`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `status IN ('available', 'assigned', 'in_repair', 'retired')`; `condition IN ('new', 'good', 'fair', 'poor', 'damaged')`
+Checks: `condition IN ('new', 'good', 'fair', 'poor', 'damaged')`; `status IN ('available', 'assigned', 'in_repair', 'retired')`
 
 ### audit_logs
 
@@ -667,6 +721,24 @@ Checks: `amount > 0`
 | `used_at` | timestamptz | no |  |  |
 | `cancelled_at` | timestamptz | no |  |  |
 | `created_at` | timestamptz | yes |  | Default `now()`. |
+
+### money_imports
+
+| Column | Type | Required | Keys | Notes |
+|---|---|---|---|---|
+| `id` | int | yes | PK |  |
+| `source` | varchar(10) | yes |  |  |
+| `filename` | varchar(200) | no |  |  |
+| `added` | int | yes |  |  |
+| `duplicates` | int | yes |  |  |
+| `skipped` | int | yes |  |  |
+| `first_at` | timestamptz | no |  |  |
+| `last_at` | timestamptz | no |  |  |
+| `created_by` | int | yes | FK → users |  |
+| `created_at` | timestamptz | yes |  | Default `now()`. |
+| `business_id` | int | yes | FK → businesses |  |
+
+Checks: `source IN ('statement', 'csv', 'sms')`
 
 ### notifications
 
@@ -734,7 +806,7 @@ Checks: `quantity >= 0`; `cost_price >= 0`; `reorder_level >= 0`; `selling_price
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`; `status IN ('completed', 'voided')`
+Checks: `status IN ('completed', 'voided')`; `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`
 
 ### asset_assignments
 
@@ -754,6 +826,28 @@ Checks: `total >= 0`; `payment_method IN ('cash', 'mpesa', 'card')`; `status IN 
 | `business_id` | int | yes | FK → businesses |  |
 
 Checks: `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor', 'damaged')`; `condition_out IN ('new', 'good', 'fair', 'poor', 'damaged')`
+
+### money_transactions
+
+| Column | Type | Required | Keys | Notes |
+|---|---|---|---|---|
+| `id` | int | yes | PK |  |
+| `import_id` | int | yes | FK → money_imports |  |
+| `receipt` | varchar(20) | yes | UK per business |  |
+| `is_charge` | boolean | yes | UK per business |  |
+| `occurred_at` | timestamptz | yes |  |  |
+| `direction` | varchar(3) | yes |  |  |
+| `amount` | decimal(12, 2) | yes |  |  |
+| `balance` | decimal(12, 2) | no |  |  |
+| `kind` | varchar(20) | yes |  |  |
+| `category` | varchar(20) | yes |  |  |
+| `counterparty` | varchar(120) | no |  |  |
+| `phone` | varchar(20) | no |  |  |
+| `details` | varchar(300) | no |  |  |
+| `sale_id` | int | no | FK → sales |  |
+| `business_id` | int | yes | FK → businesses |  |
+
+Checks: `amount > 0`; `direction IN ('in', 'out')`; `category IN ('sales', 'loan', 'owner_deposit', 'other_income', 'stock', 'rent', 'utilities', 'wages', 'transport', 'airtime', 'fees', 'loan_repayment', 'withdrawal', 'personal', 'other_expense')`
 
 ### mpesa_payments
 
@@ -781,7 +875,7 @@ Checks: `condition_in IS NULL OR condition_in IN ('new', 'good', 'fair', 'poor',
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `amount > 0`; `status IN ('pending', 'paid', 'failed', 'cancelled')`; `purpose IN ('sale', 'subscription')`
+Checks: `status IN ('pending', 'paid', 'failed', 'cancelled')`; `purpose IN ('sale', 'subscription')`; `amount > 0`
 
 ### repairs
 
@@ -828,7 +922,7 @@ Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `status IN ('submitted
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`; `urgency IN ('low', 'normal', 'high', 'urgent')`
+Checks: `urgency IN ('low', 'normal', 'high', 'urgent')`; `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfilled', 'cancelled')`
 
 ### sale_items
 
@@ -842,7 +936,7 @@ Checks: `quantity > 0`; `status IN ('pending', 'approved', 'rejected', 'fulfille
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `unit_price >= 0`; `unit_cost >= 0`; `quantity > 0`
+Checks: `quantity > 0`; `unit_price >= 0`; `unit_cost >= 0`
 
 ### stock_movements
 
@@ -859,7 +953,7 @@ Checks: `unit_price >= 0`; `unit_cost >= 0`; `quantity > 0`
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `quantity_after >= 0`; `change <> 0`; `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`
+Checks: `type IN ('purchase', 'sale', 'adjustment', 'sale_void')`; `quantity_after >= 0`; `change <> 0`
 
 ### purchases
 
@@ -882,7 +976,7 @@ Checks: `quantity_after >= 0`; `change <> 0`; `type IN ('purchase', 'sale', 'adj
 | `created_at` | timestamptz | yes |  | Default `now()`. |
 | `updated_at` | timestamptz | yes |  | Default `now()`. |
 
-Checks: `source IN ('manual', 'low_stock', 'request')`; `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`; `total >= 0`
+Checks: `status IN ('draft', 'ordered', 'partially_received', 'received', 'cancelled')`; `source IN ('manual', 'low_stock', 'request')`; `total >= 0`
 
 ### goods_receipts
 
@@ -909,7 +1003,7 @@ Checks: `source IN ('manual', 'low_stock', 'request')`; `status IN ('draft', 'or
 | `unit_cost` | decimal(12, 2) | yes |  |  |
 | `business_id` | int | yes | FK → businesses |  |
 
-Checks: `received_quantity >= 0 AND received_quantity <= quantity`; `quantity > 0`; `unit_cost >= 0`
+Checks: `quantity > 0`; `unit_cost >= 0`; `received_quantity >= 0 AND received_quantity <= quantity`
 
 ### goods_receipt_items
 

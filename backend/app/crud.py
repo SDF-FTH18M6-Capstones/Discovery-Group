@@ -18,7 +18,6 @@ _page_schemas = {}
 
 
 def page_schema(item_schema):
-
     if item_schema in _page_schemas:
         return _page_schemas[item_schema]
     _page_schemas[item_schema] = Schema.from_dict(

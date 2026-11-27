@@ -47,6 +47,7 @@ The System status page shows whether the API is reachable.
 | Stock ledger                                         | `/stock`                                                                      | inventory adjusts; the administrator reads                                          |
 | Assets, repairs                                      | `/assets`, `/repairs`                                                         | inventory manages; everyone sees what they hold and reports faults                  |
 | Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator                                                                       |
+| Insights, M-Pesa money                               | `/insights`, `/money`                                                         | administrator: forecasts, and statements or SMS to import                           |
 | Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; M-Pesa and business settings for the administrator                        |
 | Platform                                             | `/platform`                                                                   | StockPilot's own owners (`PLATFORM_OWNERS` on the API)                              |
 

@@ -11,7 +11,6 @@ blp = Blueprint("health", __name__, url_prefix="/api", description="Service heal
 @blp.route("/health")
 @blp.doc(security=[])
 def health():
-
     try:
         db.session.execute(text("SELECT 1"))
         database = "ok"

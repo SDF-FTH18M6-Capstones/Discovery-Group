@@ -26,6 +26,13 @@ takes M-Pesa payments into its own Paybill or till, and only ever sees its own d
   lapsed business keeps read access to its data until it renews. A platform console lets
   StockPilot's owners follow every business and payment, add free months, suspend accounts and
   set the price.
+- **Insights:** a sales forecast for the next two weeks that learns each business's weekly
+  pattern, a 30-day cashflow outlook, products about to run out with a suggested order, stock that
+  isn't selling, the most profitable lines, best customers and regulars who have gone quiet.
+- **M-Pesa history:** upload a full M-Pesa statement (PDF or CSV) or paste confirmation messages.
+  Each transaction is read, sorted into a category such as stock, rent or sales, and matched to
+  till sales. Correcting a category teaches StockPilot how to sort that sender from then on, so a
+  kiosk with no till history still gets forecasts from its first statement.
 - Installable as an app on phones and computers, with light and dark themes.
 
 ## Tech stack

@@ -19,7 +19,14 @@ import ThemeSwitch from "./ThemeSwitch";
 import { Avatar } from "./ui";
 
 const groups = [
-  { title: "Overview", links: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }] },
+  {
+    title: "Overview",
+    links: [
+      { to: "/", label: "Dashboard", icon: "dashboard", end: true },
+      { to: "/insights", label: "Insights", icon: "pulse", roles: ["admin"] },
+      { to: "/money", label: "M-Pesa money", icon: "cash", roles: ["admin"] },
+    ],
+  },
   {
     title: "Selling",
     links: [

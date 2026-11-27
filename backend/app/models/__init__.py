@@ -12,6 +12,7 @@ from app.models.business import (
     RevokedToken,
 )
 from app.models.catalogue import Category, Product, Supplier
+from app.models.money import CategoryRule, MoneyImport, MoneyTransaction
 from app.models.payments import MpesaPayment
 from app.models.procurement import GoodsReceipt, GoodsReceiptItem, Purchase, PurchaseItem, Request
 from app.models.sales import Sale, SaleItem, StockMovement
@@ -34,6 +35,7 @@ __all__ = [
     "AuditLog",
     "Business",
     "Category",
+    "CategoryRule",
     "DocumentCounter",
     "EmailVerification",
     "Employee",
@@ -43,6 +45,8 @@ __all__ = [
     "Image",
     "InventoryManager",
     "LoginChallenge",
+    "MoneyImport",
+    "MoneyTransaction",
     "MpesaPayment",
     "Notification",
     "PasswordReset",

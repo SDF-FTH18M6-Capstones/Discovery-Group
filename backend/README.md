@@ -59,6 +59,10 @@ The Demo Shop has someone in every role, so its administrator only oversees. Hig
 procurement or inventory staff, so its owner covers those jobs. Products have usual suppliers, and
 Metro Wholesale is a trusted supplier. As `sales@`, selling 20 reams of A4 paper drafts an order
 for procurement to confirm, while selling the last 4 bags of sugar sends an order to Metro at once.
+The Demo Shop also has ten weeks of M-Pesa statement history with regular customers, weekly
+stock payments, wages and withdrawals, so Insights shows a forecast straight away. Running
+`python seed.py` again on a database that already has the Demo Shop only adds this history if it
+is missing.
 
 ## Tests
 
@@ -169,6 +173,46 @@ suspend or reactivate a business, and change the monthly price, which is stored 
 Paybill is connected; its keys stay in the server's environment and never pass through the app.
 Every action is written to the affected business's audit log, and its administrators are told.
 
+### Insights
+
+`GET /api/insights` works from the business's own data and needs no outside service.
+
+- **Takings** are completed sales plus statement money-in sorted as sales that isn't already a
+  till sale, so a business that only imports statements still gets a forecast.
+- **The forecast** (`app/insights.py`) learns how each weekday compares with an average day over
+  the last 8 weeks, tracks the underlying level with exponential smoothing over the last 4, and
+  multiplies the two back together for the next 14 days. The range covers about 80% of the past
+  misses. Before showing it, the model is re-fitted without the last 14 days and scored on them,
+  and the page shows that accuracy. It needs 14 days of history.
+- **Stock**: products that will run out within a week at the last 30 days' pace, with an order
+  that covers two weeks; products with no sales in 30 days, by money tied up; the five most
+  profitable.
+- **Customers** come from M-Pesa payments at the till and statement money-in sorted as sales,
+  grouped by phone number or name. Regulars with three or more payments and none in 30 days are
+  listed as gone quiet.
+- **Cash**: the last 8 weeks in and out, and the next 30 days from the takings forecast plus the
+  usual other income, less the usual spending and recorded expenses. Moving the owner's own money
+  in and out (deposits and withdrawals) is left out.
+
+### M-Pesa history
+
+`POST /api/money/statement` takes the statement Safaricom emails (an encrypted PDF, read with
+`pypdf` using the password from the same SMS) or a CSV export, and `POST /api/money/sms` takes
+pasted confirmation messages. `app/statements.py` turns both into transactions: receipt, time,
+direction, amount, balance and the other party. Failed or reversed rows are skipped, transaction
+charges become their own rows, and a receipt already imported is never added twice.
+
+Each transaction gets a category from, in order, a rule the administrator taught it for that phone
+number or name, the transaction type (an agent withdrawal, airtime, a Paybill payment), keywords
+for utilities, and the business's supplier names. A receipt that matches an M-Pesa till sale is
+linked to the sale. Changing a category with `remember` also changes earlier transactions from
+the same sender and every future import. A whole import can be undone.
+
+Statements contain customers' names and phone numbers. They are stored only in the business's own
+records, the file itself is discarded once read, and undoing an import deletes its rows. A
+business using this should tell customers how their payment details are used, as the Data
+Protection Act, 2019 expects.
+
 ## API reference
 
 Every endpoint is limited to the caller's business. Lists accept `?page=1&per_page=20` (at most
@@ -194,6 +238,8 @@ Every endpoint is limited to the caller's business. Lists accept `?page=1&per_pa
 | `/api/assets/` · `/<id>/assign`, `/return`, `/retire`, `/photo` · `/api/asset-categories/` | inventory manages; others see what they hold |
 | `/api/repairs/` · `PUT /<id>/status` | anyone reports for assets they hold; inventory moves repairs along |
 | `GET /api/reports/summary` · `/api/expenses/` | administrator |
+| `GET /api/insights` | administrator |
+| `GET /api/money/categories`, `/imports`, `/transactions` · `POST /statement`, `/sms` · `DELETE /imports/<id>` · `PUT /transactions/<id>` | administrator |
 | `/api/notifications/` · `POST /<id>/read`, `/read-all` | everyone, their own |
 | `/api/auth/register`, `/register-business`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password` · `GET /api/images/<id>` · `GET /api/health` | public |
 | `GET`/`PUT /api/auth/me` · `POST /api/auth/password`, `/logout` | the signed-in user |
