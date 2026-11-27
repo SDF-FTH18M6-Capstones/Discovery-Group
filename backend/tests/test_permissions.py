@@ -11,6 +11,7 @@ from app.models import (
     AssetCategory,
     Category,
     Expense,
+    MpesaPayment,
     Notification,
     Product,
     Purchase,
@@ -120,6 +121,20 @@ ENDPOINTS = [
     ("POST", "/api/sales/", SELLING, 201, SALE),
     ("GET", "/api/sales/{my_sale}", SALES_VIEW, 200, None),
     ("POST", "/api/sales/{my_sale}/void", SELLING, 200, {"reason": "Rang up twice"}),
+    ("GET", "/api/payments/mpesa/config", ALL, 200, None),
+    (
+        "POST",
+        "/api/payments/mpesa",
+        SELLING,
+        201,
+        {
+            "phone": "0712345678",
+            "items": [{"product_id": "{product}", "quantity": 1}],
+            "idempotency_key": "permission-check",
+        },
+    ),
+    ("GET", "/api/payments/mpesa/{my_payment}", SALES_VIEW, 200, None),
+    ("POST", "/api/payments/mpesa/{my_payment}/simulate", SELLING, 200, {"outcome": "cancelled"}),
     ("GET", "/api/purchases/", PURCHASE_VIEW, 200, None),
     ("POST", "/api/purchases/", BUYING, 201, PURCHASE),
     ("GET", "/api/purchases/{purchase}", PURCHASE_VIEW, 200, None),
@@ -162,6 +177,8 @@ PUBLIC = [
     ("POST", "/api/auth/reset-password"),
     ("POST", "/api/auth/login"),
     ("POST", "/api/auth/refresh"),
+    ("POST", "/api/payments/mpesa/callback/{}"),
+    ("POST", "/api/tasks/daily-summary"),
 ]
 
 
@@ -234,7 +251,15 @@ def build_world(caller, make_user):
     )
     my_repair = Repair(asset_id=my_asset.id, reported_by=caller.id, description="Broken hinge")
     my_notification = Notification(user_id=caller.id, message="Welcome")
-    db.session.add_all([my_sale, purchase, draft, expense, my_repair, my_notification])
+    my_payment = MpesaPayment(
+        attendant_id=caller.id,
+        phone="254712345678",
+        amount=2,
+        items={str(product.id): 1},
+        simulated=True,
+        checkout_request_id=f"SIM-permissions-{caller.id}",
+    )
+    db.session.add_all([my_sale, purchase, draft, expense, my_repair, my_notification, my_payment])
     db.session.commit()
     return {
         "other_user": other.id,
@@ -246,6 +271,7 @@ def build_world(caller, make_user):
         "others_request": others_request.id,
         "my_asset": my_asset.id,
         "my_sale": my_sale.id,
+        "my_payment": my_payment.id,
         "spare_product": spare_product.id,
         "spare_asset": spare_asset.id,
         "my_repair": my_repair.id,

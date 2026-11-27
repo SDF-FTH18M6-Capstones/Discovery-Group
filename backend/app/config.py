@@ -41,6 +41,17 @@ class Config:
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "true").lower() == "true"
     LOGIN_CODE_REQUIRED = os.getenv("LOGIN_CODE_REQUIRED", "true").lower() == "true"
     STAFF_APPROVAL_REQUIRED = os.getenv("STAFF_APPROVAL_REQUIRED", "true").lower() == "true"
+    MPESA_MODE = os.getenv("MPESA_MODE", "")
+    MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY", "")
+    MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET", "")
+    MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
+    MPESA_PASSKEY = os.getenv(
+        "MPESA_PASSKEY", "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+    )
+    MPESA_PARTY_B = os.getenv("MPESA_PARTY_B", "")
+    MPESA_TRANSACTION_TYPE = os.getenv("MPESA_TRANSACTION_TYPE", "CustomerPayBillOnline")
+    MPESA_CALLBACK_BASE = os.getenv("MPESA_CALLBACK_BASE", "")
+    TASK_TOKEN = os.getenv("TASK_TOKEN", "")
     LOGIN_CODE_EXEMPT_DOMAINS = [
         d.strip().lower()
         for d in os.getenv("LOGIN_CODE_EXEMPT_DOMAINS", "").split(",")
@@ -81,6 +92,7 @@ DEV_KEYS = {
 
 
 class ProductionConfig(Config):
+    IS_PRODUCTION = True
     DEBUG = False
     BEHIND_PROXY = True
     PREFERRED_URL_SCHEME = "https"
@@ -113,3 +125,5 @@ class TestConfig(Config):
     LOGIN_CODE_REQUIRED = False
     STAFF_APPROVAL_REQUIRED = False
     LOGIN_CODE_EXEMPT_DOMAINS = []
+    MPESA_MODE = "simulate"
+    TASK_TOKEN = "test-task-token"

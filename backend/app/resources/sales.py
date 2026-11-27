@@ -68,6 +68,7 @@ class SaleOut(Schema):
     attendant_id = fields.Integer()
     attendant_name = fields.String(attribute="attendant.full_name")
     payment_method = fields.String()
+    payment_reference = fields.String(allow_none=True)
     status = fields.String()
     total = fields.Decimal(**money)
     vat_rate = fields.Decimal(**money)
@@ -147,49 +148,51 @@ def existing_sale(key):
     return db.session.scalar(db.select(Sale.id).where(Sale.idempotency_key == key))
 
 
-@blp.route("/", methods=["POST"])
-@blp.arguments(SaleIn)
-@blp.response(201, SaleOut)
-@roles_required(*SELLERS)
-def create_sale(data):
-    key = data["idempotency_key"]
-    if (sale_id := existing_sale(key)) is not None:
-        return load(sale_id)
+class SaleProblem(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+        self.message = message
 
+
+def cart(items):
     wanted = {}
-    for line in data["items"]:
+    for line in items:
         wanted[line["product_id"]] = wanted.get(line["product_id"], 0) + line["quantity"]
-    products = {
-        p.id: p
-        for p in db.session.scalars(
-            db.select(Product).where(Product.id.in_(wanted)).order_by(Product.id).with_for_update()
-        )
-    }
+    return wanted
+
+
+def check_cart(wanted, lock=False):
+    query = db.select(Product).where(Product.id.in_(wanted)).order_by(Product.id)
+    products = {p.id: p for p in db.session.scalars(query.with_for_update() if lock else query)}
     missing = sorted(set(wanted) - set(products))
     if missing:
-        db.session.rollback()
-        abort(400, message=f"Product {missing[0]} does not exist")
+        raise SaleProblem(400, f"Product {missing[0]} does not exist")
     retired = [p.name for p in products.values() if not p.is_active]
     if retired:
-        db.session.rollback()
-        abort(409, message=f"No longer sold: {', '.join(retired)}.")
+        raise SaleProblem(409, f"No longer sold: {', '.join(retired)}.")
     short = [p for pid, p in products.items() if p.quantity < wanted[pid]]
     if short:
-        db.session.rollback()
         names = ", ".join(f"{p.name} ({p.quantity} left)" for p in short)
-        abort(409, message=f"Not enough stock: {names}.")
+        raise SaleProblem(409, f"Not enough stock: {names}.")
+    total = sum((p.selling_price * wanted[p.id] for p in products.values()), Decimal("0"))
+    return products, total
 
+
+def record_sale(wanted, payment_method, attendant_id, key=None, payment_reference=None):
+    products, total = check_cart(wanted, lock=True)
     rate = current_business().vat_rate
     sale = Sale(
-        attendant_id=current_user.id,
-        payment_method=data["payment_method"],
-        total=0,
+        attendant_id=attendant_id,
+        payment_method=payment_method,
+        payment_reference=payment_reference,
+        total=total,
         vat_rate=rate,
+        vat_amount=vat_included(total, rate),
         idempotency_key=key,
     )
     db.session.add(sale)
     db.session.flush()
-    total = Decimal("0")
     for product_id, quantity in wanted.items():
         product = products[product_id]
         sale.items.append(
@@ -200,12 +203,25 @@ def create_sale(data):
                 unit_cost=product.cost_price,
             )
         )
-        total += product.selling_price * quantity
         before = product.quantity
-        move_stock(product, -quantity, "sale", current_user.id, sale.reference, "Point of sale")
-        warn_if_low(product, before, current_user.id)
-    sale.total = total
-    sale.vat_amount = vat_included(total, rate)
+        move_stock(product, -quantity, "sale", attendant_id, sale.reference, "Point of sale")
+        warn_if_low(product, before, attendant_id)
+    return sale
+
+
+@blp.route("/", methods=["POST"])
+@blp.arguments(SaleIn)
+@blp.response(201, SaleOut)
+@roles_required(*SELLERS)
+def create_sale(data):
+    key = data["idempotency_key"]
+    if (sale_id := existing_sale(key)) is not None:
+        return load(sale_id)
+    try:
+        sale = record_sale(cart(data["items"]), data["payment_method"], current_user.id, key)
+    except SaleProblem as problem:
+        db.session.rollback()
+        abort(problem.status, message=problem.message)
     try:
         db.session.commit()
     except IntegrityError:

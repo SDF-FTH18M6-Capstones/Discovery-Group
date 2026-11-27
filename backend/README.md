@@ -124,6 +124,31 @@ until it is listed), and `tests/test_tenancy.py` checks every endpoint against a
 - **Receiving a delivery** raises stock, writes a GRN, updates the order's status and resets the
   product's cost price to the weighted average of the stock on hand and the delivery.
 - Nothing is sent to a supplier without a person: drafts wait for Procurement to confirm them.
+- **M-Pesa at the till:** the attendant enters the customer's number and StockPilot sends an
+  M-Pesa prompt to their phone (Daraja STK Push). When Safaricom confirms the payment, the sale is
+  completed by itself with the M-Pesa receipt code on it. If Safaricom's message is lost (a server
+  asleep, say), the till asks Safaricom for the result after 20 seconds. If the money arrives but
+  the stock has gone meanwhile, the payment is kept and the Administrator and sales staff are told.
+- **Evening summary:** every Administrator gets one email a day with sales, payment methods, best
+  sellers, voids, low stock, draft orders and staff waiting for approval. Businesses can turn it
+  off in Settings. `.github/workflows/daily-summary.yml` calls `POST /api/tasks/daily-summary` at
+  20:00 Nairobi time (17:00 UTC); `flask send-daily-summary` does the same from a terminal.
+
+### M-Pesa settings
+
+| Variable | Meaning |
+|---|---|
+| `MPESA_MODE` | `off` (record M-Pesa by hand), `simulate` (test mode: no real prompt, the till shows "Customer pays / cancels" buttons), `sandbox` (Safaricom's test system), `live`. Defaults to `simulate` locally and `off` in production |
+| `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET` | from your app on developer.safaricom.co.ke (sandbox or live). Never commit them |
+| `MPESA_SHORTCODE`, `MPESA_PASSKEY` | default to Safaricom's public sandbox values (174379); your own Paybill or till store number and passkey when live |
+| `MPESA_TRANSACTION_TYPE`, `MPESA_PARTY_B` | `CustomerPayBillOnline` for a Paybill; `CustomerBuyGoodsOnline` with `MPESA_PARTY_B` set to the till number for Buy Goods |
+| `MPESA_CALLBACK_BASE` | the API's public address, if it differs from the one requests arrive on |
+
+Safaricom posts results to `/api/payments/mpesa/callback/<token>`; the token is derived from
+`SECRET_KEY`, so the address cannot be guessed. Safaricom expects that address to answer within a few
+seconds, so `sandbox` and `live` need an API that does not sleep (a paid Render instance).
+Today one set of M-Pesa settings serves the whole installation; each business having its own
+Paybill is a later step.
 
 ## Endpoints and who may use them
 
@@ -157,6 +182,9 @@ Everything below is limited to the caller's own business. Lists take `?page=1&pe
 | `GET /api/reports/summary?days=7` or `?date_from=&date_to=` | admin: sales, VAT, gross profit (cost at time of sale), expenses, net profit, by day / payment / attendant, best sellers, low stock |
 | `/api/expenses/` (filters `date_from`, `date_to`, `category`) | admin |
 | `/api/notifications/` · `POST /<id>/read` · `POST /read-all` | everyone, their own (each has a `link` to open the record) |
+| `GET /api/payments/mpesa/config` | everyone: whether the till sends M-Pesa prompts |
+| `POST /api/payments/mpesa` `{phone, items, idempotency_key}` · `GET /<id>` · `POST /<id>/simulate` `{outcome}` | sales start and follow a prompt (admin can follow any); simulate only in test mode |
+| `POST /api/payments/mpesa/callback/<token>` · `POST /api/tasks/daily-summary` (header `X-Task-Token`) | Safaricom · the scheduler |
 | `/api/auth/register-business`, `/register`, `/login`, `/login/verify`, `/login/resend`, `/verify-email`, `/resend-verification`, `/refresh`, `/forgot-password`, `/reset-password`, `GET /api/images/<id>`, `/api/health` | public |
 
 **The Administrator oversees.** Day-to-day jobs belong to Procurement, Inventory and Sales. While

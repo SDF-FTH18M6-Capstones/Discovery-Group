@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api, mediaUrl, newIdempotencyKey } from "../../api/client";
+import Field from "../../components/Field";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import { Avatar } from "../../components/ui";
@@ -18,6 +19,84 @@ export default function PosPage() {
   const [busy, setBusy] = useState(false);
   const [sale, setSale] = useState(null);
   const [saleKey, setSaleKey] = useState(newIdempotencyKey);
+  const [prompts, setPrompts] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [prompt, setPrompt] = useState(null);
+
+  useEffect(() => {
+    api("/api/payments/mpesa/config")
+      .then((config) => setPrompts(config.enabled))
+      .catch(() => setPrompts(false));
+  }, []);
+
+  const finish = (saved) => {
+    setSale(saved);
+    setCart([]);
+    setSearch("");
+    setPhone("");
+    setPrompt(null);
+    setSaleKey(newIdempotencyKey());
+  };
+
+  const follow = async (current) => {
+    if (current.status === "pending") {
+      setPrompt(current);
+      return;
+    }
+    setPrompt(null);
+    setSaleKey(newIdempotencyKey());
+    if (current.status === "paid" && current.sale_id) {
+      finish(await api(`/api/sales/${current.sale_id}`));
+    } else {
+      setError(current.problem || current.result_desc || "The M-Pesa payment did not go through.");
+    }
+  };
+
+  useEffect(() => {
+    if (!prompt || prompt.status !== "pending") return undefined;
+    const timer = setTimeout(() => {
+      api(`/api/payments/mpesa/${prompt.id}`)
+        .then(follow)
+        .catch(() => setPrompt({ ...prompt }));
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [prompt]);
+
+  const askForPayment = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await follow(
+        await api("/api/payments/mpesa", {
+          method: "POST",
+          body: {
+            phone,
+            items: cart.map((line) => ({ product_id: line.product.id, quantity: line.quantity })),
+            idempotency_key: saleKey,
+          },
+        }),
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const simulate = async (outcome) => {
+    try {
+      await follow(
+        await api(`/api/payments/mpesa/${prompt.id}/simulate`, {
+          method: "POST",
+          body: { outcome },
+        }),
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const usePrompt = payment === "mpesa" && prompts;
 
   useEffect(() => {
     let cancelled = false;
@@ -75,10 +154,7 @@ export default function PosPage() {
           idempotency_key: saleKey,
         },
       });
-      setSale(saved);
-      setCart([]);
-      setSearch("");
-      setSaleKey(newIdempotencyKey());
+      finish(saved);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -284,6 +360,19 @@ export default function PosPage() {
               </div>
             </fieldset>
 
+            {usePrompt && (
+              <Field
+                label="Customer's M-Pesa number"
+                name="mpesa-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="off"
+                placeholder="0712 345 678"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+              />
+            )}
+
             <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-4">
               <span className="text-muted">Total</span>
               <span className="figure text-3xl" data-testid="cart-total">
@@ -295,14 +384,57 @@ export default function PosPage() {
                 {error}
               </p>
             )}
-            <button
-              type="button"
-              disabled={!cart.length || busy}
-              onClick={complete}
-              className="btn-primary min-h-12 text-base"
-            >
-              {busy ? "Saving…" : "Complete sale"}
-            </button>
+            {prompt ? (
+              <div
+                role="status"
+                className="flex flex-col gap-3 rounded-xl border border-brand/40 bg-mint p-4 text-sm"
+              >
+                <p className="flex items-center gap-2 font-semibold text-brand-dark">
+                  <span className="size-2.5 animate-pulse rounded-full bg-brand" />
+                  Waiting for the customer to pay
+                </p>
+                <p>
+                  We sent a request for KES {prompt.amount} to {prompt.phone}. The sale completes by
+                  itself as soon as they enter their M-Pesa PIN.
+                </p>
+                {prompt.simulated && (
+                  <div className="flex flex-wrap gap-2 border-t border-brand/30 pt-3">
+                    <span className="w-full text-xs text-muted">
+                      Test mode: no real prompt is sent. Choose what the customer does.
+                    </span>
+                    <button type="button" onClick={() => simulate("paid")} className="btn-primary">
+                      Customer pays
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => simulate("cancelled")}
+                      className="btn-secondary"
+                    >
+                      Customer cancels
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrompt(null);
+                    setSaleKey(newIdempotencyKey());
+                  }}
+                  className="link self-start text-xs"
+                >
+                  Stop waiting (if they pay later, the sale is still recorded)
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={!cart.length || busy || (usePrompt && !phone.trim())}
+                onClick={usePrompt ? askForPayment : complete}
+                className="btn-primary min-h-12 text-base"
+              >
+                {busy ? "Saving…" : usePrompt ? "Send M-Pesa request" : "Complete sale"}
+              </button>
+            )}
           </div>
         </aside>
       </div>

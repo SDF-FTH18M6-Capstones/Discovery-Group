@@ -34,6 +34,7 @@ class BusinessSchema(Schema):
     receipt_footer = fields.String(
         allow_none=True, load_default=None, validate=validate.Length(max=300)
     )
+    daily_summary = fields.Boolean(load_default=True)
     join_code = fields.Method("get_join_code", dump_only=True)
     created_at = fields.DateTime(dump_only=True)
 

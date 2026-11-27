@@ -54,4 +54,11 @@ def create_app(config_class=None):
                 api.register_blueprint(blueprint)
 
     register_error_handlers(app)
+
+    @app.cli.command("send-daily-summary")
+    def send_daily_summary():
+        from app.summary import send_daily_summaries
+
+        print(f"Sent the summary for {send_daily_summaries()} business(es).")
+
     return app

@@ -89,6 +89,7 @@ export default function BusinessSettings() {
           email: data.email || "",
           address: data.address || "",
           receipt_footer: data.receipt_footer || "",
+          daily_summary: data.daily_summary !== false,
         });
       })
       .catch(() => setBusiness(false));
@@ -245,6 +246,25 @@ export default function BusinessSettings() {
           error={errors.receipt_footer}
         />
       </div>
+      <label className="flex items-start gap-3 rounded-xl border border-line p-4 text-sm">
+        <input
+          type="checkbox"
+          name="daily_summary"
+          checked={values.daily_summary}
+          onChange={(event) => {
+            setValues((current) => ({ ...current, daily_summary: event.target.checked }));
+            setSaved("");
+          }}
+          className="mt-0.5 size-4 accent-brand"
+        />
+        <span>
+          <span className="font-semibold">Email me a summary every evening</span>
+          <span className="block text-muted">
+            Sales, best sellers, low stock, orders waiting and staff waiting for approval, sent to
+            every Administrator at about 8 pm.
+          </span>
+        </span>
+      </label>
       {errors.form && (
         <p role="alert" className="text-sm text-danger">
           {errors.form}
