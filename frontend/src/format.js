@@ -36,6 +36,11 @@ export const isoToday = () => {
 export const shortDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
 
+export const longDate = (iso) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+
 export const dateTime = (iso) =>
   iso
     ? new Date(iso).toLocaleString("en-GB", {

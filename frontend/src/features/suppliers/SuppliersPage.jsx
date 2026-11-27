@@ -95,6 +95,11 @@ export default function SuppliersPage() {
                     <Icon name="building" size={16} />
                   </span>
                   {supplier.name}
+                  {supplier.trusted && (
+                    <span className="ml-2 rounded-full bg-mint px-2 py-0.5 text-xs font-semibold text-brand-dark">
+                      Trusted
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">{supplier.email || "—"}</td>
                 <td className="px-4 py-3">{supplier.phone || "—"}</td>

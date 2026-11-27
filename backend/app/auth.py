@@ -1,9 +1,10 @@
 from functools import wraps
 
-from flask import g, jsonify
+from flask import g, jsonify, request
 from flask_jwt_extended import current_user, verify_jwt_in_request
 from flask_smorest import abort
 
+from app.billing import read_only
 from app.extensions import db, jwt
 from app.models import RevokedToken, User
 from app.tenancy import clear_business, set_business, tenant
@@ -11,6 +12,19 @@ from app.tenancy import clear_business, set_business, tenant
 ALL_ROLES = ("admin", "procurement", "inventory", "sales", "employee")
 JOB_ROLES = ("procurement", "inventory", "sales")
 JOB_NAMES = {"procurement": "Procurement", "inventory": "Inventory", "sales": "Sales"}
+OPEN_WHEN_LAPSED = {"auth", "billing", "notifications"}
+
+
+def check_subscription():
+    if request.method in ("GET", "HEAD", "OPTIONS") or request.blueprint in OPEN_WHEN_LAPSED:
+        return
+    if read_only(current_user.business):
+        abort(
+            403,
+            message="Your StockPilot subscription has ended, so changes are paused. "
+            "Your administrator can renew it under Billing.",
+            reason="subscription_ended",
+        )
 
 
 def unstaffed_roles(business_id):
@@ -61,6 +75,7 @@ def roles_required(*roles):
                         "follow it, but not do it.",
                     )
                 abort(403, message="You do not have permission to do this.")
+            check_subscription()
             return view(*args, **kwargs)
 
         return wrapper

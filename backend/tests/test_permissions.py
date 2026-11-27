@@ -122,6 +122,18 @@ ENDPOINTS = [
     ("GET", "/api/sales/{my_sale}", SALES_VIEW, 200, None),
     ("POST", "/api/sales/{my_sale}/void", SELLING, 200, {"reason": "Rang up twice"}),
     ("GET", "/api/payments/mpesa/config", ALL, 200, None),
+    ("GET", "/api/business/mpesa", ("admin",), 200, None),
+    ("PUT", "/api/business/mpesa", ("admin",), 200, {"mode": "simulate", "type": "paybill"}),
+    ("GET", "/api/billing", ("admin",), 200, None),
+    ("POST", "/api/billing/pay", ("admin",), 201, {"months": 1, "phone": "0712345678"}),
+    ("GET", "/api/billing/payments/{my_subscription}", ("admin",), 200, None),
+    (
+        "POST",
+        "/api/billing/payments/{my_subscription}/simulate",
+        ("admin",),
+        200,
+        {"outcome": "cancelled"},
+    ),
     (
         "POST",
         "/api/payments/mpesa",
@@ -259,7 +271,19 @@ def build_world(caller, make_user):
         simulated=True,
         checkout_request_id=f"SIM-permissions-{caller.id}",
     )
-    db.session.add_all([my_sale, purchase, draft, expense, my_repair, my_notification, my_payment])
+    my_subscription = MpesaPayment(
+        purpose="subscription",
+        months=1,
+        attendant_id=caller.id,
+        phone="254712345678",
+        amount=1500,
+        items={},
+        simulated=True,
+        checkout_request_id=f"SIM-subscription-{caller.id}",
+    )
+    db.session.add_all(
+        [my_sale, purchase, draft, expense, my_repair, my_notification, my_payment, my_subscription]
+    )
     db.session.commit()
     return {
         "other_user": other.id,
@@ -272,6 +296,7 @@ def build_world(caller, make_user):
         "my_asset": my_asset.id,
         "my_sale": my_sale.id,
         "my_payment": my_payment.id,
+        "my_subscription": my_subscription.id,
         "spare_product": spare_product.id,
         "spare_asset": spare_asset.id,
         "my_repair": my_repair.id,

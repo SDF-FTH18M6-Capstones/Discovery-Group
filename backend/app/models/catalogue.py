@@ -62,6 +62,7 @@ class Supplier(TenantMixin, TimestampMixin, db.Model):
     email = db.Column(db.String(255))
     phone = db.Column(db.String(30))
     address = db.Column(db.String(300))
+    trusted = db.Column(db.Boolean, nullable=False, server_default=db.false(), default=False)
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
 
     @property

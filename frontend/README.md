@@ -1,144 +1,93 @@
-# StockPilot — Frontend (React)
+# StockPilot web app
 
-## You need
+The React front end of StockPilot. It talks to the [API](../backend/README.md), works on phones
+and desktops, and can be installed as an app.
 
-- Node.js
-- The backend running (see `../backend/README.md`)
+## Requirements
 
-## Set up and run
+- Node.js 22
+- The API running locally or a deployed API address
+
+## Setup
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local       # Windows: copy .env.example .env.local
+cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in with a demo account (see the backend README).
-The **System status** page shows whether the backend is reachable.
-
-## Sign-in
-
-- `src/auth/AuthContext.jsx`: the Auth Context Provider. `useAuth()` gives `user`, `signIn`,
-  `register`, `signOut` and `hasRole("admin", ...)`.
-- `src/auth/session.js`: keeps the tokens in `localStorage` between page loads.
-- `src/api/client.js`: the fetch interceptor. It adds the bearer token to every request, renews
-  an expired access token with the refresh token, and sends the user to `/login` when both expire.
-- `src/auth/RequireAuth.jsx`: wraps pages that need a signed-in user (and, optionally, a role).
-- `src/auth/roles.js`: role names and which roles manage what; the menu and pages use it.
-
-## Pages and who sees them
-
-| Page               | Address                               | Who                                                                     |
-| ------------------ | ------------------------------------- | ----------------------------------------------------------------------- |
-| Landing page       | `/`                                   | visitors: what StockPilot does, Start your business                     |
-| Sign up            | `/register`, `/register?code=…`       | join a business with its code, or start a new one (`?start=1`)          |
-| Password reset     | `/forgot-password`, `/reset-password` | anyone; the emailed link opens the second page                          |
-| Confirm email      | `/verify-email`                       | anyone; the emailed link opens it, and it offers a new link if it fails |
-| Dashboard          | `/`                                   | everyone: StockPilot Pulse tiles for their role, each opening its list  |
-| Products           | `/products`                           | everyone; Add / Edit / Retire / photo for admin, inventory              |
-| Product detail     | `/products/:id`                       | everyone; Trace timeline for admin, inventory                           |
-| Categories         | `/categories`                         | everyone; changes for admin, inventory                                  |
-| Suppliers          | `/suppliers`                          | admin, procurement (codes SUP-001, active / inactive)                   |
-| My requests        | `/requests`                           | everyone: Active / Completed tabs, cancel, timeline                     |
-| Approvals          | `/approvals`                          | procurement decides (Awaiting, Urgent, Decided today); admin views      |
-| Assets             | `/assets`                             | admin, inventory: barcode labels, assign / return, history, overdue     |
-| Assets with me     | `/assets`                             | everyone else: what they hold                                           |
-| New sale (till)    | `/sales/new`                          | admin, sales                                                            |
-| Sales and receipts | `/sales`                              | admin (all, can void today's), sales (own)                              |
-| Purchases          | `/purchases`                          | procurement drafts and orders · inventory receives in parts · admin     |
-| Stock ledger       | `/stock`                              | admin, inventory (adjustments, date filter, CSV export)                 |
-| Repairs            | `/repairs`                            | everyone reports; admin, inventory start, complete or reject            |
-| Notifications      | `/notifications`                      | everyone (own); each opens the record it is about                       |
-| Reports            | `/reports`                            | admin: date ranges, gross and net profit, expenses, CSV                 |
-| Users              | `/users`                              | admin: roles, deactivate / reactivate                                   |
-| Audit log          | `/audit`                              | admin                                                                   |
-| Settings           | `/settings`                           | everyone; business settings and the join code for admin                 |
-
-## Installable app (PWA)
-
-`public/manifest.webmanifest`, the icons and `public/sw.js` make StockPilot installable over
-HTTPS. The service worker caches only the app shell (HTML, JS, CSS, icons); API responses and
-tokens are never cached (the API is on another address, and `/api/` is skipped too). Offline, the
-app shows a banner, and a page that was never loaded shows `offline.html`. The service worker is
-registered only in the built app (`npm run build`), not in `npm run dev`.
-
-## Deploy
-
-- **Netlify**: base directory `frontend`; `netlify.toml` builds `dist/` and sends every address
-  to `index.html`, so refreshing `/products` works. Set `VITE_API_URL` to the API's address.
-- **Vercel**: root directory `frontend`; `vercel.json` does the same.
-- Any other static host: upload `dist/` and add the same "all paths → index.html" rewrite
-  (`public/_redirects` covers hosts that read that file).
-
-Then set the API's `CORS_ORIGINS` and `FRONTEND_URL` to this address.
-
-## Look and dark mode
-
-- **Palette**: pine (the sidebar and landing page), jade (actions, money in), saffron
-  (attention: the active page, unread, low stock), brick (money out, errors) on a cool paper
-  background. Each colour is a CSS variable in `src/index.css` with a light and a dark value.
-  Use the token classes (`bg-surface`, `text-muted`, `border-line`, `bg-brand`, `bg-saffron`…)
-  and the shared classes (`panel`, `card`, `btn-primary`, `btn-secondary`, `btn-accent`,
-  `btn-ghost`, `btn-danger`, `input`, `seg`, `chip`, `page-title`, `figure`, `code`), never
-  fixed colours, and a new page works in both themes.
-- **Type**: Bricolage Grotesque for headings and figures, Geist for text, Geist Mono for codes
-  (SKUs, receipt and order numbers). They are npm packages (`@fontsource-variable/…`) bundled
-  with the app, so nothing is fetched from Google.
-- **Building blocks** in `components/ui.jsx`: `StatStrip` (the row of figures at the top of a
-  page), `Panel`, `EmptyState`, `StockMeter`, `Avatar`, `Sparkline` and `BarChart` (with a
-  tooltip and a hidden table for screen readers).
-- `src/theme/ThemeContext.jsx` keeps the choice (Light, Dark, Same as my device) in this browser
-  and puts the `dark` class on `<html>`; a small script in `index.html` does it before the first
-  paint so the page never flashes white.
-- Visitors who are not signed in see the landing page (`pages/LandingPage.jsx`) at `/`; signed
-  in, `/` is the dashboard. The logo is `components/Logo.jsx` (swap in your own file there).
-- Every page sits inside `ErrorBoundary`: a crash shows a banner, not a blank screen.
-- Lists show grey placeholder rows while loading (`components/Skeleton.jsx`).
-- Money uses the business's currency (`format.js` `money()`), set from the signed-in account.
-- Pickers that used to load "the first 100" records now search the API as you type
-  (`components/SearchPicker.jsx`).
-- Cancelling a request, approving / rejecting, moving a repair and marking notifications read
-  change the screen at once and are undone if the server says no (`store/resourceSlice.js`:
-  `patchItem`, `removeItem`, `restoreItems`).
+`VITE_API_URL` in `.env.local` points to the API (`http://localhost:5000` by default). Open
+http://localhost:5173 and sign in with one of the [demo accounts](../backend/README.md#demo-data).
+The System status page shows whether the API is reachable.
 
 ## Commands
 
-| Command                 | What it does                   |
-| ----------------------- | ------------------------------ |
-| `npm run dev`           | Start the app with live reload |
-| `npm test`              | Run the tests                  |
-| `npm run test:coverage` | Tests with a coverage report   |
-| `npm run lint`          | Check the code for mistakes    |
-| `npm run format`        | Format the code                |
-| `npm run build`         | Build for deployment           |
+| Command                 | Purpose                            |
+| ----------------------- | ---------------------------------- |
+| `npm run dev`           | Development server with hot reload |
+| `npm test`              | Run the test suite                 |
+| `npm run test:coverage` | Tests with a coverage report       |
+| `npm run lint`          | Lint with oxlint                   |
+| `npm run format`        | Format with Prettier               |
+| `npm run build`         | Production build in `dist/`        |
 
-## Folders
+## Pages
+
+| Page                                                 | Address                                                                       | Who                                                                                 |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Landing page                                         | `/`                                                                           | visitors                                                                            |
+| Sign in, sign up, password reset, email confirmation | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email` | everyone                                                                            |
+| Dashboard                                            | `/`                                                                           | signed-in users: the figures for their role                                         |
+| Products, product detail, categories                 | `/products`, `/products/:id`, `/categories`                                   | everyone reads; inventory edits                                                     |
+| Suppliers                                            | `/suppliers`                                                                  | procurement edits and marks trusted suppliers; the administrator and inventory read |
+| My requests, approvals                               | `/requests`, `/approvals`                                                     | everyone requests; procurement decides                                              |
+| Purchases                                            | `/purchases`                                                                  | procurement orders; inventory receives                                              |
+| New sale, sales                                      | `/sales/new`, `/sales`                                                        | sales staff run the till; the administrator follows every sale                      |
+| Stock ledger                                         | `/stock`                                                                      | inventory adjusts; the administrator reads                                          |
+| Assets, repairs                                      | `/assets`, `/repairs`                                                         | inventory manages; everyone sees what they hold and reports faults                  |
+| Reports, users, audit log, billing                   | `/reports`, `/users`, `/audit`, `/billing`                                    | administrator                                                                       |
+| Notifications, settings                              | `/notifications`, `/settings`                                                 | everyone; M-Pesa and business settings for the administrator                        |
+
+Buttons follow the job rather than the title: `useAuth().canDo("sales")` is true for sales staff,
+and for the administrator only while nobody holds that role.
+
+## Structure
 
 ```
 src/
-├── api/client.js        talks to the Flask API, adds the token
-├── auth/                Auth Context, session storage, RequireAuth, role names
-├── store/               Redux store (one slice per resource)
-├── theme/               light / dark mode
-├── components/          Layout, ui (shared blocks), Logo, ThemeSwitch, ErrorBoundary, Skeleton, Icon, PageHeader, Field, Pagination, StatusBadge,
-│                        Timeline (Trace Timeline), SearchPicker, PhotoPicker, Barcode (Code 128)
-├── csv.js               CSV export of any report table
-├── features/dashboard/  home page: counts for the signed-in role (+ the week's sales for admin)
-├── features/sales/      till (point of sale), sales history, printable receipt
-├── features/purchases/  purchase orders: place, receive, cancel
-├── features/stock/      stock ledger + adjustments
-├── features/repairs/    report a fault / repair board
-├── features/notifications/ notifications centre
-├── features/reports/    sales, profit, stock value, best sellers (admin)
-├── features/settings/   profile, password, appearance
-├── features/products/   products list + form, product detail with stock trace
-├── features/categories/ categories list + add / rename
-├── features/suppliers/  suppliers list + form
-├── features/requests/   My requests (everyone) and Approvals (procurement)
-├── features/assets/     asset register (admin, inventory) / My assets (everyone else)
-├── features/users/      users and roles (admin)
-├── features/audit/      audit log (admin)
-├── pages/               Landing page, Sign in, Join / start a business, password reset, System status
-└── test/                tests
+├── api/            fetch client: adds the token, renews it, signs out when it expires
+├── auth/           AuthContext (useAuth), session storage, RequireAuth, role names
+├── components/     Layout, form fields, pickers, tables, charts, barcodes, timelines
+├── features/       one folder per area: sales, purchases, products, billing, settings, …
+├── pages/          landing, sign-in and account pages, system status
+├── store/          Redux Toolkit slices for the list pages
+├── theme/          light and dark mode
+└── test/           Vitest and Testing Library tests
 ```
+
+## Design
+
+- Colours are CSS variables in `src/index.css` with light and dark values, exposed as Tailwind
+  classes (`bg-surface`, `text-muted`, `bg-brand`, …), so every page works in both themes.
+- Shared classes (`card`, `panel`, `btn-primary`, `input`, `figure`, …) and the blocks in
+  `components/ui.jsx` keep pages consistent.
+- Bricolage Grotesque for headings, Geist for text and Geist Mono for codes, bundled with the app.
+- Money is shown in the business's currency, and pickers search the API as you type.
+- Every page sits inside an error boundary, and lists show placeholder rows while loading.
+
+## Installable app
+
+`public/manifest.webmanifest`, the icons and `public/sw.js` make the built app installable over
+HTTPS. The service worker caches only the app shell; API responses and tokens are never cached.
+Offline, the app shows a banner, and pages that were never opened fall back to `offline.html`.
+
+## Deployment
+
+- **Netlify:** set the base directory to `frontend` and `VITE_API_URL` to the API's address.
+  `netlify.toml` builds `dist/` and serves `index.html` for every path.
+- **Vercel:** set the root directory to `frontend`; `vercel.json` does the same.
+- **Any static host:** upload `dist/` with an "all paths to `index.html`" rewrite
+  (`public/_redirects` covers hosts that read it).
+
+Set the API's `CORS_ORIGINS` and `FRONTEND_URL` to the address the app is served from.

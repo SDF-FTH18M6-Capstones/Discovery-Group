@@ -21,6 +21,7 @@ class SupplierSchema(Schema):
         validate=validate.Regexp(r"^\+?[0-9 ]{7,20}$", error="Enter a valid phone number."),
     )
     address = fields.String(allow_none=True, load_default=None, validate=validate.Length(max=300))
+    trusted = fields.Boolean(load_default=False)
     is_active = fields.Boolean(load_default=True)
 
 
