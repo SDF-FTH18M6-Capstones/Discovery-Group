@@ -30,6 +30,8 @@ def create_app(config_class=None):
 
     from app import auth, mail, models, resources, tenancy  # noqa: F401  (imported to register hooks)
 
+    mail.print_unsent_mail(app)
+
     @app.before_request
     def start_outside_any_business():
         g.outer_business_id = tenancy.current_business_id()
