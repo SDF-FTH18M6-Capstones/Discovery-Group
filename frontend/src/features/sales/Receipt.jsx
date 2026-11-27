@@ -65,7 +65,8 @@ export default function Receipt({ sale, onClose, children }) {
           </tfoot>
         </table>
         <p className="text-center text-muted">
-          Paid by {PAYMENT_LABELS[sale.payment_method] || sale.payment_method}. Served by{" "}
+          Paid by {PAYMENT_LABELS[sale.payment_method] || sale.payment_method}
+          {sale.payment_reference ? ` (${sale.payment_reference})` : ""}. Served by{" "}
           {sale.attendant_name}.
         </p>
         {voided && (

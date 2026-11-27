@@ -26,6 +26,7 @@ class Sale(TenantMixin, db.Model):
     vat_rate = db.Column(db.Numeric(5, 2), nullable=False, server_default="0", default=0)
     vat_amount = db.Column(Money, nullable=False, server_default="0", default=0)
     payment_method = db.Column(db.String(10), nullable=False)
+    payment_reference = db.Column(db.String(30))
     status = db.Column(db.String(10), nullable=False, server_default="completed", index=True)
     idempotency_key = db.Column(db.String(64))
     voided_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"))

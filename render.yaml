@@ -35,6 +35,10 @@ services:
         sync: false
       - key: SEED_DEMO
         value: "true"
+      - key: TASK_TOKEN
+        generateValue: true
+      - key: MPESA_MODE
+        value: simulate
       - key: LOGIN_CODE_EXEMPT_DOMAINS
         value: stockpilot.test,highlandcafe.test
 
