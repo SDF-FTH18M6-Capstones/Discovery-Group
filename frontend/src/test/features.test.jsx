@@ -72,6 +72,7 @@ describe("voiding a sale (US-29)", () => {
     vat_rate: "16.00",
     vat_amount: "16.55",
     net_amount: "103.45",
+    attendant_id: 1,
     attendant_name: "Vincent Mutuma",
     created_at: new Date().toISOString(),
     items: [
@@ -94,10 +95,10 @@ describe("voiding a sale (US-29)", () => {
           { ...sale, status: "voided", void_reason: "Rang up twice" },
         ],
       },
-      "admin",
+      "sales",
     );
     const user = userEvent.setup();
-    renderAt("/sales", { as: "admin" });
+    renderAt("/sales", { as: "sales" });
 
     await user.click(await screen.findByRole("button", { name: "S-0005" }));
     await user.click(screen.getByRole("button", { name: "Void sale" }));
@@ -110,10 +111,20 @@ describe("voiding a sale (US-29)", () => {
     expect(bodyOf(spy, "POST", "/api/sales/5/void")).toEqual({ reason: "Rang up twice" });
   });
 
-  it("is not offered to a Sales Attendant", async () => {
-    mockApi({ "GET /api/sales/": [200, page([sale])] }, "sales");
+  it("is offered to the attendant for their own sale only", async () => {
+    mockApi({ "GET /api/sales/": [200, page([{ ...sale, attendant_id: 2 }])] }, "sales");
     const user = userEvent.setup();
     renderAt("/sales", { as: "sales" });
+
+    await user.click(await screen.findByRole("button", { name: "S-0005" }));
+
+    expect(screen.queryByRole("button", { name: "Void sale" })).toBeNull();
+  });
+
+  it("is left to the attendants when the shop has sales staff", async () => {
+    mockApi({ "GET /api/sales/": [200, page([sale])] }, "admin");
+    const user = userEvent.setup();
+    renderAt("/sales", { as: "admin" });
 
     await user.click(await screen.findByRole("button", { name: "S-0005" }));
 

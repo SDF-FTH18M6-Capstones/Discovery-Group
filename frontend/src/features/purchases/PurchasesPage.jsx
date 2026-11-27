@@ -4,7 +4,6 @@ import { useSearchParams } from "react-router-dom";
 
 import { api, newIdempotencyKey } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import { PROCUREMENT, STOCK_MANAGERS } from "../../auth/roles";
 import Icon from "../../components/Icon";
 import Modal from "../../components/Modal";
 import PageHeader from "../../components/PageHeader";
@@ -204,9 +203,9 @@ function CancelDialog({ purchase, onClose, onDone }) {
 
 export default function PurchasesPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const canOrder = hasRole(...PROCUREMENT);
-  const canReceive = hasRole(...STOCK_MANAGERS);
+  const { canDo } = useAuth();
+  const canOrder = canDo("procurement");
+  const canReceive = canDo("inventory");
   const list = useSelector((state) => state.purchases);
   const [searchParams, setSearchParams] = useSearchParams();
   const [status, setStatus] = useState(searchParams.get("status") || "");
@@ -362,6 +361,11 @@ export default function PurchasesPage() {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <StatusBadge value={purchase.status} />
+                    {purchase.source === "low_stock" && (
+                      <span className="rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
+                        Auto: low stock
+                      </span>
+                    )}
                     {purchase.request_reference && (
                       <span className="code text-xs text-muted">
                         For {purchase.request_reference}
@@ -393,7 +397,9 @@ export default function PurchasesPage() {
                 </table>
                 <div className="flex flex-col gap-1 px-5 pt-3 text-xs text-muted">
                   <span>
-                    {purchase.status === "draft" ? "Drafted" : "Ordered"} by {purchase.creator_name}{" "}
+                    {purchase.source !== "manual" && purchase.status === "draft"
+                      ? "Prepared automatically"
+                      : `${purchase.status === "draft" ? "Drafted" : "Ordered"} by ${purchase.creator_name}`}{" "}
                     on {shortDate(purchase.ordered_at || purchase.created_at)}
                   </span>
                   {purchase.receipts?.map((grn) => (

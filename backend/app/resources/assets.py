@@ -17,7 +17,8 @@ from app.schemas import Schema
 from app.shoptime import shop_today
 from app.timeline import TimelineEntry, record_timeline
 
-MANAGERS = ("admin", "inventory")
+MANAGERS = ("inventory",)
+SEE_ALL = ("admin", "inventory")
 
 blp = Blueprint("assets", __name__, url_prefix="/api/assets", description="Assets")
 categories_blp = Blueprint(
@@ -133,7 +134,7 @@ def check_category(category_id):
 
 def visible(asset_id):
     asset = get_or_404(Asset, asset_id)
-    if not is_role(*MANAGERS) and asset.assigned_to != current_user.id:
+    if not is_role(*SEE_ALL) and asset.assigned_to != current_user.id:
         abort(404, message=f"Asset {asset_id} not found")
     return asset
 
@@ -144,7 +145,7 @@ def visible(asset_id):
 @roles_required()
 def list_assets(args):
     query = with_details(db.select(Asset)).order_by(Asset.number)
-    if args["mine"] or not is_role(*MANAGERS):
+    if args["mine"] or not is_role(*SEE_ALL):
         query = query.where(Asset.assigned_to == current_user.id)
     if args["search"]:
         term = f"%{args['search']}%"
@@ -167,7 +168,7 @@ def list_assets(args):
 
 @blp.route("/lookup/<string:code>")
 @blp.response(200, AssetSchema)
-@roles_required(*MANAGERS)
+@roles_required(*SEE_ALL)
 def lookup(code):
     asset_id = db.session.scalar(
         db.select(Asset.id).where((Asset.barcode == code) | (Asset.asset_code == code.upper()))

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
+import { useAuth } from "../../auth/AuthContext";
 import Icon from "../../components/Icon";
 import PageHeader from "../../components/PageHeader";
 import Pagination from "../../components/Pagination";
@@ -13,6 +14,8 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
+  const { canDo } = useAuth();
+  const canEdit = canDo("procurement");
 
   useEffect(() => {
     dispatch(suppliers.fetchList({ page, per_page: 10, search }));
@@ -23,10 +26,12 @@ export default function SuppliersPage() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title="Suppliers" subtitle="Who the shop buys from, and how to reach them.">
-        <button type="button" onClick={() => setEditing({})} className="btn-primary">
-          <Icon name="plus" size={16} />
-          Add supplier
-        </button>
+        {canEdit && (
+          <button type="button" onClick={() => setEditing({})} className="btn-primary">
+            <Icon name="plus" size={16} />
+            Add supplier
+          </button>
+        )}
       </PageHeader>
 
       {editing && (
@@ -101,23 +106,27 @@ export default function SuppliersPage() {
                   </span>
                 </td>
                 <td className="flex justify-end gap-2 px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(supplier)}
-                    className="text-brand-dark"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const result = await dispatch(suppliers.deleteItem(supplier.id));
-                      if (suppliers.deleteItem.fulfilled.match(result)) reload();
-                    }}
-                    className="text-danger"
-                  >
-                    Delete
-                  </button>
+                  {canEdit && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(supplier)}
+                        className="text-brand-dark"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const result = await dispatch(suppliers.deleteItem(supplier.id));
+                          if (suppliers.deleteItem.fulfilled.match(result)) reload();
+                        }}
+                        className="text-danger"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

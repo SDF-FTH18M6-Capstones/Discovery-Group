@@ -106,12 +106,21 @@ def test_a_procurement_manager_cannot_approve_their_own_request(manager):
     assert response.json["error"]["message"] == "You cannot approve or reject your own request."
 
 
-def test_the_admin_cannot_approve(employee_client, as_role):
+def test_the_admin_cannot_approve_when_procurement_is_staffed(employee_client, as_role):
+    as_role("procurement")
     created = make_request(employee_client)
 
     response = as_role("admin").post(f"/api/requests/{created['id']}/approve", json={})
 
     assert response.status_code == 403
+
+
+def test_the_admin_approves_while_nobody_works_in_procurement(employee_client, as_role):
+    created = make_request(employee_client)
+
+    response = as_role("admin").post(f"/api/requests/{created['id']}/approve", json={})
+
+    assert response.json["status"] == "approved"
 
 
 def test_owner_cannot_edit_after_the_decision(employee_client, manager):

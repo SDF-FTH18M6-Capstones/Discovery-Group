@@ -40,6 +40,7 @@ class Config:
 
     EMAIL_VERIFICATION_REQUIRED = os.getenv("EMAIL_VERIFICATION_REQUIRED", "true").lower() == "true"
     LOGIN_CODE_REQUIRED = os.getenv("LOGIN_CODE_REQUIRED", "true").lower() == "true"
+    STAFF_APPROVAL_REQUIRED = os.getenv("STAFF_APPROVAL_REQUIRED", "true").lower() == "true"
     LOGIN_CODE_EXEMPT_DOMAINS = [
         d.strip().lower()
         for d in os.getenv("LOGIN_CODE_EXEMPT_DOMAINS", "").split(",")
@@ -110,4 +111,5 @@ class TestConfig(Config):
     BCRYPT_LOG_ROUNDS = 4
     EMAIL_VERIFICATION_REQUIRED = False
     LOGIN_CODE_REQUIRED = False
+    STAFF_APPROVAL_REQUIRED = False
     LOGIN_CODE_EXEMPT_DOMAINS = []

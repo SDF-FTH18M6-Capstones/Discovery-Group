@@ -3,7 +3,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 
 import RequireAuth from "./auth/RequireAuth";
-import { PROCUREMENT, PURCHASE_VIEWERS, SELLERS, STOCK_MANAGERS } from "./auth/roles";
+import { PROCUREMENT_VIEWERS, PURCHASE_VIEWERS, SALES_VIEWERS, STOCK_VIEWERS } from "./auth/roles";
 import Layout from "./components/Layout";
 import AssetsPage from "./features/assets/AssetsPage";
 import AuditPage from "./features/audit/AuditPage";
@@ -53,7 +53,6 @@ export default function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        {}
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
@@ -62,7 +61,6 @@ export default function App() {
         <Route path="status" element={<StatusPage />} />
         <Route index element={<Home />} />
 
-        {}
         <Route element={<RequireAuth />}>
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
@@ -74,29 +72,26 @@ export default function App() {
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 
-        {}
-        <Route element={<RequireAuth roles={SELLERS} />}>
+        <Route element={<RequireAuth roles={SALES_VIEWERS} />}>
           <Route path="sales" element={<SalesPage />} />
+        </Route>
+        <Route element={<RequireAuth jobs={["sales"]} />}>
           <Route path="sales/new" element={<PosPage />} />
         </Route>
 
-        {}
-        <Route element={<RequireAuth roles={STOCK_MANAGERS} />}>
+        <Route element={<RequireAuth roles={STOCK_VIEWERS} />}>
           <Route path="stock" element={<StockPage />} />
         </Route>
 
-        {}
         <Route element={<RequireAuth roles={PURCHASE_VIEWERS} />}>
           <Route path="purchases" element={<PurchasesPage />} />
         </Route>
 
-        {}
-        <Route element={<RequireAuth roles={PROCUREMENT} />}>
+        <Route element={<RequireAuth roles={PROCUREMENT_VIEWERS} />}>
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="approvals" element={<ApprovalsPage />} />
         </Route>
 
-        {}
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />

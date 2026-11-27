@@ -35,6 +35,7 @@ def create_app(config_class=None):
         g.outer_business_id = tenancy.current_business_id()
         tenancy.clear_business()
         g.pop("business", None)
+        g.pop("covered_roles", None)
         db.session.info.pop("emails", None)
 
     @app.teardown_request
@@ -42,6 +43,7 @@ def create_app(config_class=None):
         outer = g.pop("outer_business_id", None)
         tenancy.clear_business()
         g.pop("business", None)
+        g.pop("covered_roles", None)
         if outer is not None:
             tenancy.set_business(outer)
 

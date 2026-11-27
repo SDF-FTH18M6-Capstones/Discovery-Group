@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { api, mediaUrl } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import { ROLE_NAMES, STOCK_MANAGERS } from "../../auth/roles";
+import { ROLE_NAMES, STOCK_VIEWERS } from "../../auth/roles";
 import Barcode from "../../components/Barcode";
 import Field from "../../components/Field";
 import Icon from "../../components/Icon";
@@ -380,8 +380,9 @@ function CategoriesDialog({ categories, onClose, onChanged }) {
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const manager = hasRole(...STOCK_MANAGERS);
+  const { hasRole, canDo } = useAuth();
+  const seesAll = hasRole(...STOCK_VIEWERS);
+  const manager = canDo("inventory");
   const list = useSelector((state) => state.assets);
   const [params] = useSearchParams();
   const [search, setSearch] = useState("");
@@ -407,8 +408,8 @@ export default function AssetsPage() {
       .catch(() => {});
 
   useEffect(() => {
-    if (manager) loadCategories();
-  }, [manager]);
+    if (seesAll) loadCategories();
+  }, [seesAll]);
 
   useEffect(() => {
     dispatch(
@@ -443,9 +444,9 @@ export default function AssetsPage() {
     <section className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
         <div className="flex flex-col gap-1.5">
-          <h1 className="page-title">{manager ? "Assets" : "Assets with me"}</h1>
+          <h1 className="page-title">{seesAll ? "Assets" : "Assets with me"}</h1>
           <p className="text-muted">
-            {manager
+            {seesAll
               ? "Equipment the business owns, its barcode, and who holds it."
               : "Equipment the business has given you. Report a fault under Repairs."}
           </p>
@@ -491,7 +492,7 @@ export default function AssetsPage() {
         </p>
       )}
 
-      {manager && (
+      {seesAll && (
         <div className="flex flex-wrap items-center gap-3">
           <label htmlFor="asset-search" className="sr-only">
             Search assets
@@ -533,8 +534,8 @@ export default function AssetsPage() {
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Asset</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">{manager ? "Held by" : "Since"}</th>
-              <th className="px-4 py-3">{manager ? "Due back" : "Condition"}</th>
+              <th className="px-4 py-3">{seesAll ? "Held by" : "Since"}</th>
+              <th className="px-4 py-3">{seesAll ? "Due back" : "Condition"}</th>
               <th className="px-4 py-3">
                 <span className="sr-only">Actions</span>
               </th>
@@ -567,7 +568,7 @@ export default function AssetsPage() {
                       )}
                     </span>
                   </td>
-                  {manager ? (
+                  {seesAll ? (
                     <>
                       <td className="px-4 py-3">{asset.holder_name || "—"}</td>
                       <td className={`px-4 py-3 ${current?.is_overdue ? "text-danger" : ""}`}>
@@ -636,8 +637,8 @@ export default function AssetsPage() {
           </tbody>
         </table>
         {list.status === "ready" && list.items.length === 0 && (
-          <EmptyState icon="laptop" title={manager ? "No assets found" : "Nothing assigned to you"}>
-            {manager
+          <EmptyState icon="laptop" title={seesAll ? "No assets found" : "Nothing assigned to you"}>
+            {seesAll
               ? "Register equipment with Add asset; each gets a code and a barcode."
               : "When equipment is handed to you, it shows up here."}
           </EmptyState>
@@ -646,7 +647,7 @@ export default function AssetsPage() {
       </div>
 
       {dialog?.kind === "view" && (
-        <AssetDetails asset={dialog.asset} manager={manager} onClose={() => setDialog(null)} />
+        <AssetDetails asset={dialog.asset} manager={seesAll} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === "assign" && (
         <AssignDialog asset={dialog.asset} onClose={() => setDialog(null)} onDone={done} />

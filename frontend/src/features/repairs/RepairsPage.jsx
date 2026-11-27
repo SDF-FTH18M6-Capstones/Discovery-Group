@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { api } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
-import { STOCK_MANAGERS } from "../../auth/roles";
+import { STOCK_VIEWERS } from "../../auth/roles";
 import Field from "../../components/Field";
 import Icon from "../../components/Icon";
 import Modal from "../../components/Modal";
@@ -225,7 +225,7 @@ function ReportForm({ onSaved, onCancel }) {
   );
 }
 
-function RepairCard({ repair, onMove, onClose, busy }) {
+function RepairCard({ repair, canMove, onMove, onClose, busy }) {
   return (
     <li className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-[var(--sp-shadow)]">
       <div className="flex items-start justify-between gap-2">
@@ -255,7 +255,7 @@ function RepairCard({ repair, onMove, onClose, busy }) {
           <span className="truncate">{repair.reporter_name}</span>
           <span>{shortDate(repair.created_at)}</span>
         </span>
-        {repair.status === "submitted" && (
+        {canMove && repair.status === "submitted" && (
           <span className="flex shrink-0 gap-1">
             <button
               type="button"
@@ -277,7 +277,7 @@ function RepairCard({ repair, onMove, onClose, busy }) {
             </button>
           </span>
         )}
-        {repair.status === "in_progress" && (
+        {canMove && repair.status === "in_progress" && (
           <button
             type="button"
             disabled={busy}
@@ -297,8 +297,9 @@ const COLUMN_DOTS = { submitted: "bg-saffron", in_progress: "bg-info", closed: "
 
 export default function RepairsPage() {
   const dispatch = useDispatch();
-  const { hasRole } = useAuth();
-  const manager = hasRole(...STOCK_MANAGERS);
+  const { hasRole, canDo } = useAuth();
+  const manager = hasRole(...STOCK_VIEWERS);
+  const canMove = canDo("inventory");
   const list = useSelector((state) => state.repairs);
   const [reporting, setReporting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -401,6 +402,7 @@ export default function RepairsPage() {
                     <RepairCard
                       key={repair.id}
                       repair={repair}
+                      canMove={canMove}
                       onMove={move}
                       onClose={(target, outcome) => setClosing({ repair: target, outcome })}
                       busy={busyId === repair.id}

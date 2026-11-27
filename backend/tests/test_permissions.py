@@ -22,10 +22,14 @@ from app.models import (
 )
 
 ALL = ("admin", "procurement", "inventory", "sales", "employee")
-STOCK = ("admin", "inventory")
-BUYING = ("admin", "procurement")
-SELLING = ("admin", "sales")
+STOCK = ("inventory",)
+STOCK_VIEW = ("admin", "inventory")
+BUYING = ("procurement",)
+SUPPLIER_VIEW = ("admin", "procurement", "inventory")
+SELLING = ("sales",)
+SALES_VIEW = ("admin", "sales")
 PURCHASE_VIEW = ("admin", "procurement", "inventory")
+PRODUCT_CREATE = ("inventory", "procurement")
 
 PRODUCT = {
     "sku": "SP-NEW",
@@ -54,6 +58,8 @@ ENDPOINTS = [
     ("PUT", "/api/users/{other_user}/role", ("admin",), 200, {"role": "sales"}),
     ("POST", "/api/users/{other_user}/deactivate", ("admin",), 200, None),
     ("POST", "/api/users/{other_user}/reactivate", ("admin",), 200, None),
+    ("POST", "/api/users/{waiting_user}/approve", ("admin",), 200, {"role": "sales"}),
+    ("POST", "/api/users/{waiting_user}/decline", ("admin",), 204, None),
     ("GET", "/api/business", ALL, 200, None),
     ("PUT", "/api/business", ("admin",), 200, BUSINESS),
     ("POST", "/api/business/join-code", ("admin",), 200, None),
@@ -69,7 +75,7 @@ ENDPOINTS = [
     ("PUT", "/api/categories/{category}", STOCK, 200, {"name": "Drinks"}),
     ("DELETE", "/api/categories/{empty_category}", STOCK, 204, None),
     ("GET", "/api/products/", ALL, 200, None),
-    ("POST", "/api/products/", STOCK, 201, PRODUCT),
+    ("POST", "/api/products/", PRODUCT_CREATE, 201, PRODUCT),
     ("GET", "/api/products/{product}", ALL, 200, None),
     ("PUT", "/api/products/{product}", STOCK, 200, PRODUCT),
     ("DELETE", "/api/products/{spare_product}", STOCK, 204, None),
@@ -77,10 +83,10 @@ ENDPOINTS = [
     ("POST", "/api/products/{product}/restore", STOCK, 200, None),
     ("POST", "/api/products/{product}/photo", STOCK, 400, None),
     ("DELETE", "/api/products/{product}/photo", STOCK, 200, None),
-    ("GET", "/api/products/{product}/timeline", STOCK, 200, None),
-    ("GET", "/api/suppliers/", BUYING, 200, None),
+    ("GET", "/api/products/{product}/timeline", STOCK_VIEW, 200, None),
+    ("GET", "/api/suppliers/", SUPPLIER_VIEW, 200, None),
     ("POST", "/api/suppliers/", BUYING, 201, {"name": "Metro"}),
-    ("GET", "/api/suppliers/{supplier}", BUYING, 200, None),
+    ("GET", "/api/suppliers/{supplier}", SUPPLIER_VIEW, 200, None),
     ("PUT", "/api/suppliers/{supplier}", BUYING, 200, {"name": "Metro Ltd"}),
     ("DELETE", "/api/suppliers/{spare_supplier}", BUYING, 204, None),
     ("GET", "/api/requests/", ALL, 200, None),
@@ -98,7 +104,7 @@ ENDPOINTS = [
     ("GET", "/api/assets/{my_asset}", ALL, 200, None),
     ("PUT", "/api/assets/{my_asset}", STOCK, 200, ASSET),
     ("DELETE", "/api/assets/{spare_asset}", STOCK, 204, None),
-    ("GET", "/api/assets/lookup/{asset_code}", STOCK, 200, None),
+    ("GET", "/api/assets/lookup/{asset_code}", STOCK_VIEW, 200, None),
     ("POST", "/api/assets/{free_asset}/assign", STOCK, 200, ASSIGN),
     ("POST", "/api/assets/{my_asset}/return", STOCK, 200, {"condition": "good"}),
     ("POST", "/api/assets/{free_asset}/retire", STOCK, 200, None),
@@ -110,10 +116,10 @@ ENDPOINTS = [
     ("POST", "/api/asset-categories/", STOCK, 201, {"name": "Furniture"}),
     ("PUT", "/api/asset-categories/{asset_category}", STOCK, 200, {"name": "Computers"}),
     ("DELETE", "/api/asset-categories/{asset_category}", STOCK, 204, None),
-    ("GET", "/api/sales/", SELLING, 200, None),
+    ("GET", "/api/sales/", SALES_VIEW, 200, None),
     ("POST", "/api/sales/", SELLING, 201, SALE),
-    ("GET", "/api/sales/{my_sale}", SELLING, 200, None),
-    ("POST", "/api/sales/{my_sale}/void", ("admin",), 200, {"reason": "Rang up twice"}),
+    ("GET", "/api/sales/{my_sale}", SALES_VIEW, 200, None),
+    ("POST", "/api/sales/{my_sale}/void", SELLING, 200, {"reason": "Rang up twice"}),
     ("GET", "/api/purchases/", PURCHASE_VIEW, 200, None),
     ("POST", "/api/purchases/", BUYING, 201, PURCHASE),
     ("GET", "/api/purchases/{purchase}", PURCHASE_VIEW, 200, None),
@@ -121,8 +127,8 @@ ENDPOINTS = [
     ("POST", "/api/purchases/{draft}/confirm", BUYING, 200, None),
     ("POST", "/api/purchases/{purchase}/receive", STOCK, 200, {}),
     ("POST", "/api/purchases/{purchase}/cancel", BUYING, 200, {"reason": "Supplier closed"}),
-    ("GET", "/api/stock/movements", STOCK, 200, None),
-    ("GET", "/api/stock/movements.csv", STOCK, 200, None),
+    ("GET", "/api/stock/movements", STOCK_VIEW, 200, None),
+    ("GET", "/api/stock/movements.csv", STOCK_VIEW, 200, None),
     ("POST", "/api/stock/adjustments", STOCK, 201, ADJUSTMENT),
     ("GET", "/api/repairs/", ALL, 200, None),
     ("POST", "/api/repairs/", ALL, 201, REPAIR),
@@ -161,6 +167,10 @@ PUBLIC = [
 
 def build_world(caller, make_user):
     other = make_user("employee")
+    for job in ("procurement", "inventory", "sales"):
+        if caller.role != job:
+            make_user(job)
+    waiting = make_user("employee", approved=False)
     category = Category(name="Beverages")
     empty_category = Category(name="Empty")
     db.session.add_all([category, empty_category])
@@ -248,6 +258,7 @@ def build_world(caller, make_user):
         "free_asset": free_asset.id,
         "asset_category": asset_category.id,
         "approved_request": approved_request.id,
+        "waiting_user": waiting.id,
     }
 
 
@@ -308,7 +319,11 @@ def test_each_role_gets_exactly_its_permissions(as_role, make_user, endpoint, ro
         assert response.status_code == success, response.json
     else:
         assert response.status_code == 403
-        assert response.json["error"]["message"] == "You do not have permission to do this."
+        message = response.json["error"]["message"]
+        if role == "admin":
+            assert "As Administrator you can follow it, but not do it." in message
+        else:
+            assert message == "You do not have permission to do this."
 
 
 def test_every_endpoint_is_listed(app):

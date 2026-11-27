@@ -19,17 +19,17 @@ const water = {
 
 describe("products page", () => {
   it("lists products from the API", async () => {
-    mockApi({ "GET /api/products/": [200, page([water])] }, "admin");
-    renderAt("/products", { as: "admin" });
+    mockApi({ "GET /api/products/": [200, page([water])] }, "inventory");
+    renderAt("/products", { as: "inventory" });
 
     expect(await screen.findByText("Water Bottle 1L")).toBeInTheDocument();
     expect(screen.getByText("Page 1 of 1 · 1 total")).toBeInTheDocument();
   });
 
   it("shows field errors before sending an empty form", async () => {
-    const fetchSpy = mockApi({}, "admin");
+    const fetchSpy = mockApi({}, "inventory");
     const user = userEvent.setup();
-    renderAt("/products", { as: "admin" });
+    renderAt("/products", { as: "inventory" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.click(screen.getByRole("button", { name: "Save product" }));
@@ -45,10 +45,10 @@ describe("products page", () => {
         "GET /api/categories/": [200, page([{ id: 1, name: "Beverages" }])],
         "POST /api/products/": [201, water],
       },
-      "admin",
+      "inventory",
     );
     const user = userEvent.setup();
-    renderAt("/products", { as: "admin" });
+    renderAt("/products", { as: "inventory" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.type(screen.getByLabelText("SKU"), "SP-001");
@@ -81,10 +81,10 @@ describe("products page", () => {
           { error: { code: 409, message: "SKU 'SP-001' is already used" } },
         ],
       },
-      "admin",
+      "inventory",
     );
     const user = userEvent.setup();
-    renderAt("/products", { as: "admin" });
+    renderAt("/products", { as: "inventory" });
 
     await user.click(screen.getByRole("button", { name: "Add product" }));
     await user.type(screen.getByLabelText("SKU"), "SP-001");
@@ -108,10 +108,10 @@ describe("deleting", () => {
           { error: { code: 409, message: "This product has sales and cannot be deleted." } },
         ],
       },
-      "admin",
+      "inventory",
     );
     const user = userEvent.setup();
-    renderAt("/products", { as: "admin" });
+    renderAt("/products", { as: "inventory" });
 
     await user.click(await screen.findByRole("button", { name: "Delete" }));
 
@@ -123,9 +123,12 @@ describe("deleting", () => {
 
 describe("suppliers page", () => {
   it("validates email and saves a supplier", async () => {
-    const fetchSpy = mockApi({ "POST /api/suppliers/": [201, { id: 1, name: "Metro" }] }, "admin");
+    const fetchSpy = mockApi(
+      { "POST /api/suppliers/": [201, { id: 1, name: "Metro" }] },
+      "procurement",
+    );
     const user = userEvent.setup();
-    renderAt("/suppliers", { as: "admin" });
+    renderAt("/suppliers", { as: "procurement" });
 
     await user.click(screen.getByRole("button", { name: "Add supplier" }));
     await user.type(screen.getByLabelText("Name"), "Metro");

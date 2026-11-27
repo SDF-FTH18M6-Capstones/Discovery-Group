@@ -31,6 +31,7 @@ class User(TenantMixin, TimestampMixin, db.Model):
     is_active = db.Column(db.Boolean, nullable=False, server_default=db.true())
     session_version = db.Column(db.Integer, nullable=False, server_default="0", default=0)
     email_verified_at = db.Column(db.DateTime(timezone=True))
+    approved_at = db.Column(db.DateTime(timezone=True))
 
     business = db.relationship("Business")
 
@@ -52,6 +53,10 @@ class User(TenantMixin, TimestampMixin, db.Model):
     @property
     def email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_at is not None
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.email}>"

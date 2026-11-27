@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 
 import { api, download } from "../../api/client";
+import { useAuth } from "../../auth/AuthContext";
 import Field from "../../components/Field";
 import SearchPicker, { describeProduct } from "../../components/SearchPicker";
 import Icon from "../../components/Icon";
@@ -130,6 +131,7 @@ export default function StockPage() {
   const [exporting, setExporting] = useState("");
   const [page, setPage] = useState(1);
   const [adjusting, setAdjusting] = useState(false);
+  const { canDo } = useAuth();
   const [notice, setNotice] = useState("");
 
   const [totals, setTotals] = useState({});
@@ -180,7 +182,7 @@ export default function StockPage() {
           <Icon name="down" size={16} />
           Export CSV
         </button>
-        {!adjusting && (
+        {canDo("inventory") && !adjusting && (
           <button type="button" onClick={() => setAdjusting(true)} className="btn-primary">
             <Icon name="ledger" size={16} />
             Adjust stock
