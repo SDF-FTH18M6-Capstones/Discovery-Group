@@ -526,6 +526,7 @@ def change_password(data):
             messages={"json": {"current_password": ["Your current password is not correct."]}},
         )
     current_user.set_password(data["new_password"])
+    current_user.session_version += 1
     db.session.commit()
     return {"message": "Password changed."}
 

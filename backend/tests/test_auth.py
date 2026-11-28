@@ -205,3 +205,20 @@ def test_full_signup_and_signin_journey(client):
     assert client.get("/api/auth/me", headers=headers).json["role"] == "employee"
     assert client.get("/api/products/", headers=headers).status_code == 200
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_changing_password_signs_out_every_session(client, make_user):
+    from tests.conftest import AuthClient
+
+    user = make_user("employee", password="Secret123!")
+    phone = AuthClient(client, user)
+    laptop = AuthClient(client, user)
+
+    response = laptop.post(
+        "/api/auth/password",
+        json={"current_password": "Secret123!", "new_password": "Newer456!"},
+    )
+
+    assert response.status_code == 200
+    assert phone.get("/api/auth/me").status_code == 401
+    assert laptop.get("/api/auth/me").status_code == 401
